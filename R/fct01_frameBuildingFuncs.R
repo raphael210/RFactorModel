@@ -327,7 +327,7 @@ getMultiFactor <- function(TS,FactorLists,wgts){
     
     TSF <- renameCol(TSF,"factorscore",factorName)
     if(i==1L){
-      re <- TSF
+      re <- TSF[,c("date","stockID",factorName)]
     } else {
       re <- merge(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
     }

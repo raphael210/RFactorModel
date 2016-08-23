@@ -331,7 +331,7 @@ port.backtest <- function(port,
   R <- xts(R.df[,-1],R.df[,1])
   colnames(R) <- colnames(R.df)[-1]
   # ---- get PB
-  re <- Return.rebalancing_yrf(R = R,weights = weights,fee.buy = fee.buy,fee.sell = fee.sell)
+  re <- Return.rebalancing_yrf(R = R,weights = weights,fee.buy = fee.buy,fee.sell = fee.sell,verbose = TRUE)
   return(re) 
 }
 
@@ -529,7 +529,7 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
   }
   colnames(weight) <- colnames(rtn)
   fee.buy <- fee.sell <- c(fee.long,fee.short)
-  rtn.hedge <- Return.rebalancing_yrf(rtn,weight,fee.buy,fee.sell,warning.wgtsum=FALSE)$rtn
+  rtn.hedge <- Return.rebalancing_yrf(rtn,weight,fee.buy,fee.sell,warning.wgtsum=FALSE)
   rtn <- merge(rtn,rtn.hedge,all=FALSE)
   colnames(rtn) <- c(nm.long,nm.short,"hedge")
   return(rtn)
