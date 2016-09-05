@@ -658,7 +658,7 @@ getmodelPar.factor <- function(modelPar,item_sub){
 getMPs_FactorLists <- function(FactorLists, 
                                modelPar,
                                nm = laply(FactorLists, function(x) x$factorName)){
-  MPs <- llply(FactorLists,function(x) setmodelPar.factor(modelPar,FactorList=x))
+  MPs <- plyr::llply(FactorLists,function(x) setmodelPar.factor(modelPar,FactorList=x))
   names(MPs) <- nm
   return(MPs)
 }
@@ -676,7 +676,7 @@ getMPs_FactorLists <- function(FactorLists,
 getMPs_time.intervals <- function(intervals,
                                   modelPar,
                                   nm=paste(intervals[,1],intervals[,2],sep="~")){
-  MPs <- alply(intervals, 1, function(x){setmodelPar.time(modelPar,begT=x[[1]],endT=x[[2]])})
+  MPs <- plyr::alply(intervals, 1, function(x){setmodelPar.time(modelPar,begT=x[[1]],endT=x[[2]])})
   names(MPs) <- nm
   return(MPs)
 }
@@ -692,7 +692,7 @@ getMPs_time.intervals <- function(intervals,
 getMPs_time.rebFreqs <- function(rebFreqs,
                                  modelPar,
                                  nm = rebFreqs){
-  MPs <- lapply(rebFreqs, function(x){setmodelPar.time(modelPar,rebFreq=x)})
+  MPs <- plyr::lapply(rebFreqs, function(x){setmodelPar.time(modelPar,rebFreq=x)})
   names(MPs) <- nm
   return(MPs)
 }
@@ -707,7 +707,7 @@ getMPs_time.rebFreqs <- function(rebFreqs,
 getMPs_time.shiftbys <- function(shiftbys,
                                  modelPar,
                                  nm = as.character(shiftbys)){
-  MPs <- lapply(shiftbys, function(x) setmodelPar.time(modelPar, shiftby=x))
+  MPs <- plyr::lapply(shiftbys, function(x) setmodelPar.time(modelPar, shiftby=x))
   names(MPs) <- nm
   return(MPs)
 }
@@ -721,7 +721,7 @@ getMPs_time.shiftbys <- function(shiftbys,
 #' re5 <- getMPs_univs(shiftbys,mp)
 getMPs_univs <- function(univs,modelPar,
                          nm=univs){
-  MPs <- alply(univs, .fun=function(x) setmodelPar.univ(modelPar, indexID=x))
+  MPs <- plyr::alply(univs, .fun=function(x) setmodelPar.univ(modelPar, indexID=x))
   names(MPs) <- nm
   return(MPs)
 }
