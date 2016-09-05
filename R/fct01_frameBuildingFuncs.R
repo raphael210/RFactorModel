@@ -263,7 +263,7 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' @rdname getTSF
 #' @param FactorLists a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).
 #' @param wgts a numeric vector with the same length of FactorLists and sum of 1(if not, the wgts will be rescaled to sum 1).
-#' @return  \code{getMultiFactor} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the multi-factor-score .
+#' @return  \code{getMultiFactor} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} multi-factor-score .
 #' @note  Function \code{getMultiFactor} not only could be used to get the "raw" multi-factor-score, but also could be used as the \code{"factorFun"} parametre in function \code{getTSF} to get the "clean and standardized" multi-factor-score. See more detail in the examples.
 #' @details Function \code{getMultiFactor} get the multi-factor-score by firstly getting all the single-factor-scores and then calculating the weighted sum of them.
 #' @export
@@ -327,7 +327,7 @@ getMultiFactor <- function(TS,FactorLists,wgts){
     
     TSF <- renameCol(TSF,"factorscore",factorName)
     if(i==1L){
-      re <- TSF
+      re <- merge(TS,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
     } else {
       re <- merge(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
     }
@@ -355,7 +355,7 @@ getMultiFactor <- function(TS,FactorLists,wgts){
 #' @rdname getTSF
 #' @export
 #' @param TSFs a \bold{TSFs} object. see /code{/link{Model.TSFs}}
-#' @return \code{getMultiFactorbyTSFs} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the multi-factor-score, from a \bold{TSFs} list. (If param TSFs is a TSFRs object, then will return a TSFR object.)
+#' @return \code{getMultiFactorbyTSFs} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} multi-factor-score, from a \bold{TSFs} list. (If param TSFs is a TSFRs object, then will return a TSFR object.)
 #' @examples 
 #' # -- get multi-factor by TSFs 
 #' MPs <- getMPs_FactorLists(FactorLists, modelPar.default())
@@ -374,7 +374,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
     TSF <- factor.na(TSFs[[i]],"median")
     TSF <- renameCol(TSF,"factorscore",factorNames[i])
     if(i==1L){
-      re <- TSF
+      re <- TSF[, intersect(c("date","stockID","periodrtn","sector",factorNames[i]),colnames(TSF))]
     } else {
       re <- merge(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))
     }
