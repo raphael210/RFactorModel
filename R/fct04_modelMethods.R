@@ -132,7 +132,7 @@ Model.TSFR <- function(modelPar,include.decay=FALSE){
 #' MPs <- getMPs_FactorLists(FactorLists, modelPar.default())
 #' TSFs <- Model.TSFs(MPs)
 Model.TSFs <- function(MPs, nm = names(MPs)){  
-  re <- llply(MPs, Model.TSF, .progress="text")
+  re <- plyr::llply(MPs, Model.TSF, .progress="text")
   names(re) <- nm
   return(re)
 }
@@ -144,7 +144,7 @@ Model.TSFs <- function(MPs, nm = names(MPs)){
 #' # -- get the TSFRs list
 #' TSFRs <- Model.TSFRs(MPs)
 Model.TSFRs <- function(MPs, nm = names(MPs), include.decay=FALSE){
-  re <- llply(MPs, Model.TSFR, include.decay=include.decay, .progress="text")
+  re <- plyr::llply(MPs, Model.TSFR, include.decay=include.decay, .progress="text")
   names(re) <- nm
   return(re)
 }
@@ -158,7 +158,7 @@ Model.TSFRs <- function(MPs, nm = names(MPs), include.decay=FALSE){
 #' TSFs <- Model.TSFs_byTS(MPs, TS)
 #' TSFRs <- Model.TSFs_byTS(MPs, TSR)
 Model.TSFs_byTS <- function(MPs, TS, nm = names(MPs)){
-  re <- llply(MPs, Model.TSF_byTS, TS=TS, .progress="text")
+  re <- plyr::llply(MPs, Model.TSF_byTS, TS=TS, .progress="text")
   names(re) <- nm
   return(re)
 }
