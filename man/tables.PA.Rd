@@ -4,7 +4,7 @@
 \alias{tables.PA}
 \title{getPAData}
 \usage{
-tables.PA(port, factorLists, bmk, sectorAttr = list(33, 1))
+tables.PA(port, factorLists, bmk, sectorAttr = defaultSectorAttr())
 }
 \description{
 getPAData
