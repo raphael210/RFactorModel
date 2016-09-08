@@ -172,6 +172,8 @@ OptWgt <- function(TSF,Frtn,Fcov,Delta,constr=c('IndSty','Ind','IndStyTE'),bench
 #' @export
 exposure.TSWF <- function(TSWF) {
   factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
+  TSWF <- dplyr::select(TSWF,one_of(c("stockID","date","wgt",factorNames)))
+  TSWF <- na.omit(TSWF)  # omit the NA value
   dates <- unique(TSWF$date)
   factorexp <- data.frame()
   for(i in 1:length(dates)){
@@ -206,12 +208,12 @@ tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   # get active wgt, if necessary
   if(!missing(bmk)){
     port <- getActivewgt(port = port,bmk = bmk,res = "active")
-    port <- dplyr::rename(port,wgt=activewgt)
+    port <- dplyr::rename(port,wgt=actwgt)
   }
   
   # calculate factor return 
   dates <- unique(port$date)
-  TS <- getTS(dates,indexID = 'EI000908')   # get TSFR within rebDates==dates & univ==EI000908
+  TS <- getTS(dates,indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
   TSR <- getTSR(TS)
   TSFR <- getMultiFactor(TSR,factorLists)
   regdata <- reg.TSFR(TSFR = TSFR,regType = "lm",sectorAttr = sectorAttr )
@@ -220,21 +222,21 @@ tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   frtn <- dplyr::arrange(frtn,date)
 
   # calculate factor exposure
-  TSWF <- merge.x(port,TSFR,by=c('date','stockID'),all.x=T)
+  TSWF <- merge.x(port,TSFR,by=c('date','stockID'))
   TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
   fexp <- exposure.TSWF(TSWF) 
-  fexp <- dplyr::select(fexp,one_of(colnames(frtn))) # make the order of cols same with frtn
   fexp <- dplyr::arrange(fexp,date)
   
   # calculate performance attribution
-  portrtn <- plyr::ddply(TSWF,"date",summarise,rtn=sum(wgt*periodrtn))
+  portrtn <- plyr::ddply(TSWF,"date",summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
   portrtn <- dplyr::arrange(portrtn,date)[-nrow(portrtn), ]
   portrtn_m <- as.matrix(portrtn[, -1])
+  frtn <- dplyr::select(frtn,one_of(colnames(fexp))) # make the order of cols same with fexp
   frtn_m <- as.matrix(frtn[, -1])
   fexp_m <- as.matrix(fexp[-nrow(fexp), -1])
   fattr_m <- frtn_m*fexp_m
   res_m <- portrtn_m - as.matrix(rowSums(fattr_m))
-  perfattr <- data.frame(portrtn$date,fattr_m,res=res_m)
+  perfattr <- data.frame(date=portrtn$date,fattr_m,res=res_m)
   
   return(list(frtn=frtn,fexp=fexp,perfattr=perfattr,portrtn=portrtn))
 }
