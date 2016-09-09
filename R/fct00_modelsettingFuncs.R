@@ -75,10 +75,9 @@ setmodelPar.title <- function(modelPar,
 #' @seealso \code{\link{getRebDates}}
 #' @author Ruifei.Yin
 #' @export
-#' @importFrom lubridate years
 #' @family modelPar setting functions
 modelPar.time <- function(modelPar = modelPar.default() ,                          
-                          begT = Sys.Date()-years(1),
+                          begT = Sys.Date()-lubridate::years(1),
                           endT = Sys.Date()-1 ,
                           rebFreq = "month" ,
                           shiftby = 0,
@@ -657,7 +656,7 @@ getmodelPar.factor <- function(modelPar,item_sub){
 #' re1 <- getMPs_FactorLists(FactorLists,modelPar=mp)
 getMPs_FactorLists <- function(FactorLists, 
                                modelPar,
-                               nm = laply(FactorLists, function(x) x$factorName)){
+                               nm = plyr::laply(FactorLists, function(x) x$factorName)){
   MPs <- plyr::llply(FactorLists,function(x) setmodelPar.factor(modelPar,FactorList=x))
   names(MPs) <- nm
   return(MPs)
