@@ -228,7 +228,7 @@ tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   fexp <- dplyr::arrange(fexp,date)
   
   # calculate performance attribution
-  portrtn <- plyr::ddply(TSWF,"date",summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
+  portrtn <- plyr::ddply(TSWF,"date",plyr::summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
   portrtn <- dplyr::arrange(portrtn,date)[-nrow(portrtn), ]
   portrtn_m <- as.matrix(portrtn[, -1])
   frtn <- dplyr::select(frtn,one_of(colnames(fexp))) # make the order of cols same with fexp

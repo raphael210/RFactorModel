@@ -75,10 +75,9 @@ setmodelPar.title <- function(modelPar,
 #' @seealso \code{\link{getRebDates}}
 #' @author Ruifei.Yin
 #' @export
-#' @importFrom lubridate years
 #' @family modelPar setting functions
 modelPar.time <- function(modelPar = modelPar.default() ,                          
-                          begT = Sys.Date()-years(1),
+                          begT = Sys.Date()-lubridate::years(1),
                           endT = Sys.Date()-1 ,
                           rebFreq = "month" ,
                           shiftby = 0,

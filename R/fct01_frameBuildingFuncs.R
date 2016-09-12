@@ -400,7 +400,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
 # --------------------  ~~ intermediately called functions ----------------
 # ---- deal with the outliers of factorscore
 factor.outlier <- function (TSF, factorOutlier) {
-  TSF <- ddply(TSF,"date",
+  TSF <- plyr::ddply(TSF,"date",
                function(x,outlier){  
                  outlier_u <- with(x,mean(factorscore,na.rm=TRUE)+outlier*sd(factorscore,na.rm=TRUE))
                  outlier_l <- with(x,mean(factorscore,na.rm=TRUE)-outlier*sd(factorscore,na.rm=TRUE))
@@ -412,10 +412,10 @@ factor.outlier <- function (TSF, factorOutlier) {
 # ---- standardize the factorscore
 factor.std <- function (TSF,factorStd,sectorAttr) {
   if(factorStd == "norm"){ 
-    TSF <- ddply(TSF,"date",transform,factorscore=scale(factorscore))      
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=scale(factorscore))      
   } else if (factorStd == "sectorNe"){
     TSF <- getSectorID(TSF,sectorAttr=sectorAttr)  
-    TSF <- data.table(TSF,key=c("date","sector"))
+    TSF <- data.table::data.table(TSF,key=c("date","sector"))
     TSF <- TSF[,factorscore:=scale(factorscore), by = c("date","sector")]
     TSF <- as.data.frame(TSF)
   }
@@ -425,13 +425,13 @@ factor.std <- function (TSF,factorStd,sectorAttr) {
 factor.na <- function (TSF, method=c("na","mean","median","min","max")) {
   method <- match.arg(method)
   if(method=="mean"){
-    TSF <- ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="median"){
-    TSF <- ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="min"){
-    TSF <- ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="max"){
-    TSF <- ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
   }  
   return(TSF)
 }
