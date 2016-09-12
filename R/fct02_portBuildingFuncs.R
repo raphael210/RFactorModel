@@ -88,9 +88,9 @@ getPort <- function(TSF, topN=NA, topQ=NA,
     TSF_by <- group_by(TSF,date) %>% dplyr::mutate(cnt=n()) 
   }
   if(dir == "long"){
-    TSF_by <- dplyr::mutate(TSF_by,rnk=rank(-factorscore)) %>% arrange(rnk)
+    TSF_by <- dplyr::mutate(TSF_by,rnk=rank(-factorscore)) %>% dplyr::arrange(rnk)
   } else {
-    TSF_by <- dplyr::mutate(TSF_by,rnk=rank(factorscore)) %>% arrange(rnk)
+    TSF_by <- dplyr::mutate(TSF_by,rnk=rank(factorscore)) %>% dplyr::arrange(rnk)
   }
   
   if(all(!is.na(topN))){  ## get port by topN
@@ -124,7 +124,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
         # 2-coercively keep old stocks,
         # 3-others
         subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk<=topN.in/cnt*n(),1,ifelse(rnk<=topN.keep/cnt*n() & old,2,3)))
-        subTSF <- arrange(subTSF,flag,rnk)
+        subTSF <- dplyr::arrange(subTSF,flag,rnk)
         subTSF <- dplyr::mutate(subTSF,rnk_new=order(order(flag,rnk)))
         subport <- dplyr::filter(subTSF, rnk_new<=topN/cnt*n())
       } else if (all(!is.na(topQ))){ ## get port by topQ
@@ -132,7 +132,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
         topQ.in <- topQ*(1-buffer.in)
         topQ.keep <- topQ*(1+buffer.keep)
         subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk<=topQ.in*n(),1,ifelse(rnk<=topQ.keep*n() & old,2,3)))
-        subTSF <- arrange(subTSF,flag,rnk)
+        subTSF <- dplyr::arrange(subTSF,flag,rnk)
         subTSF <- dplyr::mutate(subTSF,rnk_new=order(order(flag,rnk)))
         subport <- slice(subTSF,1:(topQ*n()))
       }
@@ -176,13 +176,13 @@ addwgt2port <- function (port,
   check.colnames(port,coltest)
   # ---- add weights
   if (wgtType=="eq") {
-    port <- ddply(port,"date",transform,wgt=1/length(stockID))    
+    port <- plyr::ddply(port,"date",transform,wgt=1/length(stockID))    
   } else if (wgtType %in% c("fv","fvsqrt")) {    
     port <- TS.getTech(port,variables="float_cap")
     if (wgtType=="fv") {
-      port <- ddply(port,"date",transform,wgt=float_cap/sum(float_cap,na.rm=TRUE))
+      port <- plyr::ddply(port,"date",transform,wgt=float_cap/sum(float_cap,na.rm=TRUE))
     } else {
-      port <- ddply(port,"date",transform,wgt=sqrt(float_cap)/sum(sqrt(float_cap),na.rm=TRUE))
+      port <- plyr::ddply(port,"date",transform,wgt=sqrt(float_cap)/sum(sqrt(float_cap),na.rm=TRUE))
     }   
     port$float_cap <- NULL
   } else if (wgtType=="custom"){
@@ -194,20 +194,20 @@ addwgt2port <- function (port,
     datelist <- unique(port$date)    
     wgt.bmk <- getIndexCompWgt(indexID=wgtbmk,endT=datelist)      
     wgt.bmk <- getSectorID(wgt.bmk, sectorAttr=sectorAttr)
-    wgt.bmk.sector <- ddply(wgt.bmk,c("date","sector"),summarize,wgt.sector=sum(wgt,na.rm=TRUE))  
+    wgt.bmk.sector <- plyr::ddply(wgt.bmk,c("date","sector"),plyr::summarize,wgt.sector=sum(wgt,na.rm=TRUE))  
     # --- merge and rescale the wgt to neutrualiezde
     port<- getSectorID(port,sectorAttr=sectorAttr)
     port <- merge(port,wgt.bmk.sector,by=c("date","sector"),all.x=TRUE)
     port[is.na(port$wgt.sector),"wgt.sector"] <- 0  # -- dealing with sectors in port but not in bmk
-    port <- ddply(port,c("date","sector"),transform,wgt=wgt/sum(wgt,na.rm=TRUE)*wgt.sector)    
+    port <- plyr::ddply(port,c("date","sector"),transform,wgt=wgt/sum(wgt,na.rm=TRUE)*wgt.sector)    
     if (TRUE) { # -- dealing with sectors in bmk but not in port, by rescaling wgt to sum 1.
-      warning.tab <- ddply(port,"date",summarize,sum.wgt=sum(wgt,na.rm=TRUE))
+      warning.tab <- plyr::ddply(port,"date",plyr::summarize,sum.wgt=sum(wgt,na.rm=TRUE))
       warning.tab <- subset(warning.tab, sum.wgt < 1-tolerance)
       if (nrow(warning.tab) > 0) {
         warning("There are some sectors that are in the bmk but absent in the portfolio. The weights will be rescaled! \nThe following table are the details:")
         print(warning.tab)
       }
-      port <- ddply(port,"date",transform,wgt=wgt/sum(wgt,na.rm=TRUE))
+      port <- plyr::ddply(port,"date",transform,wgt=wgt/sum(wgt,na.rm=TRUE))
     } 
   }
   return(port)
@@ -226,7 +226,6 @@ addwgt2port <- function (port,
 #' @return \code{port.substitute} return a \bold{Port} object
 #' @note If the \code{port} and \code{TSF} originally contain the column "sector", it will be droped before the new sector imported according to the specified auguments.
 #' @export
-#' @importFrom plyr rbind.fill
 #' @examples
 #' # -- reduce the risk of concentration
 #' port <- port.substitute(port,TSF,wgt.max=0.08)
@@ -245,7 +244,7 @@ port.substitute <- function(port,TSF,
   }  
   check.Port(port)
   port <- getSectorID(port,sectorAttr=sectorAttr)  
-  port <- arrange(port,date,sector,desc(wgt))  
+  port <- dplyr::arrange(port,date,sector,desc(wgt))  
   check.TSF(TSF)
   TSF <- getSectorID(TSF,sectorAttr=sectorAttr)
   subfun <- function(subT){
@@ -265,7 +264,7 @@ port.substitute <- function(port,TSF,
       subTSF <- subset(TSF,date==subT[1,"date"] & sector==subT[1,"sector"],
                        select=c("date","sector","stockID","factorscore"))
       subTSF <- subset(subTSF,!(stockID %in% subT$stockID))
-      subTSF <- if(dir=="long") arrange(subTSF,desc(factorscore)) else arrange(subTSF,factorscore)
+      subTSF <- if(dir=="long") dplyr::arrange(subTSF,desc(factorscore)) else dplyr::arrange(subTSF,factorscore)
       N <- wgt.ex %/% wgt.max + 1
       if(N > nrow(subTSF)){
         stop(paste("There are not enough stocks in TSF to share the extra weight in sector",subTSF[1,"sector"],"on",subTSF[1,"date"],"!"))
@@ -273,14 +272,14 @@ port.substitute <- function(port,TSF,
         subTSF <- head(subTSF,N)
         subTSF[1:N-1,"wgt"] <- wgt.max
         subTSF[N,"wgt"] <- wgt.ex %% wgt.max
-        subT <- rbind.fill(subT,subTSF)
+        subT <- plyr::rbind.fill(subT,subTSF)
         warning(paste("Too much weight is set on single stocks in sector",subT[1,"sector"],"on",subT[1,"date"],".\n",
                       N,"more stocks are imported to share",round(wgt.ex,4),"extra weight."))
       }      
     }
     return(subT)
   }
-  port <- ddply(port,c("date","sector"),subfun)
+  port <- plyr::ddply(port,c("date","sector"),subfun)
   return(port)
 }
 
@@ -320,14 +319,14 @@ port.backtest <- function(port,
   }
   # ---- get weights
   check.colnames(port,c("date","stockID","wgt"))
-  weights.df <- dcast(port,date~stockID,value.var="wgt",fill=0)
+  weights.df <- reshape2::dcast(port,date~stockID,value.var="wgt",fill=0)
   weights <- xts(weights.df[,-1],weights.df[,1])
   colnames(weights) <- colnames(weights.df)[-1]  
   # ---- get R
   stocks <- colnames(weights) 
   qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"))
   qt <- renameCol(qt,"pct_chg","rtn")
-  R.df <- dcast(qt,date~stockID,value.var="rtn",fill=0)
+  R.df <- reshape2::dcast(qt,date~stockID,value.var="rtn",fill=0)
   R <- xts(R.df[,-1],R.df[,1])
   colnames(R) <- colnames(R.df)[-1]
   # ---- get PB
@@ -498,7 +497,6 @@ getrtn.bmk <- function(rtn,bmk="EI000300"){
 #' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge.
 #' @author Ruifei.Yin
 #' @export
-#' @importFrom xts try.xts
 #' @family LSH-frame building functions
 #' @examples
 #' rtn.long <- zoo(rnorm(1000,0.001,0.02),as.Date("2010-01-01")+1:1000)
@@ -509,7 +507,7 @@ getrtn.bmk <- function(rtn,bmk="EI000300"){
 #' # 70 percent postion hedging,rebalancing by month
 #' re2 <- addrtn.hedge(rtn.long,rtn.short,rebFreq,c(0.7,-0.7))
 #' # use the time series weight
-#' wgt.idx <- unique(as.Date(cut(index(rtn.long),"month")))
+#' wgt.idx <- unique(as.Date(cut(zoo::index(rtn.long),"month")))
 #' wgt <- xts(matrix(rep(c(0.7,-0.7),each=length(wgt.idx)),length(wgt.idx),2),wgt.idx)
 #' re3 <- addrtn.hedge(rtn.long,rtn.short,weight=wgt) # the same as re2
 addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fee.long=0,fee.short=0) {
@@ -519,12 +517,12 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
     nm.long <- "long"
     nm.short <- "short"
   }
-  rtn.long <- try.xts(rtn.long)
-  rtn.short <- try.xts(rtn.short)
+  rtn.long <- xts::try.xts(rtn.long)
+  rtn.short <- xts::try.xts(rtn.short)
   rtn <- merge(rtn.long,rtn.short,all=FALSE)
   colnames(rtn) <- c(nm.long,nm.short)
   if(is.vector(weight)){ # create a weight time series via the rebFreq
-    weight.index <- unique(as.Date(cut(index(rtn),rebFreq)))
+    weight.index <- unique(as.Date(cut(zoo::index(rtn),rebFreq)))
     weight <- xts(matrix(rep(weight,each=length(weight.index)),length(weight.index),2),weight.index)    
   }
   colnames(weight) <- colnames(rtn)

@@ -5,9 +5,9 @@
 \alias{setmodelPar.time}
 \title{modelPar.time}
 \usage{
-modelPar.time(modelPar = modelPar.default(), begT = Sys.Date() - years(1),
-  endT = Sys.Date() - 1, rebFreq = "month", shiftby = 0, dure = NULL,
-  dates = NULL)
+modelPar.time(modelPar = modelPar.default(), begT = Sys.Date() -
+  lubridate::years(1), endT = Sys.Date() - 1, rebFreq = "month",
+  shiftby = 0, dure = NULL, dates = NULL)
 
 setmodelPar.time(modelPar, begT, endT, rebFreq, shiftby, dure, dates)
 }

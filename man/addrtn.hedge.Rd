@@ -38,7 +38,7 @@ re <- addrtn.hedge(rtn.long,rtn.short,rebFreq,c(1,-1))
 # 70 percent postion hedging,rebalancing by month
 re2 <- addrtn.hedge(rtn.long,rtn.short,rebFreq,c(0.7,-0.7))
 # use the time series weight
-wgt.idx <- unique(as.Date(cut(index(rtn.long),"month")))
+wgt.idx <- unique(as.Date(cut(zoo::index(rtn.long),"month")))
 wgt <- xts(matrix(rep(c(0.7,-0.7),each=length(wgt.idx)),length(wgt.idx),2),wgt.idx)
 re3 <- addrtn.hedge(rtn.long,rtn.short,weight=wgt) # the same as re2
 }
