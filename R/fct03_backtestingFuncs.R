@@ -885,32 +885,61 @@ chart.turnover <- function(PB){
 #' MC.wgt.CAPM
 #' 
 #' compute the wgt vector of multi-factors by CAPM model. 
-#' @param TSFRs
-#' @return a vector
+#' @param TSFRs a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.
+#' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman".
+#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
+#' @param wgtmin set minimal factor weight.
+#' @param wgtmax set maximal factor weight.
+#' @param targetType optimization's target type, could be "return" or "risk" or "balance"(risk adjusted return),default value is "return".
+#' @param riskaversion risk aversion parameter for "balance" target.
+#' @return a factor weight vector
+#' @import PortfolioAnalytics
 #' @export
 #' @examples
 #' mp = modelPar.default()
-#' factorIDs <- c("F000001","F000002","F000005")
+#' factorIDs <- c("F000001","F000004","F000005","F000008")
 #' FactorLists <- buildFactorLists_lcfs(factorIDs)
 #' mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
 #' TSR <- Model.TSR(mp)
 #' TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
-#' MC.wgt.CAMP(TSFRs) 
-MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar) {
+#' MC.wgt.CAPM(TSFRs)
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion=1)  
+MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,wgtmin=0,
+                         wgtmax=0.5,targetType=c('return','risk','balance'),riskaversion=1) {
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
+  targetType <- match.arg(targetType)
   if(!missing(backtestPar)){
     stat <- getbacktestPar.IC(backtestPar,"stat")
   } 
-  IC.seris <- laply(TSFRs, seri.IC, stat=stat)
+  IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
   rownames(IC.seris) <- names(TSFRs)
   IC.seris <- t(IC.seris)
-  IC.covmat <- cov(IC.seris, method="pearson", use="pairwise.complete.obs")
-  IC.mean <- colMeans(IC.seris)
-  v <- solve(IC.covmat) %*% IC.mean 
-  v <- as.vector(v)
-  names(v) <- names(TSFRs)
-  return(v)
+  IC.seris <- xts(IC.seris,order.by = unique(TSFRs[[1]]$date_end)[1:nrow(IC.seris)])
+  
+  factor.names <- colnames(IC.seris)
+  pspec <- portfolio.spec(assets=factor.names)
+  pspec <- add.constraint(portfolio=pspec, type="full_investment")
+  pspec <- add.constraint(portfolio=pspec, type="box", min=wgtmin, max=wgtmax)
+  if(targetType=='return'){
+    pspec <- add.objective(portfolio=pspec,type='return',name='mean')
+  }else if(targetType=='risk'){
+    require(DEoptim)
+    require(ROI)
+    require(ROI.plugin.glpk)
+    require(ROI.plugin.quadprog)
+    pspec <- add.objective(portfolio=pspec,type='risk',name='var')
+  }else if(targetType=='balance'){
+    require(DEoptim)
+    require(ROI)
+    require(ROI.plugin.glpk)
+    require(ROI.plugin.quadprog)
+    pspec <- add.objective(portfolio=pspec, type="return", name="mean")
+    pspec <- add.objective(portfolio=pspec, type="risk", name="var", risk_aversion=riskaversion)
+  }
+  opt_ps <- optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+  return(opt_ps$weights)
 }
 
 

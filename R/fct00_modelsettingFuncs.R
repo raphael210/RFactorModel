@@ -657,7 +657,7 @@ getmodelPar.factor <- function(modelPar,item_sub){
 #' re1 <- getMPs_FactorLists(FactorLists,modelPar=mp)
 getMPs_FactorLists <- function(FactorLists, 
                                modelPar,
-                               nm = laply(FactorLists, function(x) x$factorName)){
+                               nm = plyr::laply(FactorLists, function(x) x$factorName)){
   MPs <- plyr::llply(FactorLists,function(x) setmodelPar.factor(modelPar,FactorList=x))
   names(MPs) <- nm
   return(MPs)

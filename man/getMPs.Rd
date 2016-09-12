@@ -9,8 +9,8 @@
 \alias{getMPs_univs}
 \title{get modelPar-lists}
 \usage{
-getMPs_FactorLists(FactorLists, modelPar, nm = laply(FactorLists, function(x)
-  x$factorName))
+getMPs_FactorLists(FactorLists, modelPar, nm = plyr::laply(FactorLists,
+  function(x) x$factorName))
 
 getMPs_time.intervals(intervals, modelPar, nm = paste(intervals[, 1],
   intervals[, 2], sep = "~"))
