@@ -574,7 +574,7 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",stat=c("mean","median"),
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
   rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
-  rtnseri.melt <-  reshape2::melt(rtnseri.df,id.vars="time")
+  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
   rtnseri.melt$group <- as.integer(substring(rtnseri.melt$variable,2))
   re <- ggplot(rtnseri.melt,aes(x=time,y=value,size=group))+
     geom_point()+
@@ -872,8 +872,6 @@ chart.turnover <- function(PB){
 
 
 
-
-
 #' MC.wgt.CAPM
 #' 
 #' compute the wgt vector of multi-factors by CAPM model. 
@@ -882,10 +880,11 @@ chart.turnover <- function(PB){
 #' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
 #' @param wgtmin set minimal factor weight.
 #' @param wgtmax set maximal factor weight.
-#' @param targetType optimization's target type, could be "return" or "risk" or "sharpe",default value is "return".
+#' @param targetType optimization's target type, could be "return" or "risk" or "sharpe" or 'balance',default value is "sharpe".
+#' @param riskaversion risk aversion parameter for "balance" target.
 #' @return a factor weight vector
-#' @import PortfolioAnalytics
 #' @export
+#' @importFrom PortfolioAnalytics set.portfolio.moments
 #' @examples
 #' mp = modelPar.default()
 #' factorIDs <- c("F000001","F000004","F000005","F000008")
@@ -895,9 +894,11 @@ chart.turnover <- function(PB){
 #' TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 #' MC.wgt.CAPM(TSFRs)
 #' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
-#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='sharpe')  
-MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,wgtmin=0,
-                         wgtmax=0.5,targetType=c('return','risk','sharpe')) {
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)  
+MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
+                         wgtmin=0, wgtmax=0.5,
+                         targetType=c('sharpe','return','risk','balance'),
+                         riskaversion=1) {
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
   targetType <- match.arg(targetType)
@@ -910,34 +911,27 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,wgtmin=0
   IC.seris <- xts::xts(IC.seris,order.by = unique(TSFRs[[1]]$date_end)[1:nrow(IC.seris)])
   
   factor.names <- colnames(IC.seris)
-  pspec <- portfolio.spec(assets=factor.names)
-  pspec <- add.constraint(portfolio=pspec, type="full_investment")
-  pspec <- add.constraint(portfolio=pspec, type="box", min=wgtmin, max=wgtmax)
+  pspec <- PortfolioAnalytics::portfolio.spec(assets=factor.names)
+  pspec <- PortfolioAnalytics::add.constraint(portfolio=pspec, type="full_investment")
+  pspec <- PortfolioAnalytics::add.constraint(portfolio=pspec, type="box", min=wgtmin, max=wgtmax)
   if(targetType=='return'){
-    pspec <- add.objective(portfolio=pspec,type='return',name='mean')
-    opt_ps <- optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec,type='return',name='mean')
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
   }else if(targetType=='risk'){
-    require(DEoptim)
-    require(ROI)
-    require(ROI.plugin.glpk)
-    require(ROI.plugin.quadprog)
-    pspec <- add.objective(portfolio=pspec,type='risk',name='var')
-    opt_ps <- optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec,type='risk',name='var')
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+  }else if(targetType=='balance'){
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="return", name="mean")
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="var", risk_aversion=riskaversion)
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
   }else if(targetType=='sharpe'){
-    require(DEoptim)
-    require(ROI)
-    require(ROI.plugin.glpk)
-    require(ROI.plugin.quadprog)
-    pspec <- add.objective(portfolio=pspec, type="return", name="mean")
-    pspec <- add.objective(portfolio=pspec, type="risk", name="StdDev")
-    opt_ps <- optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="return", name="mean")
+    pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="StdDev")
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
   }
   
   return(opt_ps$weights)
 }
-
-
-
 
 
 
