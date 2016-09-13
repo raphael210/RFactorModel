@@ -7,7 +7,7 @@ Maintainer: Ruifei.yin <yinruifei@gmail.com>
 Description: This is my first Package.
     and I would make it better soon!!
 License: 
-Imports:QUtility, QDataGet, data.table, ggplot2, scales,plyr, dplyr, lubridate, zoo, xts, PerformanceAnalytics,reshape2
+Imports:QUtility, QDataGet, data.table, ggplot2, scales,plyr, dplyr, lubridate, zoo, xts, PerformanceAnalytics, PortfolioAnalytics, reshape2
 Depends:
     R (>= 2.15.1),
     QUtility,

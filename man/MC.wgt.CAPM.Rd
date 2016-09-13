@@ -4,21 +4,40 @@
 \alias{MC.wgt.CAPM}
 \title{MC.wgt.CAPM}
 \usage{
-MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar)
+MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar, wgtmin = 0,
+  wgtmax = 0.5, targetType = c("sharpe", "return", "risk", "balance"),
+  riskaversion = 1)
+}
+\arguments{
+\item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
+
+\item{stat}{a character string,indicating the methods to compute IC,could be "pearson" or "spearman".}
+
+\item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
+
+\item{wgtmin}{set minimal factor weight.}
+
+\item{wgtmax}{set maximal factor weight.}
+
+\item{targetType}{optimization's target type, could be "return" or "risk" or "sharpe" or 'balance',default value is "sharpe".}
+
+\item{riskaversion}{risk aversion parameter for "balance" target.}
 }
 \value{
-a vector
+a factor weight vector
 }
 \description{
 compute the wgt vector of multi-factors by CAPM model.
 }
 \examples{
 mp = modelPar.default()
-factorIDs <- c("F000001","F000002","F000005")
+factorIDs <- c("F000001","F000004","F000005","F000008")
 FactorLists <- buildFactorLists_lcfs(factorIDs)
 mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
 TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
-MC.wgt.CAMP(TSFRs) 
+MC.wgt.CAPM(TSFRs)
+MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
+MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)  
 }
 
