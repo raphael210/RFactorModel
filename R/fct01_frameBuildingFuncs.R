@@ -12,12 +12,12 @@
 #' @param endT the end date of class Date
 #' @param rebFreq the rebalancing freq. an interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s". (See \code{\link{cut.Date}} for detail.) Or a character string of "allspan". "allspan" means no rebalance during the whole period between begT and endT, which could be realized also by a very large interval specification, eg. "100 year".
 #' @param shiftby a integer,how many days the rebalancing date be shifted afterward
-#' @param dates a vector of class Date. 
+#' @param dates a vector of class Date.
 #' @return a \bold{RebDates} object giving the rebalancing dates list,a vector with class of \code{Date}. If dates is not null, then return the dates themselves.
 #' @author Ruifei.Yin
 #' @export
 #' @family frame building functions
-#' @examples 
+#' @examples
 #' RebDates <- getRebDates(as.Date('2010-01-01'),as.Date('2012-06-30'),'3 month', 10)
 #' getRebDates(as.Date('2010-01-01'),as.Date('2012-06-30'),'allspan')
 #' getRebDates(as.Date('2010-01-01'),as.Date('2012-06-30'),'100 year')
@@ -29,18 +29,18 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
     trdays <- trday.get(begT,endT)
     # cut by rebalancing frequency
     if(rebFreq != "allspan"){
-      rebdays <- as.Date(unique(cut.Date2(trdays,rebFreq))) 
+      rebdays <- as.Date(unique(cut.Date2(trdays,rebFreq)))
     } else {
       rebdays <- c(begT,endT)
-    }   
+    }
     # add begT as begin point
     if(rebdays[1] != begT){
-      rebdays <- c(begT,rebdays) 
-    } 
+      rebdays <- c(begT,rebdays)
+    }
     # shift the rebalancing dates afterward
     re <- trday.nearby(rebdays,-shiftby)
   }
-  
+
   return(re)
 }
 
@@ -56,11 +56,11 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' @return a \bold{TS} object. a dataframe,with cols:
 #'   \itemize{
 #'   \item date: the rebalance dates, with \code{Date} class
-#'   \item stockID: the stockID 
-#'   }.IF stocks is not null then return \code{expand.grid} of stocks and RebDates, else return components of index on RebDates. 
+#'   \item stockID: the stockID
+#'   }.IF stocks is not null then return \code{expand.grid} of stocks and RebDates, else return components of index on RebDates.
 #' @author Ruifei.Yin
 #' @seealso \code{\link{getComps}}
-#' @export 
+#' @export
 #' @family frame building functions
 #' @examples
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
@@ -68,11 +68,11 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' TS2 <- getTS(RebDates,'ES09440000')  # financial servive sector
 #' TS3 <- getTS(RebDates,'setdiff(EI000300,ES09440000)')  # CSI300 ex. financial servive sector
 #' TS4 <- getTS(RebDates,stocks=c("EQ000002","EQ000023","EQ600000"))
-getTS <- function(RebDates,indexID="EI000300",stocks=NULL){  
+getTS <- function(RebDates,indexID="EI000300",stocks=NULL){
   if(!is.null(stocks)){
     TS <- expand.grid(stockID=stocks,date=RebDates)
   } else {
-    TS <- getComps(sectorIDs=indexID,endT=RebDates,drop=FALSE) 
+    TS <- getComps(sectorIDs=indexID,endT=RebDates,drop=FALSE)
   }
   return (TS)
 }
@@ -87,27 +87,27 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL){
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
 #' @param include.decay a logical,indicating if including the decayed period rtns, which is used to compute decayed IC.
 #' @return given a \bold{TS} object,return a \bold{TSR} object,a dataframe containing cols:
-#'   \itemize{ 
+#'   \itemize{
 #'   \item stockID: the stockID contained in the index or BK
-#'   \item date: the rebalance dates, with \code{Date} class 
+#'   \item date: the rebalance dates, with \code{Date} class
 #'   \item date_end: the next rebalance dates, with \code{Date} class
 #'   \item periodrtn:the period rtn between the rebalance date and the date_end
 #'   }
 #'   given a \bold{TSF} object,return a \bold{TSFR} object,a dataframe containing cols:
-#'   \itemize{ 
+#'   \itemize{
 #'   \item stockID: the stockID contained in the index or BK
 #'   \item date: the rebalance dates, with \code{Date} class
-#'   \item factorscore:the factor score of the stocks on the  rebalancing date  
+#'   \item factorscore:the factor score of the stocks on the  rebalancing date
 #'   \item date_end: the next rebalance dates, with \code{Date} class
 #'   \item periodrtn:the period rtn between the rebalance date and the date_end
-#'   }  
+#'   }
 #' @author Ruifei.Yin
 #' @export
 #' @family frame building functions
 #' @examples
 #' ## -- get a TSR object
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
-#' TS <- getTS(RebDates,'EI000300') 
+#' TS <- getTS(RebDates,'EI000300')
 #' TSR <- getTSR(TS) # rebalance properly joined
 #' require(lubridate)
 #' TSR2 <- getTSR(TS,weeks(2)); TSR3 <- getTSR(TS,months(2))  # rebalance not properly joined
@@ -116,7 +116,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL){
 #' factorPar <- list(0,1)
 #' TSF <- getTSF(TS,factorFun,factorPar)
 #' TSFR <-  getTSR(TSF)
-getTSR <- function(TS, dure=NULL, include.decay=FALSE){ 
+getTSR <- function(TS, dure=NULL, include.decay=FALSE){
   cat(paste("Function getTSR: getting the periodrtn ....\n"))
   check.TS(TS)
   # ---- Add the end date (and the decayed dates)
@@ -132,8 +132,8 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
     merging <- data.frame(date,date_end,as.data.frame(date.decay))
   } else {
     merging <- data.frame(date,date_end)
-  }  
-  TS <- merge(TS,merging,by="date")   
+  }
+  TS <- merge(TS,merging,by="date")
   # ---- Add the period rtn (and the decayed rtn)
   if(!include.decay){
     periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
@@ -142,8 +142,8 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
     periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
     cat("Function getTSR: Getting the decayed rtn ....\n")
     pb_ <- txtProgressBar(min=0,max=12,initial=0,style=3)
-    for(ii in 1:12){      
-      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT",ii,sep="")),tgt=c("begT","endT")),exclude.SP=TRUE))      
+    for(ii in 1:12){
+      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT",ii,sep="")),tgt=c("begT","endT")),exclude.SP=TRUE))
       rtnI <- renameCol(rtnI,"rtn",paste("rtn",ii,sep=""))
       periodrtn <- cbind(periodrtn,rtnI)
       setTxtProgressBar(pb_,ii)
@@ -151,7 +151,7 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
     close(pb_)
     TSR <- cbind(TS,periodrtn)
     TSR <- TSR[,!names(TSR) %in% paste("endT",1:12,sep="")]
-  }    
+  }
 
   return(TSR)
 }
@@ -179,10 +179,10 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
 #'   \item sector(optional):the sector of a stock
 #'   }
 #'   given a \bold{TSR} object,return a \bold{TSFR} object,a dataframe containing cols:
-#'   \itemize{ 
+#'   \itemize{
 #'   \item stockID: the stockID contained in the index or BK
 #'   \item date: the rebalance dates, with \code{Date} class
-#'   \item factorscore:the factor score of the stocks on the  rebalancing date  
+#'   \item factorscore:the factor score of the stocks on the  rebalancing date
 #'   \item date_end(optional): the next rebalance dates, with \code{Date} class
 #'   \item periodrtn:the period rtn between the rebalance date and the date_end
 #'   \item sector(optional):the sector of a stock
@@ -192,7 +192,7 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
 #' @family frame building functions
 #' @examples
 #' # -- get the TSF step by step --
-#' 
+#'
 #' # - get a TSF object
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000300')
@@ -202,12 +202,12 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
 #' # - get a TSFR object
 #' TSR <- getTSR(TS)
 #' TSFR <- getTSF(TSR)
-#' 
+#'
 #' # -- you can also get the TSF through the modelPar object directively --
 #' modelPar <- modelPar.default()
 #' modelPar <- modelPar.factor(modelPar,factorFun="gf.demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
 #' TSF <- Model.TSF(modelPar)
-#' 
+#'
 #' # -- factorPar as character string
 #' TSF2 <- getTSF(TS,"gf.demo","0,1")
 #' TSF2 <- getTSF(TS,"gf.demo","mean=0,sd=1")
@@ -216,7 +216,7 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
 getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
                    factorStd=c("sectorNe","none","norm"),
                    factorNA=c("na","mean","median","min","max"),
-                   sectorAttr=defaultSectorAttr()){ 
+                   sectorAttr=defaultSectorAttr()){
   factorStd <- match.arg(factorStd)
   factorNA <- match.arg(factorNA)
   cat(paste("Function getTSF: getting the factorscore ....\n"))
@@ -238,7 +238,7 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
 #' @rdname getTSF
 #' @export
 #' @details \code{getRawFactor} return a \bold{TSF} object, with 'raw' factorscore, which has not been standardized and not been deal with missing values and outliers. Function \code{getRawFactor} is often called intermediately by function \code{getTSF}.
-#' @return \code{getRawFactor} return a \bold{TSF} object, with 'raw' factorscore. 
+#' @return \code{getRawFactor} return a \bold{TSF} object, with 'raw' factorscore.
 #' @examples
 #' # -- get 'raw' factorscore
 #' TSF_raw <- getRawFactor(TS,"gf.pct_chg_per","20")
@@ -246,13 +246,13 @@ getRawFactor <- function (TS,factorFun,factorPar) {
   if(missing(factorPar)){
     TSF <- do.call(factorFun,c(list(TS)))
   } else if(is.list(factorPar)){
-    TSF <- do.call(factorFun,c(list(TS),factorPar))    
+    TSF <- do.call(factorFun,c(list(TS),factorPar))
   } else if(is.character(factorPar)){
     if(is.na(factorPar)||factorPar==""){
       funchar <- paste(factorFun,"(TS)")
     } else {
       funchar <- paste(factorFun,"(","TS,",factorPar,")")
-    }    
+    }
     TSF <- eval(parse(text=funchar))
   } else {
     stop("The factorPar must be a list or a character string!")
@@ -268,7 +268,7 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' @details Function \code{getMultiFactor} get the multi-factor-score by firstly getting all the single-factor-scores and then calculating the weighted sum of them.
 #' @export
 #' @examples
-#' # -- get multi-factor by FactorLists 
+#' # -- get multi-factor by FactorLists
 #' FactorLists <- list(
 #'   buildFactorList(factorFun="gf.PE",
 #'                   factorPar=list(),
@@ -278,18 +278,18 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #'                   factorDir=-1),
 #'   buildFactorList(factorFun="gf.pct_chg_per",
 #'                   factorPar=list(N=60),
-#'                   factorDir=-1),       
+#'                   factorDir=-1),
 #'   buildFactorList(factorFun="gf.pct_chg_per",
 #'                   factorPar=list(N=120),
 #'                   factorDir=-1))
 #' wgts <- c(0.25,0.25,0.25,0.25)
-#' 
+#'
 #' # -- 0. get the all the single-factor-scores
 #' TSF <- getMultiFactor(TS,FactorLists)
-#' 
+#'
 #' # -- 1. get the "raw" multi-factor-score
 #' TSF.multi <- getMultiFactor(TS,FactorLists,wgts)
-#' 
+#'
 #' # -- 2. get the "clean and standardized" multi-factor-score
 #' # --- 2.1 get the multi-factor-score by \code{getTSF}
 #' TSF.multi2 <- getTSF(TS,factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorOutlier=10,factorStd="sectorNe")
@@ -297,7 +297,7 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' modelPar <- modelPar.factor(modelPar.default(),factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorStd="sectorNe",factorDir=1)
 #' TSF.multi3 <- Model.TSF(modelPar)
 #' TSF.multi4 <- Model.TSF_byTS(modelPar, TS)
-getMultiFactor <- function(TS,FactorLists,wgts){  
+getMultiFactor <- function(TS,FactorLists,wgts){
 
   # ---- get all the single-factor-scores
   for(i in 1:length(FactorLists)){
@@ -306,12 +306,12 @@ getMultiFactor <- function(TS,FactorLists,wgts){
     factorName <- FactorLists[[i]]$factorName
     factorDir <- FactorLists[[i]]$factorDir
     factorOutlier <- FactorLists[[i]]$factorOutlier
-    factorNA <- FactorLists[[i]]$factorNA    
-    factorStd <- FactorLists[[i]]$factorStd 
+    factorNA <- FactorLists[[i]]$factorNA
+    factorStd <- FactorLists[[i]]$factorStd
     sectorAttr  <- FactorLists[[i]]$sectorAttr
     cat(paste("Function getMultiFactor: getting the score of factor",factorName,"....\n"))
     # ---- get the raw factorscore
-    TSF <- getRawFactor(TS,factorFun,factorPar) 
+    TSF <- getRawFactor(TS,factorFun,factorPar)
     # ---- adjust the direction (of the "single-factor-score")
     TSF$factorscore <- TSF$factorscore*factorDir
     # ---- deal with the outliers (of the "single-factor-score")
@@ -320,11 +320,11 @@ getMultiFactor <- function(TS,FactorLists,wgts){
     if(factorStd =="none"){
       warning(paste("'factorStd' of factor",factorName, "is 'none'. It might make mistake when compute the multi-factorscore!"))
     }
-    TSF <- factor.std(TSF,factorStd,sectorAttr)  
+    TSF <- factor.std(TSF,factorStd,sectorAttr)
     # ---- deal with the missing values (of the "single-factor-score")
     if(factorNA=="na") factorNA <- "median"   # -- there should not be a missing value in the multi-factor-scores matrix !
     TSF <- factor.na(TSF,factorNA)
-    
+
     TSF <- renameCol(TSF,"factorscore",factorName)
     if(i==1L){
       re <- merge(TS,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
@@ -332,7 +332,7 @@ getMultiFactor <- function(TS,FactorLists,wgts){
       re <- merge(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
     }
   }
-  
+
   # ---- get the multi-factor-score(weighted sum of all the single-factor-scores)
   if(!missing(wgts)){
     if(length(FactorLists) != length(wgts)) {
@@ -346,7 +346,7 @@ getMultiFactor <- function(TS,FactorLists,wgts){
     sumScore <- as.matrix(re[,factorNames,drop=FALSE]) %*% wgts
     re <- cbind(re,factorscore=sumScore)
   }
-  
+
   return(re)
 }
 
@@ -356,13 +356,13 @@ getMultiFactor <- function(TS,FactorLists,wgts){
 #' @export
 #' @param TSFs a \bold{TSFs} object. see /code{/link{Model.TSFs}}
 #' @return \code{getMultiFactorbyTSFs} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} multi-factor-score, from a \bold{TSFs} list. (If param TSFs is a TSFRs object, then will return a TSFR object.)
-#' @examples 
-#' # -- get multi-factor by TSFs 
+#' @examples
+#' # -- get multi-factor by TSFs
 #' MPs <- getMPs_FactorLists(FactorLists, modelPar.default())
 #' TSFs <- Model.TSFs(MPs)
 #' TSF.multi5 <- getMultiFactorbyTSFs(TSFs,wgts)
 getMultiFactorbyTSFs <- function(TSFs,wgts){
-  
+
   # ---- get all the single-factor-scores
   nrows <- sapply(TSFs,NROW)
   if(!all(nrows[1]==nrows)){
@@ -378,8 +378,8 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
     } else {
       re <- merge(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))
     }
-  }  
-  
+  }
+
   # ---- get the multi-factor-score(weighted sum of all the single-factor-scores)
   if(!missing(wgts)){
     if(length(TSFs) != length(wgts)) {
@@ -388,11 +388,11 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
     if(!isTRUE(all.equal(sum(wgts),1,tolerance=0.001))){
       warning("The sum of wgts is not 1. The wgts will be rescaled! ")
       wgts <- wgts/sum(wgts)
-    }  
+    }
     sumScore <- as.matrix(re[,factorNames,drop=FALSE]) %*% wgts
     re <- cbind(re,factorscore=sumScore)
   }
-  
+
   return(re)
 }
 
@@ -401,7 +401,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
 # ---- deal with the outliers of factorscore
 factor.outlier <- function (TSF, factorOutlier) {
   TSF <- plyr::ddply(TSF,"date",
-               function(x,outlier){  
+               function(x,outlier){
                  outlier_u <- with(x,mean(factorscore,na.rm=TRUE)+outlier*sd(factorscore,na.rm=TRUE))
                  outlier_l <- with(x,mean(factorscore,na.rm=TRUE)-outlier*sd(factorscore,na.rm=TRUE))
                  transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
@@ -411,10 +411,10 @@ factor.outlier <- function (TSF, factorOutlier) {
 }
 # ---- standardize the factorscore
 factor.std <- function (TSF,factorStd,sectorAttr) {
-  if(factorStd == "norm"){ 
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=scale(factorscore))      
+  if(factorStd == "norm"){
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=scale(factorscore))
   } else if (factorStd == "sectorNe"){
-    TSF <- getSectorID(TSF,sectorAttr=sectorAttr)  
+    TSF <- getSectorID(TSF,sectorAttr=sectorAttr)
     TSF <- data.table::data.table(TSF,key=c("date","sector"))
     TSF <- TSF[,factorscore:=scale(factorscore), by = c("date","sector")]
     TSF <- as.data.frame(TSF)
@@ -422,18 +422,60 @@ factor.std <- function (TSF,factorStd,sectorAttr) {
   return(TSF)
 }
 # ---- deal with the missing values of factorscore
-factor.na <- function (TSF, method=c("na","mean","median","min","max")) {
+factor.na <- function (TSF, method=c("na","mean","median","min","max","secmean"), trim = NA) {
   method <- match.arg(method)
   if(method=="mean"){
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    if(is.na(trim)){
+      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    }else{
+      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+    }
   } else if(method=="median"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="min"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="max"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
-  }  
+  } else if(method=="secmean"){
+    TSF <- gf.ezsec(TSF)
+    TSF <- dplyr::group_by(TSF, date, secID)
+    if(is.na(trim)){
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    }else{
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+    }
+    TSF <- as.data.frame(TSF)
+  }
   return(TSF)
+}
+# ---- get simple sector categories
+gf.ezsec <- function(ts){
+  ts.tmp <- subset(ts, select = c("date","stockID"))
+  ts.tmp <- gf.sector(ts.tmp, sectorAttr = defaultSectorAttr())
+  seclist <- list()
+  # BigCycle
+  seclist[[1]]<- c("ES33110000","ES33210000","ES33220000","ES33230000","ES33240000")
+  #FinRealEstate
+  seclist[[2]]<- c("ES33480000","ES33490000","ES33430000")
+  #TMT
+  seclist[[3]]<- c("ES33710000","ES33720000","ES33730000","ES33270000")
+  #Comsump
+  seclist[[4]]<- c("ES33280000","ES33330000","ES33340000","ES33350000","ES33460000","ES33370000","ES33450000")
+  #Manufac
+  seclist[[5]]<- c("ES33360000","ES33630000","ES33640000","ES33610000","ES33620000","ES33650000")
+  #Others
+  seclist[[6]]<- c("ES33420000","ES33410000","ES33510000")
+  for(ii in 1:length(seclist)){
+    V2 <- paste("ES",ii,sep = "")
+    seclist[[ii]] <- as.data.frame(seclist[[ii]])
+    seclist[[ii]] <- cbind(seclist[[ii]], V2)
+    names(seclist[[ii]]) <- c("sector","secID")
+  }
+  secdf <- data.table::rbindlist(seclist)
+  re <- merge(ts.tmp, secdf, by = c("sector"))
+  re2 <- subset(re, select = c("date","stockID","secID"))
+  re3 <- merge(ts,re2,by=c("date","stockID"))
+  return(re3)
 }
 
 
