@@ -105,6 +105,48 @@ reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"
 
 
 
+#' get factor's VIF 
+#'
+#' 
+#' @author Andrew Dow
+#' @param TS is a \bold{TS} object.
+#' @param testfactorList is a factor list for test.
+#' @param factorLists is a set of factors in use.
+#' @param sectorAttr is sector attribution.
+#' @return a VIF time series.
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2012-12-31'),as.Date('2016-08-31'),rebFreq = 'month')
+#' TS <- getTS(RebDates,'EI000985')
+#' testfactorList <- buildFactorLists_lcfs('F000002',factorStd="norm",factorNA = "median")
+#' factorIDs <- c("F000003","F000004","F000007","F000008","F000011")
+#' factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+#' VIF <- factor.VIF(TS,testfactorList,factorLists)
+#' @export
+factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAttr()){
+  TSF <- getMultiFactor(TS,c(testfactorList,factorLists))
+  TSS <- gf.sector(TS,sectorAttr = sectorAttr)
+  TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
+  
+  testfname <- sapply(testfactorList, '[[','factorName')
+  fname <- c(sapply(factorLists, '[[','factorName'),setdiff(colnames(TSS),c('date','stockID','sector')))
+  # loop of regression
+  dates <- unique(TSF$date)
+  VIF <- data.frame()
+  for(i in 1:length(dates)){ 
+    tmp.tsf <- TSF[TSF$date==dates[i],]
+    fml <- formula(paste(testfname," ~ ", paste(fname, collapse= "+"),"-1",sep=''))
+    lmm <- lm(fml,data = tmp.tsf)
+    smry <- summary(lmm)
+    VIF <- rbind(VIF,data.frame(date=dates[i],VIF=1/(1-smry$r.squared)))
+  }
+  return(VIF)
+}
+
+
+
+
+
+
 
 
 # ---------------------  ~~ Backtesting results --------------
