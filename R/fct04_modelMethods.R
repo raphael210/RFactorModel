@@ -20,6 +20,7 @@ Model.RebDates <- function(modelPar){
   shiftby <- modelPar$time$shiftby
   dates <- modelPar$time$dates
   RebDates <- getRebDates(begT=begT,endT=endT,rebFreq=rebFreq,shiftby=shiftby,dates=dates)
+  attr(RebDates,"MP") <- modelPar
   return(RebDates)
 }
 
@@ -39,25 +40,27 @@ Model.TS <- function(modelPar){
   indexID <- modelPar$univ$indexID
   stocks <- modelPar$univ$stocks
   TS <- getTS(RebDates,indexID=indexID,stocks=stocks)
+  attr(TS,"MP") <- modelPar
   return(TS)
 }
 
 
 
 
-#' @param include.decay a logical,indicating if including the decayed period rtns, which is used to compute decayed IC.
+
 #' @return \code{Model.TSR} return a \bold{TSR} object(See detail in \code{\link{getTSR}})
 #' @rdname ModelMethods
 #' @export
 #' @examples
 #' # -- get the TSR object
 #' TSR <- Model.TSR(modelPar)
-Model.TSR <- function(modelPar,include.decay=FALSE){ 
+Model.TSR <- function(modelPar){ 
   # ---- get the TS
   TS <- Model.TS(modelPar)  
   # ---- get the TSR 
   dure <- modelPar$time$dure
-  TSR <- getTSR(TS=TS, dure=dure, include.decay=include.decay) 
+  TSR <- getTSR(TS=TS, dure=dure) 
+  attr(TSR,"MP") <- modelPar
   return(TSR)
 }
 
@@ -74,6 +77,7 @@ Model.TSR <- function(modelPar,include.decay=FALSE){
 Model.TSF <- function(modelPar){ 
   TS <- Model.TS(modelPar)   
   TSF <-  Model.TSF_byTS(modelPar,TS) 
+  attr(TSF,"MP") <- modelPar
   return(TSF)
 }
 
@@ -88,7 +92,7 @@ Model.TSF <- function(modelPar){
 #' TSF <- Model.TSF_byTS(modelPar,TS)
 #' TSF2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TS)
 #' # -- get the TSFR object by TSR
-#' TSR <- Model.TSR(modelPar,include.decay=TRUE)
+#' TSR <- Model.TSR(modelPar)
 #' TSFR <- Model.TSF_byTS(modelPar,TSR)
 #' TSFR2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TSR)
 Model.TSF_byTS <- function(modelPar,TS){ 
@@ -100,6 +104,7 @@ Model.TSF_byTS <- function(modelPar,TS){
   factorStd <- modelPar$factor$factorStd
   sectorAttr <- modelPar$factor$sectorAttr  
   TSF <- getTSF(TS,factorFun=factorFun,factorPar=factorPar,factorDir=factorDir,factorOutlier=factorOutlier,factorNA=factorNA,factorStd=factorStd,sectorAttr=sectorAttr)  
+  attr(TSF,"MP") <- modelPar
   return(TSF)
 }
 
@@ -112,11 +117,12 @@ Model.TSF_byTS <- function(modelPar,TS){
 #' @examples
 #' # -- get the TSFR object
 #' TSFR <- Model.TSFR(modelPar)
-Model.TSFR <- function(modelPar,include.decay=FALSE){
+Model.TSFR <- function(modelPar){
   # ---- get the TSF
   TSF <- Model.TSF(modelPar)
   # ---- get the TSFR
-  TSFR <- getTSR(TS=TSF,include.decay=include.decay)
+  TSFR <- getTSR(TS=TSF)
+  attr(TSFR,"MP") <- modelPar
   return(TSFR)
 }
 
@@ -143,8 +149,8 @@ Model.TSFs <- function(MPs, nm = names(MPs)){
 #' @examples
 #' # -- get the TSFRs list
 #' TSFRs <- Model.TSFRs(MPs)
-Model.TSFRs <- function(MPs, nm = names(MPs), include.decay=FALSE){
-  re <- plyr::llply(MPs, Model.TSFR, include.decay=include.decay, .progress="text")
+Model.TSFRs <- function(MPs, nm = names(MPs)){
+  re <- plyr::llply(MPs, Model.TSFR, .progress="text")
   names(re) <- nm
   return(re)
 }

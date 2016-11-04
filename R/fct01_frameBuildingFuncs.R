@@ -85,7 +85,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL){
 #' Get the \bold{TSR}('time-stock-rtn') or \bold{TSFR}('time-stock-factor-rtn') object by adding the period rtn between the rebalance date and the date_end(\strong{(close of "date_end")/(prevclose of the day after "date")-1)}) to the \bold{TS} or \bold{TSF} object.
 #' @param TS a \bold{TS} or \bold{TSF} object (See detail in \code{\link{getTS}} and \code{\link{getTSF}})
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param include.decay a logical,indicating if including the decayed period rtns, which is used to compute decayed IC.
+#' @param date_end_pad a Date value, padding the NAs of the last date_end. if missing, calculated automatically.
 #' @return given a \bold{TS} object,return a \bold{TSR} object,a dataframe containing cols:
 #'   \itemize{ 
 #'   \item stockID: the stockID contained in the index or BK
@@ -116,44 +116,71 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL){
 #' factorPar <- list(0,1)
 #' TSF <- getTSF(TS,factorFun,factorPar)
 #' TSFR <-  getTSR(TSF)
-getTSR <- function(TS, dure=NULL, include.decay=FALSE){ 
+getTSR <- function(TS, dure=NULL, date_end_pad){ 
   cat(paste("Function getTSR: getting the periodrtn ....\n"))
   check.TS(TS)
   # ---- Add the end date (and the decayed dates)
   date <- unique(TS$date)
   if (is.null(dure)){
-    date_end <- c(date[-1],NA)
+    if(missing(date_end_pad)){ # calculate the padding value automatically
+      date_end_pad <- trday.nearest(max(date)+periodicity_Ndays(date), dir = -1L)
+    }
+    date_end <- c(date[-1],date_end_pad)
   } else {
-    date_end <- trday.offset(date,dure)
-  }
-  if(include.decay){
-    date.decay <- lapply(1:12,function(ii){trday.offset(date,months(ii))})
-    names(date.decay) <- paste("endT",1:12,sep="")
-    merging <- data.frame(date,date_end,as.data.frame(date.decay))
-  } else {
-    merging <- data.frame(date,date_end)
+    date_end <- trday.offset(date,dure,dir=-1L)
   }  
+  merging <- data.frame(date,date_end)
+  TS <- merge(TS,merging,by="date")  
+  periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
+  TSR <- cbind(TS,periodrtn)
+  return(TSR)
+}
+
+
+#' getTSR_decay
+#' 
+#' @param prdLists
+#' @return a \bold{TSR} including the decayed period rtns
+#' @export
+getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
+                                              w2=lubridate::weeks(2),
+                                              m1=months(1),
+                                              m2=months(2),
+                                              m3=months(3),
+                                              m6=months(6))){
+  check.TS(TS)
+  date <- unique(TS$date)
+  if(TRUE){ # --- add endTs
+    prd_names <- names(prd_lists)
+    if(all(is.na(prd_names))){
+      warning("The names of prd_lists is missing, getting the names automatically.")
+      prd_names <- sapply(prd_lists,substr,1,5)
+    }
+    date.decay <- data.frame()
+    for(ii in 1:length(prd_lists)){
+      endT_i <- trday.offset(date,prd_lists[[ii]],dir=-1L)
+      if(ii==1L){
+        date.decay <- data.frame(endT_i)
+      } else {
+        date.decay <- cbind(date.decay,endT_i)
+      }
+    }
+    names(date.decay) <- paste("endT_",prd_names,sep = "")
+    merging <- data.frame(date,date.decay)
+  } 
   TS <- merge(TS,merging,by="date")   
-  # ---- Add the period rtn (and the decayed rtn)
-  if(!include.decay){
-    periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
-    TSR <- cbind(TS,periodrtn)
-  } else {
-    periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
-    cat("Function getTSR: Getting the decayed rtn ....\n")
-    pb_ <- txtProgressBar(min=0,max=12,initial=0,style=3)
-    for(ii in 1:12){      
-      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT",ii,sep="")),tgt=c("begT","endT")),exclude.SP=TRUE))      
-      rtnI <- renameCol(rtnI,"rtn",paste("rtn",ii,sep=""))
-      periodrtn <- cbind(periodrtn,rtnI)
+  if(TRUE){ # --- add prdrtns
+    cat("Getting the decayed rtn ....\n")
+    pb_ <- txtProgressBar(min=0,max=length(prd_lists),initial=0,style=3)
+    for(ii in 1:length(prd_lists)){      
+      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT_",prd_names[ii],sep="")),tgt=c("begT","endT")),exclude.SP=TRUE))      
+      rtnI <- renameCol(rtnI,"rtn",paste("prdrtn_",prd_names[ii],sep=""))
+      TS <- cbind(TS,rtnI)
       setTxtProgressBar(pb_,ii)
     }
     close(pb_)
-    TSR <- cbind(TS,periodrtn)
-    TSR <- TSR[,!names(TSR) %in% paste("endT",1:12,sep="")]
-  }    
-
-  return(TSR)
+    TSR <- TS[,!names(TS) %in% paste("endT_",prd_names,sep="")]
+  }
 }
 
 
@@ -214,11 +241,12 @@ getTSR <- function(TS, dure=NULL, include.decay=FALSE){
 #' TSF2 <- getTSF(TS,"gf.foo","2,3")
 #' TSF2 <- getTSF(TS,"gf.bar","20,\"IF00\"")
 getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
-                   factorStd=c("sectorNe","none","norm"),
+                   factorStd=c("none","norm","sectorNe"),
                    factorNA=c("na","mean","median","min","max"),
                    sectorAttr=defaultSectorAttr()){ 
   factorStd <- match.arg(factorStd)
   factorNA <- match.arg(factorNA)
+  if(! factorDir %in% c(1L,-1L)) stop("unsupported \"factorDir\" argument!")
   cat(paste("Function getTSF: getting the factorscore ....\n"))
   check.TS(TS)
   # ---- get the raw factorscore
@@ -374,7 +402,10 @@ getMultiFactorbyTSFs <- function(TSFs,wgts){
     TSF <- factor.na(TSFs[[i]],"median")
     TSF <- renameCol(TSF,"factorscore",factorNames[i])
     if(i==1L){
-      re <- TSF[, intersect(c("date","stockID","periodrtn","sector",factorNames[i]),colnames(TSF))]
+      # re <- TSF[, intersect(c("date","stockID","date_end","periodrtn","sector",factorNames[i]),colnames(TSF))]
+      keep_cols <- is_usualcols(cols = colnames(TSF), usualcols = c(usualcols(),factorNames[i]))
+      re <- TSF[, colnames(TSF)[keep_cols]]      
+      
     } else {
       re <- merge(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))
     }
@@ -422,20 +453,61 @@ factor.std <- function (TSF,factorStd,sectorAttr) {
   return(TSF)
 }
 # ---- deal with the missing values of factorscore
-factor.na <- function (TSF, method=c("na","mean","median","min","max")) {
+factor.na <- function (TSF, method=c("na","mean","median","min","max","secmean"), trim = NA) {
   method <- match.arg(method)
   if(method=="mean"){
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    if(is.na(trim)){
+      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    }else{
+      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+    }
   } else if(method=="median"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="min"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="max"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
-  }  
+  } else if(method=="secmean"){
+    TSF <- gf.ezsec(TSF)
+    TSF <- dplyr::group_by(TSF, date, secID)
+    if(is.na(trim)){
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    }else{
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+    }
+    TSF <- as.data.frame(TSF)
+  }
   return(TSF)
 }
-
+# ---- get simple sector categories
+gf.ezsec <- function(ts){
+  ts.tmp <- subset(ts, select = c("date","stockID"))
+  ts.tmp <- gf.sector(ts.tmp, sectorAttr = defaultSectorAttr())
+  seclist <- list()
+  # BigCycle
+  seclist[[1]]<- c("ES33110000","ES33210000","ES33220000","ES33230000","ES33240000")
+  #FinRealEstate
+  seclist[[2]]<- c("ES33480000","ES33490000","ES33430000")
+  #TMT
+  seclist[[3]]<- c("ES33710000","ES33720000","ES33730000","ES33270000")
+  #Comsump
+  seclist[[4]]<- c("ES33280000","ES33330000","ES33340000","ES33350000","ES33460000","ES33370000","ES33450000")
+  #Manufac
+  seclist[[5]]<- c("ES33360000","ES33630000","ES33640000","ES33610000","ES33620000","ES33650000")
+  #Others
+  seclist[[6]]<- c("ES33420000","ES33410000","ES33510000")
+  for(ii in 1:length(seclist)){
+    V2 <- paste("ES",ii,sep = "")
+    seclist[[ii]] <- as.data.frame(seclist[[ii]])
+    seclist[[ii]] <- cbind(seclist[[ii]], V2)
+    names(seclist[[ii]]) <- c("sector","secID")
+  }
+  secdf <- data.table::rbindlist(seclist)
+  re <- merge(ts.tmp, secdf, by = c("sector"))
+  re2 <- subset(re, select = c("date","stockID","secID"))
+  re3 <- merge(ts,re2,by=c("date","stockID"))
+  return(re3)
+}
 
 
 

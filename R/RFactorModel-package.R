@@ -7,6 +7,7 @@
 #' @importFrom zoo  as.zoo zoo  
 #' @importFrom xts as.xts xts 
 #' @importFrom data.table data.table :=
+#' @importFrom dplyr %>%
 #' @docType package
 #' @name RFactorModel
 #' @aliases factormodel package-factormodel 

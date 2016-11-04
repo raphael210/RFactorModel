@@ -17,24 +17,22 @@ Model.RebDates(modelPar)
 
 Model.TS(modelPar)
 
-Model.TSR(modelPar, include.decay = FALSE)
+Model.TSR(modelPar)
 
 Model.TSF(modelPar)
 
 Model.TSF_byTS(modelPar, TS)
 
-Model.TSFR(modelPar, include.decay = FALSE)
+Model.TSFR(modelPar)
 
 Model.TSFs(MPs, nm = names(MPs))
 
-Model.TSFRs(MPs, nm = names(MPs), include.decay = FALSE)
+Model.TSFRs(MPs, nm = names(MPs))
 
 Model.TSFs_byTS(MPs, TS, nm = names(MPs))
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
-
-\item{include.decay}{a logical,indicating if including the decayed period rtns, which is used to compute decayed IC.}
 
 \item{TS}{a \bold{TS} or \bold{TSR} object}
 
@@ -85,7 +83,7 @@ TS <- Model.TS(modelPar)
 TSF <- Model.TSF_byTS(modelPar,TS)
 TSF2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TS)
 # -- get the TSFR object by TSR
-TSR <- Model.TSR(modelPar,include.decay=TRUE)
+TSR <- Model.TSR(modelPar)
 TSFR <- Model.TSF_byTS(modelPar,TSR)
 TSFR2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TSR)
 # -- get the TSFR object

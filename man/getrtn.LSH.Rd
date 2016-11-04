@@ -23,7 +23,7 @@ getrtn.LSH(PB.L, PB.S, hedge.rebFreq = "month", hedge.posi = 1,
 \item{backtestPar}{a \bold{backtestPar} object}
 }
 \value{
-a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge.
+a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 }
 \description{
 get the \bold{rtn.LSH} object from the \bold{PB} object.

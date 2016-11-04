@@ -49,7 +49,9 @@ reg.TSFR <- function(TSFR,regType=c('lm','glm'),glm_wgt=c("sqrtFV","res"),sector
     }
   }
   
-  factorNames <- setdiff(names(TSFR),c("stockID","date","date_end","periodrtn","wgt","glm_wgt","sector"))
+  # factorNames <- setdiff(names(TSFR),c("stockID","date","date_end","periodrtn","wgt","glm_wgt","sector"))
+  usual_cols <- is_usualcols(cols = names(TSFR),usualcols = c("glm_wgt",usualcols()))
+  factorNames <- names(TSFR)[!usual_cols]
   indname <- colnames(TSS)[-1:-2]
   
   # loop of regression
@@ -213,7 +215,11 @@ OptWgt <- function(TSF,Frtn,Fcov,Delta,constr=c('IndSty','Ind','IndStyTE'),bench
 #' 
 #' @export
 exposure.TSWF <- function(TSWF) {
-  factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
+  check.colnames(port,c("date","stockID","wgt"))
+  # factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
+  usual_cols <- is_usualcols(cols = names(TSWF),usualcols = usualcols())
+  factorNames <- names(TSWF)[!usual_cols]
+  
   TSWF <- dplyr::select(TSWF,one_of(c("stockID","date","wgt",factorNames)))
   TSWF <- na.omit(TSWF)  # omit the NA value
   dates <- unique(TSWF$date)
@@ -227,6 +233,8 @@ exposure.TSWF <- function(TSWF) {
 }
 
 exposure.port <- function(port,factorLists){
+  check.colnames(port,c("date","stockID","wgt"))
+  
   
 }
 

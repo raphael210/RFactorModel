@@ -11,20 +11,21 @@
 \alias{seri.IC}
 \alias{seri.IC.decay}
 \alias{table.IC}
-\alias{table.IC.decay}
 \title{backtest.IC}
 \usage{
 seri.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
 
-seri.IC.decay(TSFR, stat = c("pearson", "spearman"), backtestPar)
+seri.IC.decay(TSF, stat = c("pearson", "spearman"), backtestPar,
+  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
+  months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
 
 table.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
 
-table.IC.decay(TSFR, stat = c("pearson", "spearman"), backtestPar)
-
 chart.IC(TSFR, Nbin = "day", stat = c("pearson", "spearman"), plotPar)
 
-chart.IC.decay(TSFR, stat = c("pearson", "spearman"), plotPar)
+chart.IC.decay(TSF, stat = c("pearson", "spearman"), backtestPar,
+  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
+  months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
 
 MC.chart.IC.corr(TSFRs, stat = c("pearson", "spearman"), plotPar)
 
@@ -42,6 +43,8 @@ MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 
 \item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
 
+\item{TSF}{a \bold{TSF} object}
+
 \item{Nbin}{the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.}
 
 \item{plotPar}{Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar}
@@ -57,11 +60,9 @@ seri.IC.decay return a xts object of 12 cols, which containing the decayed ICs s
 
 table.IC return a matirx of the statistical of the IC, containing rows: "IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio"
 
-table.IC.decay return a matirx of the statistical of the decayed ICs, containing 5 rows: "IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio" and 12 cols: "IC1"-"IC12".
-
 chart.IC return a ggplot object of IC time series(with its 12 months MA)
 
-chart.IC.decay return a ggplot object of decayed ICs bar chart.
+chart.IC.decay return a ggplot object of decayed ICs bar chart. (You can also use \code{attr(re,"table")} to get the result table.)
 
 MC.chart.IC.corr return a correlation chart of ICs of each \code{TSFR}.
 }
@@ -77,11 +78,11 @@ If param backtestPar and plotPar is not missing,then the related params will be 
 modelPar <- modelPar.default()
 TSFR <- Model.TSFR(modelPar)
 re <- seri.IC(TSFR)
-re <- seri.IC.decay(TSFR)
+re <- seri.IC.decay(TSF)
 IC.table <- table.IC(TSFR)
-IC.table.decay <- table.IC.decay(TSFR)
 IC.chart <- chart.IC(TSFR,"3 month")
-re <- chart.IC.decay(TSFR)
+re <- chart.IC.decay(TSF)
+attr(re,"table") # the result table
 mp = modelPar.default()
 factorIDs <- c("F000001","F000002","F000005")
 FactorLists <- buildFactorLists_lcfs(factorIDs)

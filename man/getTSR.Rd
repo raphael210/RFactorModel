@@ -4,14 +4,14 @@
 \alias{getTSR}
 \title{getTSR}
 \usage{
-getTSR(TS, dure = NULL, include.decay = FALSE)
+getTSR(TS, dure = NULL, date_end_pad)
 }
 \arguments{
 \item{TS}{a \bold{TS} or \bold{TSF} object (See detail in \code{\link{getTS}} and \code{\link{getTSF}})}
 
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
-\item{include.decay}{a logical,indicating if including the decayed period rtns, which is used to compute decayed IC.}
+\item{date_end_pad}{a Date value, padding the NAs of the last date_end. if missing, calculated automatically.}
 }
 \value{
 given a \bold{TS} object,return a \bold{TSR} object,a dataframe containing cols:

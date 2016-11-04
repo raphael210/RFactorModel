@@ -76,7 +76,7 @@ setmodelPar.title <- function(modelPar,
 #' @author Ruifei.Yin
 #' @export
 #' @family modelPar setting functions
-modelPar.time <- function(modelPar = modelPar.default() ,                          
+modelPar.time <- function(modelPar = modelPar.default() ,
                           begT = Sys.Date()-lubridate::years(1),
                           endT = Sys.Date()-1 ,
                           rebFreq = "month" ,
@@ -303,31 +303,31 @@ setmodelPar.factor_multi <- function(modelPar,
   return(mp_m)
 }
 
-setmodelPar.factor_multi_TSFRs <- function(modelPar,
-                                           TSFRs, wgts,
-                                           factorDir,
-                                           factorStd,
-                                           sectorAttr,
-                                           factorOutlier,
-                                           factorNA,
-                                           factorName = "multifactor", 
-                                           factorID,
-                                           factorType,
-                                           factorDesc){
-  mp_m <- setmodelPar.factor(modelPar=modelPar,
-                             factorFun="getTSFbyTSFs",
-                             factorPar=list(TSFRs,wgts), 
-                             factorDir,
-                             factorStd,
-                             sectorAttr,
-                             factorOutlier,
-                             factorNA,
-                             factorName, 
-                             factorID,
-                             factorType,
-                             factorDesc)
-  return(mp_m)
-}
+# setmodelPar.factor_multi_TSFRs <- function(modelPar,
+#                                            TSFRs, wgts,
+#                                            factorDir,
+#                                            factorStd,
+#                                            sectorAttr,
+#                                            factorOutlier,
+#                                            factorNA,
+#                                            factorName = "multifactor", 
+#                                            factorID,
+#                                            factorType,
+#                                            factorDesc){
+#   mp_m <- setmodelPar.factor(modelPar=modelPar,
+#                              factorFun="getTSFbyTSFs",
+#                              factorPar=list(TSFRs,wgts), 
+#                              factorDir,
+#                              factorStd,
+#                              sectorAttr,
+#                              factorOutlier,
+#                              factorNA,
+#                              factorName, 
+#                              factorID,
+#                              factorType,
+#                              factorDesc)
+#   return(mp_m)
+# }
 
 
 #' @rdname modelPar.factor
@@ -407,8 +407,32 @@ buildFactorList_lcfs <- function(factorID,
   return(re)
 }
 
-
-
+#' @export
+buildFactorList_multi <- function(factorLists, wgts,
+                                  factorDir  = 1 ,
+                                  factorStd  = c("none","norm","sectorNe") ,
+                                  sectorAttr = defaultSectorAttr(),
+                                  factorOutlier = 3 ,
+                                  factorNA = c("na","mean","median","min","max"),
+                                  factorID ="",
+                                  factorType ="",
+                                  factorDesc =""
+                                  ){
+  factorStd <- match.arg(factorStd)
+  factorNA <- match.arg(factorNA)
+  re <-list(factorFun="getMultiFactor",
+            factorPar=list(factorLists,wgts),  
+            factorDir   = factorDir  ,
+            factorStd   = factorStd  ,
+            sectorAttr = sectorAttr ,
+            factorOutlier = factorOutlier ,
+            factorNA = factorNA ,            
+            factorName  = "multifactor" ,  
+            factorID  = factorID,
+            factorType  = factorType,
+            factorDesc = factorDesc)   
+  return(re)
+}
 
 #' buildFactorLists
 #' 

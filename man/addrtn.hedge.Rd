@@ -21,7 +21,7 @@ addrtn.hedge(rtn.long, rtn.short, rebFreq = "month", weight = c(1, -1),
 \item{fee.short}{a numeric, giving the Unilateral transaction fee of short asset}
 }
 \value{
-a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge.
+a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with attr of 'rebtrade' and 'fee'.
 }
 \description{
 Add the hedged return on the long and short return series.

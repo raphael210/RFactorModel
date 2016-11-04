@@ -4,12 +4,14 @@
 \alias{getrtn.bmk}
 \title{getrtn.bmk}
 \usage{
-getrtn.bmk(rtn, bmk = "EI000300")
+getrtn.bmk(rtn, bmk, date_start_pad)
 }
 \arguments{
-\item{rtn}{an xts,timeSeries or zoo object of portfolio returns,which must be 1 column}
+\item{rtn}{an xts,timeSeries or zoo object of portfolio returns.}
 
 \item{bmk}{a character string, giving the stockID of the benchmark index,eg. "EI000300".}
+
+\item{date_start_pad}{a Date value, indicating the start point of the first rtn period. If missing, padded by an approximate value.}
 }
 \value{
 a xts object, giving the rtn series of the benchmark
@@ -18,8 +20,21 @@ a xts object, giving the rtn series of the benchmark
 get the benchmark return series corresponding to the specific rtn series.
 }
 \examples{
-rtn <- zoo(rnorm(1000,0.001,0.02),as.Date("2010-01-01")+1:1000)
+# -- daily rtn
+dates <- getRebDates(as.Date("2011-03-01"),as.Date("2011-04-20"),rebFreq = "day")
+TS <- getTS(dates,stocks = "EQ000002")
+TSR <- getTSR(TS)
+rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
 re <- getrtn.bmk(rtn,"EI000300")
+# -- IF00 as bmk
+re_IF <- getrtn.bmk(rtn,"IF00")
+# -- none daily rtn
+dates <- getRebDates(as.Date("2010-03-01"),as.Date("2011-04-20"),rebFreq = "month")
+TS <- getTS(dates,stocks = "EQ000002")
+TSR <- getTSR(TS)
+rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
+re <- getrtn.bmk(rtn,"EI000300")
+re2 <- getrtn.bmk(rtn,"EI000300",date_start_pad=as.Date("2010-03-01"))
 }
 \author{
 Ruifei.Yin

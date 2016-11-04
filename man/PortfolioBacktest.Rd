@@ -22,14 +22,15 @@ addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom"),
 port.substitute(port, TSF, wgt.max = NA, sectorAttr = defaultSectorAttr(),
   backtestPar, dir = c("long", "short"))
 
-port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
-  backtestPar, dir = c("long", "short"))
-
 getPort_throughout(TSF, topN = NA, topQ = NA, factorNA = c("median",
   "mean", "na", "min", "max"), pick.sectorNe = FALSE, buffer.in = 0,
   buffer.keep = 0, init_port = NULL, wgtType = c("eq", "fv", "fvsqrt",
   "custom"), wgt.sectorNe = FALSE, wgtbmk = "EI000300", wgt.max = NA,
   sectorAttr = defaultSectorAttr(), backtestPar, dir = c("long", "short"))
+
+port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
+  backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
+  "simple"))
 
 getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
   "min", "max"), pick.sectorNe = FALSE, buffer.in = 0, buffer.keep = 0,
@@ -45,9 +46,9 @@ getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
 
 \item{topQ}{a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.}
 
-\item{buffer.in}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% or pct less than topQ*90\% will be incorporated coercively.}
+\item{buffer.in}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% (\code{topN*(1-buffer.in)}) or pct less than topQ*90\% will be incorporated coercively.}
 
-\item{buffer.keep}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*110\% or pct less than topQ*110\% will be kept coercively.}
+\item{buffer.keep}{a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer.in)}) or pct less than topQ*110\% will be kept coercively.}
 
 \item{init_port}{a charactor vector of stockIDs.}
 
@@ -65,9 +66,11 @@ getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
 
 \item{holdingEndT}{a Date object, giving the ending date of the holding portfolio}
 
-\item{fee.buy}{giving the buying fee of each assets. See \code{\link{Return.rebalancing_yrf}} for detail}
+\item{fee.buy}{giving the buying fee of each assets. See \code{\link[QUtility]{Return.backtesting}} for detail}
 
-\item{fee.sell}{See \code{\link{Return.rebalancing_yrf}} for detail}
+\item{fee.sell}{}
+
+\item{rtn_get}{a character string of "loop","whole","simple". "loop" and "whole" get the dailyrtn, where as "simple" get the periodrtn.}
 
 \item{dir}{a character string of "long" or "short". In \code{port.substitute}, indicating the port direction. If "long",the port will be look as a long portfolio, and will import stocks from the top of the TSF; vise versa.}
 
@@ -80,14 +83,9 @@ getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
 
 \code{port.substitute} return a \bold{Port} object
 
-\code{port.backtest} return a \bold{PB}("PortfolioBacktest") object. a list with 3 items:
-  \itemize{ 
-  \item rtn: a time series of portfolio return, with the class of xts.
-  \item dailywgt: 
-  \item rebtrade:
-  }
-
 \code{getPort_throughout} return a \bold{Port} object, which contain the col of 'wgt'.
+
+\code{port.backtest} return a \bold{PB}("PortfolioBacktest") object, a xts series of portfolio return, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 
 \code{getPB} return a \bold{PB}("PortfolioBacktest") object.
 }
@@ -103,9 +101,9 @@ portfolio building and backtesting
 
 TSF is used when the stocks in \code{port} is not enough to share the extra weights. In that case, stock in TSF, which is in the same sector, will be imported into the port to share the extra weights.
 
-\code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
-
 \code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, get \bold{Port} object from \bold{TSF}, with further treatment.
+
+\code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
 
 \code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
 }
@@ -141,10 +139,12 @@ port <- getPort(TSF,20)
 port <- addwgt2port(port,"fv")
 # -- reduce the risk of concentration
 port <- port.substitute(port,TSF,wgt.max=0.08)
-# -- backtest the Port object
-PB <- port.backtest(port)
 # -- get Port object from TSF throughout
 Port_throut <- getPort_throughout(TSF, topN=20, wgt.max=0.8, dir="long")
+# -- backtest the Port object
+PB <- port.backtest(port)
+turnover <- attr(PB,"turnover")
+fee <- attr(PB,"fee")
 # -- get PB object from TSF directly
 PB <- getPB(TSF, topN=20, dir="long")
 }
@@ -152,6 +152,6 @@ PB <- getPB(TSF, topN=20, dir="long")
 Ruifei.Yin
 }
 \seealso{
-\code{\link[QUtility]{Return.rebalancing_yrf}}
+\code{\link[QUtility]{Return.backtesting}}
 }
 

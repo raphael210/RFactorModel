@@ -64,7 +64,7 @@ MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
 
 \item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
 
-\item{turnoverType}{}
+\item{turnoverType}{a character of "num" or "wgt". If "wgt", consider the weight change due to the periodrtn when calculate the turnover.}
 
 \item{fee}{a numeric, giving the (one side) fee}
 

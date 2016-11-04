@@ -13,7 +13,16 @@ rm.sus <- function(TS){
   TS <- TS[TS_next$trading == 1, ]
   return(TS)
 }
-
+rm.blacklist <- function(TS,blklist=c("EQ600061")){
+  check.TS(TS)
+  TS <- TS[!TS$stockID %in% blklist, ]
+}
+rm.ST <- function(TS){
+  
+}
+rm.liquidity <- function(TS){#ZHANGTING
+  
+}
 
 #' portfolio building and backtesting
 #' 
@@ -27,8 +36,8 @@ rm.sus <- function(TS){
 #' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
-#' @param buffer.in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% or pct less than topQ*90\% will be incorporated coercively.
-#' @param buffer.keep a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*110\% or pct less than topQ*110\% will be kept coercively.
+#' @param buffer.in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% (\code{topN*(1-buffer.in)}) or pct less than topQ*90\% will be incorporated coercively.
+#' @param buffer.keep a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer.in)}) or pct less than topQ*110\% will be kept coercively.
 #' @param init_port a charactor vector of stockIDs.
 #' @param backtestPar a \bold{backtestPar} object. If param backtestPar is not missing,then the other params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.  
 #' @param dir a character string "long" or "short". In \code{getPort}, if "short",select from top to bottom, and vice versa.
@@ -83,9 +92,9 @@ getPort <- function(TSF, topN=NA, topQ=NA,
   if(length(topQ) == 1L) topQ_ <- c(0,topQ) else topQ_ <- topQ
   if(pick.sectorNe){
     TSF <- getSectorID(TSF,sectorAttr=sectorAttr)
-    TSF_by <- group_by(TSF,date) %>% dplyr::mutate(cnt=n()) %>% group_by(sector,add=TRUE) %>% dplyr::mutate(cnt_sct=n())
+    TSF_by <- dplyr::group_by(TSF,date) %>% dplyr::mutate(cnt=n()) %>% dplyr::group_by(sector,add=TRUE) %>% dplyr::mutate(cnt_sct=n())
   } else {
-    TSF_by <- group_by(TSF,date) %>% dplyr::mutate(cnt=n()) 
+    TSF_by <- dplyr::group_by(TSF,date) %>% dplyr::mutate(cnt=n()) 
   }
   if(dir == "long"){
     TSF_by <- dplyr::mutate(TSF_by,rnk=rank(-factorscore)) %>% dplyr::arrange(rnk)
@@ -286,55 +295,6 @@ port.substitute <- function(port,TSF,
 
 
 
-#' @details \code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
-#' @rdname PortfolioBacktest
-#' @param holdingEndT a Date object, giving the ending date of the holding portfolio 
-#' @param fee.buy giving the buying fee of each assets. See \code{\link{Return.rebalancing_yrf}} for detail
-#' @param fee.sell See \code{\link{Return.rebalancing_yrf}} for detail
-#' @param dir a character string of "long" or "short". In \code{port.backtest}, if "long", the port will be look as asset, the fee will be cut from the asset; if "short", the port will be look as liability, the fee will be added to the liability.
-#' @return \code{port.backtest} return a \bold{PB}("PortfolioBacktest") object. a list with 3 items:
-#'   \itemize{ 
-#'   \item rtn: a time series of portfolio return, with the class of xts.
-#'   \item dailywgt: 
-#'   \item rebtrade:
-#'   }
-#' @seealso \code{\link[QUtility]{Return.rebalancing_yrf}}
-#' @export
-#' @examples
-#' # -- backtest the Port object
-#' PB <- port.backtest(port)
-port.backtest <- function(port,
-                          holdingEndT=Sys.Date(), fee.buy=0, fee.sell=0,                          
-                          backtestPar,
-                          dir=c("long","short")){  
-  dir <- match.arg(dir)
-  if(!missing(backtestPar)){
-    holdingEndT <- getbacktestPar.longshort(backtestPar,"holdingEndT")
-    fee.buy <- getbacktestPar.fee(backtestPar,"secu")
-    fee.sell <- getbacktestPar.fee(backtestPar,"secu")
-  }   
-  if(dir == "short"){
-    fee.buy <- -fee.buy
-    fee.sell <- -fee.sell
-  }
-  # ---- get weights
-  check.colnames(port,c("date","stockID","wgt"))
-  weights.df <- reshape2::dcast(port,date~stockID,value.var="wgt",fill=0)
-  weights <- xts(weights.df[,-1],weights.df[,1])
-  colnames(weights) <- colnames(weights.df)[-1]  
-  # ---- get R
-  stocks <- colnames(weights) 
-  qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"))
-  qt <- renameCol(qt,"pct_chg","rtn")
-  R.df <- reshape2::dcast(qt,date~stockID,value.var="rtn",fill=0)
-  R <- xts(R.df[,-1],R.df[,1])
-  colnames(R) <- colnames(R.df)[-1]
-  # ---- get PB
-  re <- Return.rebalancing_yrf(R = R,weights = weights,fee.buy = fee.buy,fee.sell = fee.sell,verbose = TRUE)
-  return(re) 
-}
-
-
 #' @details \code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, get \bold{Port} object from \bold{TSF}, with further treatment.
 #' @rdname PortfolioBacktest
 #' @export
@@ -381,6 +341,99 @@ getPort_throughout <- function (TSF,
   return(Port)
 }
   
+
+
+#' @details \code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
+#' @rdname PortfolioBacktest
+#' @param holdingEndT a Date object, giving the ending date of the holding portfolio 
+#' @param fee.buy giving the buying fee of each assets. See \code{\link[QUtility]{Return.backtesting}} for detail
+#' @param fee.sell 
+#' @param dir a character string of "long" or "short". In \code{port.backtest}, if "long", the port will be look as asset, the fee will be cut from the asset; if "short", the port will be look as liability, the fee will be added to the liability.
+#' @param rtn_get a character string of "loop","whole","simple". "loop" and "whole" get the dailyrtn, where as "simple" get the periodrtn.
+#' @return \code{port.backtest} return a \bold{PB}("PortfolioBacktest") object, a xts series of portfolio return, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
+#' @seealso \code{\link[QUtility]{Return.backtesting}}
+#' @export
+#' @examples
+#' # -- backtest the Port object
+#' PB <- port.backtest(port)
+#' turnover <- attr(PB,"turnover")
+#' fee <- attr(PB,"fee")
+port.backtest <- function(port,
+                          holdingEndT=Sys.Date(), fee.buy=0, fee.sell=0,
+                          backtestPar,
+                          dir=c("long","short"),
+                          rtn_get=c("loop","whole","simple")){  
+  dir <- match.arg(dir)
+  rtn_get <- match.arg(rtn_get)
+  if(!missing(backtestPar)){
+    holdingEndT <- getbacktestPar.longshort(backtestPar,"holdingEndT")
+    fee.buy <- getbacktestPar.fee(backtestPar,"secu")
+    fee.sell <- getbacktestPar.fee(backtestPar,"secu")
+  }   
+  if(dir == "short"){
+    fee.buy <- -fee.buy
+    fee.sell <- -fee.sell
+  }
+  
+  # ---- get weights
+  check.colnames(port,c("date","stockID","wgt"))
+  weights.df <- reshape2::dcast(port,date~stockID,value.var="wgt",fill=0)
+  weights <- xts(weights.df[,-1],weights.df[,1])
+  colnames(weights) <- colnames(weights.df)[-1] 
+  
+  # ---- get R
+  if(rtn_get=="simple"){
+    if(!"periodrtn" %in% colnames(port)){
+      port <- getTSR(TS=port)
+    } 
+    if(TRUE){# replace the last date_end with holdingEndT
+      port0 <- dplyr::filter(port,date!=max(date)) 
+      port1 <- dplyr::filter(port,date==max(date)) 
+      port1$date_end <- holdingEndT
+      port1$periodrtn <- getPeriodrtn(stockID=port1$stockID, begT=port1$date, endT=holdingEndT, exclude.SP=TRUE)
+      port <- rbind(port0,port1)
+    }
+    R.df <- reshape2::dcast(port,date_end~stockID,value.var="periodrtn",fill=0)
+    R <- xts(R.df[,-1], R.df[,1])
+    colnames(R) <- colnames(R.df)[-1]
+  } else if(rtn_get=="whole"){
+    stocks <- colnames(weights) 
+    qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"))
+    qt <- renameCol(qt,"pct_chg","rtn")
+    R.df <- reshape2::dcast(qt,date~stockID,value.var="rtn",fill=0)
+    R <- xts(R.df[,-1],R.df[,1])
+    colnames(R) <- colnames(R.df)[-1]
+  } else if(rtn_get=="loop"){
+    datelist <- unique(port$date)
+    R.df <- data.frame()
+    cat("Looping to get the quote data in function 'port.backtest' ....\n")
+    pb <- txtProgressBar(style = 3)
+    for (ii in 1:length(datelist)){
+      stocks <- port[port$date==datelist[ii],"stockID"]
+      begT <- trday.nearby(datelist = datelist[ii], by = -1L)
+      endT <- as.Date(ifelse(ii==length(datelist), holdingEndT, datelist[ii+1]), "1970-01-01")
+      qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"))
+      qt <- renameCol(qt, "pct_chg", "rtn")
+      if(ii==1L){
+        R.df <- qt
+      } else {
+        R.df <- rbind(R.df, qt)
+      }
+      setTxtProgressBar(pb, ii/length(datelist))
+    }
+    close(pb)
+    R.df <- reshape2::dcast(R.df, date~stockID,value.var="rtn",fill=0)
+    R <- xts(R.df[,-1],R.df[,1])
+    colnames(R) <- colnames(R.df)[-1]
+  }
+  
+  # ---- get PB
+  re_tmp <- Return.backtesting(R = R,weights = weights,fee.buy = fee.buy,fee.sell = fee.sell,output=c("rtn","turnover"))
+  re <- re_tmp[["rtn"]]
+  attr(re,"turnover") <- re_tmp[["turnover"]]
+  attr(re,"fee") <- c(fee_buy=fee.buy, fee_sell=fee.sell)
+  return(re) 
+}
 
 
 #' @details \code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
@@ -437,9 +490,11 @@ getPB <- function (TSF,
 
 
 # consider: port.summary(port) vs. PB.summary(PB) ?
+# try to add port to the attr of PB.
 port.summary <- function(port){
   # sector distribution
-  # number of stocks
+  # number of stocks, maxwgt,minwgt
+  # turnover
 }
 # consider: port.risk vs. PB.risk ?
 port.risk <- function(port){
@@ -447,39 +502,80 @@ port.risk <- function(port){
 }
 
 
+
 #' getrtn.bmk
 #' 
 #' get the benchmark return series corresponding to the specific rtn series.
-#' @param rtn an xts,timeSeries or zoo object of portfolio returns,which must be 1 column
+#' @param rtn an xts,timeSeries or zoo object of portfolio returns.
 #' @param bmk a character string, giving the stockID of the benchmark index,eg. "EI000300".
+#' @param date_start_pad a Date value, indicating the start point of the first rtn period. If missing, padded by an approximate value.
 #' @return a xts object, giving the rtn series of the benchmark
 #' @author Ruifei.Yin
 #' @export
 #' @family LSH-frame building functions
 #' @examples
-#' rtn <- zoo(rnorm(1000,0.001,0.02),as.Date("2010-01-01")+1:1000)
+#' # -- daily rtn
+#' dates <- getRebDates(as.Date("2011-03-01"),as.Date("2011-04-20"),rebFreq = "day")
+#' TS <- getTS(dates,stocks = "EQ000002")
+#' TSR <- getTSR(TS)
+#' rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
 #' re <- getrtn.bmk(rtn,"EI000300")
-getrtn.bmk <- function(rtn,bmk="EI000300"){
-  #   if(datasrc=="ts"){
-  #     bmk <- stockID2stockID(bmk,from="local",to="ts")
-  #     qt <- getQuote_ts(stocks=bmk,begT=as.Date(start(rtn)),endT=as.Date(end(rtn)),variables=c("price","yclose"),cycle="cy_day()")
-  #     bmkrtn <- qt$price/qt$yclose-1
-  #     re <- xts(bmkrtn,as.Date(qt$date,tz=""))
-  #   } else if (datasrc=="local"){
-  qt <- getIndexQuote(stocks=bmk,begT=as.Date(start(rtn)),endT=as.Date(end(rtn)),variables="pct_chg")
-  re <- xts(qt$pct_chg,qt$date)
-  #   }    
-  colnames(re) <- "bmk"
+#' # -- IF00 as bmk
+#' re_IF <- getrtn.bmk(rtn,"IF00")
+#' # -- none daily rtn
+#' dates <- getRebDates(as.Date("2010-03-01"),as.Date("2011-04-20"),rebFreq = "month")
+#' TS <- getTS(dates,stocks = "EQ000002")
+#' TSR <- getTSR(TS)
+#' rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
+#' re <- getrtn.bmk(rtn,"EI000300")
+#' re2 <- getrtn.bmk(rtn,"EI000300",date_start_pad=as.Date("2010-03-01"))
+getrtn.bmk <- function(rtn, bmk, date_start_pad){
+  
+  if(substr(bmk,1,2)=="EI"){
+    date_end <- zoo::index(rtn)
+    if(missing(date_start_pad)){ # calculate the padding value automatically
+      p_Nday <- periodicity_Ndays(rtn)
+      if(p_Nday>2){
+        warning("The rtn series is not daily. The start point of the first rtn period is padded by an approximate value!")
+        date_start_pad <- trday.nearest(min(date_end) - p_Nday, dir = 1L)
+      } else { # daily rtn
+        date_start_pad <- trday.nearby(min(date_end),by = 1)
+      }
+    }
+    date_start <- c(date_start_pad, date_end[-length(date_end)])
+    re <- getPeriodrtn_EI(stockID=bmk, begT=date_start, endT=date_end)
+    re <- xts::xts(re$periodrtn, date_end)
+    colnames(re) <- "bmk"
+  } else if(substr(bmk,1,2)=="IF"){
+    p_Nday <- periodicity_Ndays(rtn)
+    if(p_Nday>2){
+      stop("The rtn series is not daily. can not use IF as bmk in the current!")
+    }
+    # bmk <- "IF00"
+    begT <- rdate2ts(as.Date(start(rtn)))
+    endT <- rdate2ts(as.Date(end(rtn)))
+    str <- paste('
+    SetSysParam(pn_stock(),',QT(bmk,2),');
+    SetSysParam(pn_cycle(),cy_day());
+                 EndT:=',endT,'+0.999;
+                 N:=TradeDays(',begT,',EndT);
+                 SetSysparam(pn_date(),EndT);
+                 return Nday(N,"date",datetimetostr(sp_time()),
+                 "Settlement",Settlement(),
+                 "Prev_Settlement",Prev_Settlement());
+                 ')
+    re <- tsRemoteExecute(str)
+    re <- plyr::ldply(re,as.data.frame)
+    re <- xts::xts(re$Settlement/re$Prev_Settlement-1 ,as.Date(re$date))
+    colnames(re) <- "bmk"
+  } 
   return(re)
 }
 
-# getrtn.bmk2 <- function(rtn,bmk="IF00"){
-#   qt <- getQuote_ts(stocks=bmk,begT=as.Date(start(rtn)),endT=as.Date(end(rtn)),variables=c("price","yclose"),cycle="cy_day()")
-#   bmkrtn <- qt$price/qt$yclose-1
-#   re <- xts(bmkrtn,as.Date(qt$date,tz=""))   
-#   colnames(re) <- "bmk"
-#   return(re)
-# }
+
+
+
+
 
 
 
@@ -494,7 +590,7 @@ getrtn.bmk <- function(rtn,bmk="EI000300"){
 #' @param weight a time series or single-row matrix(vector) containing asset weights. If a vector,the weights time series will be computed automatically via different rebFreq. See example for detail.
 #' @param fee.long a numeric, giving the Unilateral transaction fee of long asset
 #' @param fee.short a numeric, giving the Unilateral transaction fee of short asset
-#' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge.
+#' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with attr of 'rebtrade' and 'fee'.
 #' @author Ruifei.Yin
 #' @export
 #' @family LSH-frame building functions
@@ -527,9 +623,11 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
   }
   colnames(weight) <- colnames(rtn)
   fee.buy <- fee.sell <- c(fee.long,fee.short)
-  rtn.hedge <- Return.rebalancing_yrf(rtn,weight,fee.buy,fee.sell,warning.wgtsum=FALSE)
-  rtn <- merge(rtn,rtn.hedge,all=FALSE)
+  rtn.hedge <- Return.backtesting(R = rtn, weights = weight, fee.buy = fee.buy, fee.sell = fee.sell, warning.wgtsum=FALSE,output = c("rtn","rebtrade"))
+  rtn <- merge(rtn, rtn.hedge[["rtn"]], all=FALSE)
   colnames(rtn) <- c(nm.long,nm.short,"hedge")
+  attr(rtn,"rebtrade") <- rtn.hedge[["rebtrade"]]
+  attr(rtn,"fee") <- c(fee_long=fee.long, fee_short=fee.short)
   return(rtn)
 }
 
@@ -546,7 +644,7 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
 #' @param fee.long a numeric, giving the fee of long asset
 #' @param fee.short a numeric, giving the fee of short asset
 #' @param backtestPar a \bold{backtestPar} object
-#' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge.
+#' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 #' @author Ruifei.Yin
 #' @export
 #' @family LSH-frame building functions
@@ -565,11 +663,15 @@ getrtn.LSH <- function (PB.L, PB.S,
     fee.long <- getbacktestPar.fee(backtestPar,"secu")
     fee.short <- getbacktestPar.fee(backtestPar,"secu")
   }
-  rtn.long <- PB.L$rtn
-  rtn.short <- PB.S$rtn  
+  rtn.long <- PB.L
+  rtn.short <- PB.S 
   rtn.LSH <- addrtn.hedge(rtn.long, rtn.short, hedge.rebFreq,
                           weight=c(hedge.posi,-hedge.posi),
                           fee.long, fee.short)
+  attr(rtn.LSH,"turnover_L") <- attr(PB.L,"turnover")
+  attr(rtn.LSH,"turnover_S") <- attr(PB.S,"turnover")
+  attr(rtn.LSH,"fee_L") <- attr(PB.L,"fee")
+  attr(rtn.LSH,"fee_S") <- attr(PB.S,"fee")
   return(rtn.LSH)
 }
 
@@ -585,7 +687,7 @@ getrtn.LSH <- function (PB.L, PB.S,
 #' @param fee.long a numeric, giving the fee of long asset
 #' @param fee.short a numeric, giving the fee of short asset
 #' @param backtestPar a \bold{backtestPar} object
-#' @return a \bold{rtn.LBH} object of class xts,giving the return series of long,bmk and hedge.
+#' @return a \bold{rtn.LBH} object of class xts,giving the return series of long,bmk and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 #' @author Ruifei.Yin
 #' @export
 #' @family LSH-frame building functions
@@ -593,7 +695,8 @@ getrtn.LSH <- function (PB.L, PB.S,
 #' re <- getrtn.LBH(PB.L,"EI000300")
 getrtn.LBH <- function(PB.L,bmk="EI000300",
                        hedge.rebFreq="month",hedge.posi=1,fee.long=0,fee.short=0,
-                       backtestPar){
+                       backtestPar,
+                       date_start_pad){
   if(!missing(backtestPar)){
     bmk <- getbacktestPar.longshort(backtestPar,"bmk")
     hedge.rebFreq <- getbacktestPar.longshort(backtestPar,"hedge.rebFreq")
@@ -601,20 +704,16 @@ getrtn.LBH <- function(PB.L,bmk="EI000300",
     fee.long <- getbacktestPar.fee(backtestPar,"secu")
     fee.short <- getbacktestPar.fee(backtestPar,"future")
   }
-  rtn.long <- PB.L$rtn
-  rtn.bmk <- getrtn.bmk(rtn.long,bmk)
+  rtn.long <- PB.L
+  rtn.bmk <- getrtn.bmk(rtn = rtn.long, bmk = bmk, date_start_pad = date_start_pad)
   rtn.LBH <- addrtn.hedge(rtn.long, rtn.bmk,hedge.rebFreq,
                           weight=c(hedge.posi,-hedge.posi),
                           fee.long,fee.short)  
   colnames(rtn.LBH) <- c("long","bmk","hedge")
+  attr(rtn.LBH,"turnover_L") <- attr(PB.L,"turnover")
+  attr(rtn.LBH,"fee_L") <- attr(PB.L,"fee")
   return(rtn.LBH)
 }
 
 
-getTurnover <- function(PB){
-  PB <- PB.L
-  hsl.mat <- PB$rebtrade
-  buy <- hsl.mat
-  
-}
 

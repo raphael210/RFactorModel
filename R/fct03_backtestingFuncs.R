@@ -52,6 +52,7 @@ chart.TSFRScatter <- function(TSFR,Nbin="day",plotPar){
 #' @rdname backtest.IC
 #' @name backtest.IC
 #' @aliases seri.IC
+#' @param TSF a \bold{TSF} object
 #' @param TSFR a \bold{TSFR} object
 #' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman". 
 #' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar. 
@@ -68,42 +69,57 @@ seri.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
     stat <- getbacktestPar.IC(backtestPar,"stat")
   }
   check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
+  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
   if(stat=="pearson"){
-    IC.seri <- plyr::ddply(TSFR,"date",plyr::summarise,
+    IC.seri <- plyr::ddply(TSFR,"date_end",plyr::summarise,
                      IC=cor(periodrtn,factorscore,method="pearson",use="pairwise.complete.obs"))
   } else if(stat=="spearman"){
-    IC.seri <- plyr::ddply(TSFR,"date",plyr::summarise,
+    IC.seri <- plyr::ddply(TSFR,"date_end",plyr::summarise,
                      IC=cor(periodrtn,factorscore,method="spearman",use="pairwise.complete.obs"))
   }
   re <- as.xts(IC.seri[,-1,drop=FALSE],IC.seri[,1])
   colnames(re) <- "IC"
   return(re)
 }
+
 #' @rdname backtest.IC
 #' @return seri.IC.decay return a xts object of 12 cols, which containing the decayed ICs seri
 #' @export
 #' @examples 
-#' re <- seri.IC.decay(TSFR)
-seri.IC.decay <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
+#' re <- seri.IC.decay(TSF)
+seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
+                          prd_lists = list(w1=lubridate::weeks(1),
+                                           w2=lubridate::weeks(2),
+                                           m1=months(1),
+                                           m2=months(2),
+                                           m3=months(3),
+                                           m6=months(6)) ){
   stat <- match.arg(stat)
   if(!missing(backtestPar)){
     stat <- getbacktestPar.IC(backtestPar,"stat")
   }
-  check.TSFR_decay(TSFR)
+  
+  # --- get the period rtns
+  TSFR <- getTSR_decay(TSF, prd_lists = prd_lists)
+  # --- calculate the IC seri.
   if(stat=="pearson"){
     IC.seri <- plyr::ddply(TSFR,"date",function(dat){
-      t(cor(dat[,paste("rtn",1:12,sep="")],dat[,"factorscore"],method="pearson",use="pairwise.complete.obs"))
+      t(cor(dat[, paste("prdrtn_",prd_names,sep="")],dat[,"factorscore"],method="pearson",use="pairwise.complete.obs"))
     })
   } else if(stat=="spearman"){
     IC.seri <- plyr::ddply(TSFR,"date",function(dat){
-      t(cor(dat[,paste("rtn",1:12,sep="")],dat[,"factorscore"],method="spearman",use="pairwise.complete.obs"))
+      t(cor(dat[,paste("prdrtn_",prd_names,sep="")],dat[,"factorscore"],method="spearman",use="pairwise.complete.obs"))
     })
   }
   re <- as.xts(IC.seri[,-1,drop=FALSE],IC.seri[,1])
-  colnames(re) <- paste("IC",1:12,sep="")
+  colnames(re) <- paste("IC_",prd_names,sep="")
   return(re)
 }
+  
+  
+  
+  
+  
 #' @rdname backtest.IC
 #' @return table.IC return a matirx of the statistical of the IC, containing rows: "IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio"
 #' @export
@@ -112,40 +128,21 @@ seri.IC.decay <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
 table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
   stat <- match.arg(stat)
   seri <- seri.IC(TSFR,stat,backtestPar)
-  tab.annu <- PerformanceAnalytics::table.AnnualizedReturns(seri)[[1]]
+  IC.annu <- as.vector(IC.annualized(seri)) # IC.annu = IC.mean*sqrt(N)
   seri <- as.vector(seri)
   IC.mean <- mean(seri,na.rm=TRUE)
   IC.std <- sd(seri,na.rm=TRUE)
   IC.IR <- IC.mean/IC.std
   IC.Ttest.t <- t.test(seri)$statistic
   IC.Ttest.p <- t.test(seri)$p.value
-  IC.hit <- hitRatio(seri)  
-  re <- c(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, tab.annu)
+  IC.hit <- hitRatio(seri) 
+  re <- c(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu)
   re <- matrix(re,length(re),1)
   colnames(re) <- "IC"
-  rownames(re) <- c("IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio","IC.annu","IC.std.annu","IC.IR.annu")
+  rownames(re) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   return(re)
 }  
-#' @rdname backtest.IC
-#' @return table.IC.decay return a matirx of the statistical of the decayed ICs, containing 5 rows: "IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio" and 12 cols: "IC1"-"IC12".
-#' @export
-#' @examples 
-#' IC.table.decay <- table.IC.decay(TSFR)
-table.IC.decay <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
-  stat <- match.arg(stat)
-  seri <- seri.IC.decay(TSFR,stat,backtestPar)
-  IC.mean <- colMeans(seri,na.rm=TRUE)
-  IC.std <- colSds(seri,na.rm=TRUE)
-  IC.IR <- IC.mean/IC.std
-  IC.Ttest.t <- colStats(seri, function(x) t.test(x)$statistic)
-  IC.Ttest.p <- colStats(seri, function(x) t.test(x)$p.value)
-  IC.hit <- as.vector(hitRatio(seri))
-  re <- t(cbind(IC.mean,IC.std,IC.IR,IC.Ttest.t,IC.Ttest.p,IC.hit))
-  rownames(re) <- c("IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio")
-  tab.annu <- PerformanceAnalytics::table.AnnualizedReturns(seri)
-  rownames(tab.annu) <- c("IC.annu","IC.std.annu","IC.IR.annu")
-  return(rbind(re,tab.annu))
-}
+
 #' @rdname backtest.IC
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.
 #' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
@@ -169,20 +166,7 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
   re <- ggplot() +
     geom_bar(data=seri.melt[,-2], aes(x=time, y=value),position="dodge",stat="identity")
   # ---- IC 12 months MA
-  freq = xts::periodicity(seri)
-  switch(freq$scale, 
-         daily = {
-           wid = 250
-         }, weekly = {
-           wid = 52
-         }, monthly = {
-           wid = 12
-         }, quarterly = {
-           wid = 4
-         }, yearly = {
-           wid = 1
-         }
-  )  
+  wid <- 365/periodicity_Ndays(seri)  
   if(wid >= NROW(seri)){
     warning("IC seri is shorter than 12 months, could not plot the 12 months MA!")
     re <- re + ggtitle("IC series")
@@ -199,26 +183,51 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
   }
   return(re)
 }
+
 #' @rdname backtest.IC
-#' @return chart.IC.decay return a ggplot object of decayed ICs bar chart.
+#' @return chart.IC.decay return a ggplot object of decayed ICs bar chart. (You can also use \code{attr(re,"table")} to get the result table.)
 #' @export
 #' @examples 
-#' re <- chart.IC.decay(TSFR)
-chart.IC.decay <- function(TSFR,stat=c("pearson","spearman"),plotPar){
+#' re <- chart.IC.decay(TSF)
+#' attr(re,"table") # the result table
+chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
+                           prd_lists = list(w1=lubridate::weeks(1),
+                                            w2=lubridate::weeks(2),
+                                            m1=months(1),
+                                            m2=months(2),
+                                            m3=months(3),
+                                            m6=months(6))){
   stat <- match.arg(stat)
-  if(!missing(plotPar)){
-    stat <- getplotPar.IC(plotPar,"stat")
+  seri <- seri.IC.decay(TSF=TSF,stat=stat,backtestPar=backtestPar,prd_lists=prd_lists)
+  IC.mean <- base::colMeans(seri,na.rm=TRUE)
+  IC.std <- timeSeries::colSds(seri,na.rm=TRUE)
+  IC.IR <- IC.mean/IC.std
+  IC.Ttest.t <- timeSeries::colStats(seri, function(x) t.test(x)$statistic)
+  IC.Ttest.p <- timeSeries::colStats(seri, function(x) t.test(x)$p.value)
+  IC.hit <- as.vector(hitRatio(seri))
+  if(TRUE){ # annulized IC
+    sqrtN <- vector()
+    for (ii in 1:length(prd_lists)){
+      prd <- prd_lists[[ii]]
+      N <- 365/(prd/lubridate::days(1))
+      sqrtN <- c(sqrtN,sqrt(N))
+    }
+    IC.annu <- IC.mean*sqrtN
   }
-  seri <- seri.IC.decay(TSFR,stat=stat)
-  IC.mean <- colMeans(seri,na.rm=TRUE)
-  dat <- data.frame(months=as.factor(1:12),IC.mean=IC.mean)
-  re <- ggplot(dat,aes(x=months,y=IC.mean))+
-    geom_bar(position="dodge",stat="identity")+
-    ggtitle("IC decay")
+  re_table <- t(cbind(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu))
+  rownames(re_table) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
+  
+  if(TRUE){ # -- chart.IC.decay
+    dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
+    re <- ggplot(data = dat)+
+      geom_bar(mapping = aes(x=decay, y=IC_mean, fill=leg_mean),position="dodge",stat="identity")+
+      geom_line(mapping = aes(x=decay, y=IC_annu, fill=leg_annu, group=group),colour = "red", size = 1)+
+      theme(axis.title.y= element_blank(),legend.title=element_blank())+
+      ggtitle("IC decay")
+  }
+  attr(re,"table") <- re_table
   return(re)
 }
-
-
 
 
 
@@ -353,35 +362,35 @@ seri.Ngroup.rtn <- function(TSFR,N=5,stat=c("mean","median"),
     sectorAttr <- getbacktestPar.Ngroup(backtestPar,"sectorAttr")
   }
   check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
+  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
   # ---- add the rank and groups of the factorscores 
   if(!sectorNe){
-    TSFR <- data.table::data.table(TSFR,key=c("date"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date"]
+    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
   } else {
     TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
-    TSFR <- data.table::data.table(TSFR,key=c("date","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
+    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
   }
   
   # ---- rtn seri of each group
-  data.table::setkeyv(TSFR,c("date","group"))
+  data.table::setkeyv(TSFR,c("date_end","group"))
   if(stat=="mean"){
-    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date","group")]
+    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","group")]
   } else if(stat=="median"){
-    rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date","group")]
+    rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date_end","group")]
   }  
   rtn.df <- as.data.frame(rtn.df)
-  rtn.mat <- reshape2::acast(rtn.df,date~group,value.var="mean.rtn")
+  rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
   rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
   colnames(rtn.xts) <- paste("Q",1:N,sep="")   
   result <- rtn.xts
   return(result)  
 }
 #' @rdname backtest.Ngroup
-#' @param turnoverType 
+#' @param turnoverType a character of "num" or "wgt". If "wgt", consider the weight change due to the periodrtn when calculate the turnover.
 #' @return seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
 #' @export
 #' @examples
@@ -397,7 +406,7 @@ seri.Ngroup.turnover <- function(TSFR,N=5,turnoverType= c("num","wgt"),
     sectorAttr <- getbacktestPar.Ngroup(backtestPar,"sectorAttr")
   }
   check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
+  # TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
   # ---- add the rank and groups of the factorscores 
   if(!sectorNe){
     TSFR <- data.table::data.table(TSFR,key=c("date"))
@@ -418,7 +427,7 @@ seri.Ngroup.turnover <- function(TSFR,N=5,turnoverType= c("num","wgt"),
       wgt.ini <- reshape2::acast(groupI,date~stockID,value.var="group",fill=0)
       wgt.ini <- wgt.ini/rowSums(wgt.ini)
       wgt.ini <- xts(wgt.ini,as.Date(rownames(wgt.ini),tz=""))         
-      turnover.num <- xts::lag.xts(wgt.ini,na.pad=TRUE)-wgt.ini
+      turnover.num <- wgt.ini - xts::lag.xts(wgt.ini,na.pad=TRUE)
       turnover.num <- turnover.num[-1,]
       turnover.num <- xts(rowSums(abs(turnover.num))/2,zoo::index(turnover.num))
       colnames(turnover.num) <- paste("Q",i,sep="")
@@ -436,8 +445,9 @@ seri.Ngroup.turnover <- function(TSFR,N=5,turnoverType= c("num","wgt"),
       wgt.ini <- reshape2::acast(groupI,date~stockID,value.var="group",fill=0)
       wgt.ini <- wgt.ini/rowSums(wgt.ini)
       wgt.ini <- xts(wgt.ini,as.Date(rownames(wgt.ini),tz=""))
-      wgt.end <- wgt.ini*(1+periodrtn)          
-      turnover.wgt <- xts::lag.xts(wgt.end,na.pad=TRUE)-wgt.ini
+      wgt.end <- wgt.ini*(1+periodrtn) 
+      wgt.end <- wgt.end/rowSums(wgt.end)
+      turnover.wgt <- wgt.ini - xts::lag.xts(wgt.end,na.pad=TRUE)
       turnover.wgt <- turnover.wgt[-1,]
       turnover.wgt <- xts(rowSums(abs(turnover.wgt))/2,zoo::index(turnover.wgt))
       colnames(turnover.wgt) <- paste("Q",i,sep="")
@@ -628,6 +638,75 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,stat=c("mean","median"),
   re <- ggplot.ts.line(indexseri,main="Wealth index of each group",size=1)
   return(re)
 }
+
+
+
+
+
+chart.Ngroup.box <- function(TSFR,N=5,Nbin="day",stat=c("mean","median"),
+                             sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
+                             plotPar){
+  stat <- match.arg(stat)
+  if(!missing(plotPar)){
+    N <- getplotPar.Ngroup(plotPar,"N")    
+    stat <- getplotPar.Ngroup(plotPar,"stat")
+    Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
+  }  
+  
+  
+  
+  
+  check.TSFR(TSFR)
+  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
+  # ---- add the rank and groups of the factorscores 
+  if(!sectorNe){
+    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
+  } else {
+    TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
+    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
+  }
+  
+  # ---- rtn seri of each group
+  # data.table::setkeyv(TSFR,c("date_end","group"))
+  # if(stat=="mean"){
+  #   rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","group")]
+  # } else if(stat=="median"){
+  #   rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date_end","group")]
+  # }  
+  # rtn.df <- as.data.frame(rtn.df)
+  rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
+  rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
+  colnames(rtn.xts) <- paste("Q",1:N,sep="")   
+  result <- rtn.xts
+  
+  
+  
+  
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
+  rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
+  rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
+  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
+  rtnseri.melt$group <- as.integer(substring(rtnseri.melt$variable,2))
+  rtnseri.melt$time <- as.character(rtnseri.melt$time)
+  re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
+    geom_bar(position="dodge",stat="identity")+
+    facet_wrap(~ time, scales="free_y") +
+    ggtitle("Return of each group")+
+    scale_y_continuous(labels=scales::percent)
+  
+  
+  
+  p <- ggplot(data=TSFR,mapping = aes(x=factor(date),y=periodrtn, fill=factor(group)))+geom_boxplot()
+  return(re)
+  
+  
+}
+
+
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.spread return and print a recordedplot object of "Performance Summary of top-bottom spread" . 
 #' @export
@@ -805,18 +884,43 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
   freq <- c("day","week","month","quarter","year")  
   rtn.aggr <- lapply(freq,function(freq){aggr.rtn(rtn,freq)})
   names(rtn.aggr) <- paste(freq,"ly",sep="")
+  
   # ---- hedge.stats: main statisticals of the hedged rtn,by different freq
   hedge.stats <- t(plyr::laply(rtn.aggr,function(x){rtn.stats(x[,"hedge",drop=FALSE])}))
   colnames(hedge.stats) <- paste(freq,"ly",sep="")  
+  
   # ---- period.stats: table showing the yearly,all-span and annualized return
   period.stats <- rtn.periods(rtn)
+  
   # ---- DD.stats:table showing statistics for the worst drawdowns.
   DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn$hedge)  
+  
   # ---- summary:summary of the all over rtn
   summary <- rtn.summary(rtn,hitFreq=hitFreq)
+  if(!is.null(attr(rtn,"turnover_L"))){
+    turnover_L <- Turnover.annualized(attr(rtn,"turnover_L"))[,"avg"]
+    if(!is.null(attr(rtn,"turnover_S"))){
+      turnover_S <- Turnover.annualized(attr(rtn,"turnover_S"))[,"avg"]
+    } else {
+      turnover_S <- NA
+    }
+    turnover <- matrix(c(turnover_L,turnover_S,NA),nrow = 1)
+    rownames(turnover) <- "Annualized Turnover"
+    summary <- rbind(summary,turnover)
+  }
+  
   # ---- summary.yearly:summary of the yearly 'hedged' rtn
   summary.yearly <- t(xts::apply.yearly(rtn$hedge,rtn.summary,hitFreq=hitFreq))
   colnames(summary.yearly) <- lubridate::year(colnames(summary.yearly))
+  if(!is.null(attr(rtn,"turnover_L"))){
+    turnover.yearly <- t(xts::apply.yearly(attr(rtn,"turnover_L"),Turnover.annualized)[,"avg"])
+    if(!is.null(attr(rtn,"turnover_S"))){
+      turnover.yearly_S <- t(xts::apply.yearly(attr(rtn,"turnover_S"),Turnover.annualized)[,"avg"])
+      turnover.yearly <- (turnover.yearly+turnover.yearly_S)/2
+    }
+    colnames(turnover.yearly) <- lubridate::year(colnames(turnover.yearly))
+    summary.yearly <- plyr::rbind.fill.matrix(summary.yearly,turnover.yearly)
+  }
   rownames(summary.yearly) <- rownames(summary)  
   return(list(summary=summary,
               summary.yearly=summary.yearly,
@@ -824,6 +928,60 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
               hedge.stats=hedge.stats,              
               DD.stats=DD.stats))  
 }
+
+
+
+
+#' tables.PB
+#' 
+#' @param PB a PB object or a one colume rtn series.
+#' @param hitFreq
+#' @return a list containing some tables which giving the summary result of the PB.
+#' @seealso \code{\link{tables.longshort}}
+#' @export
+tables.PB <- function(PB, hitFreq="month"){
+  rtn <- PB
+  # ---- rtn.aggr: aggreated return series by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn') 
+  freq <- c("day","week","month","quarter","year")  
+  rtn.aggr <- lapply(freq,function(freq){aggr.rtn(rtn,freq)})
+  names(rtn.aggr) <- paste(freq,"ly",sep="")
+  
+  # ---- rtn.stats: main statisticals of the rtn,by different freq
+  rtn.stats <- t(plyr::laply(rtn.aggr,function(x){rtn.stats(x)}))
+  colnames(rtn.stats) <- paste(freq,"ly",sep="")  
+  
+  # ---- period.stats: table showing the yearly,all-span and annualized return
+  period.stats <- rtn.periods(rtn)
+  
+  # ---- DD.stats:table showing statistics for the worst drawdowns.
+  DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn)  
+  
+  # ---- summary:summary of the all over rtn
+  summary <- rtn.summary(rtn,hitFreq=hitFreq)
+  if(!is.null(attr(rtn,"turnover"))){
+    turnover <- Turnover.annualized(attr(rtn,"turnover"))[,"avg"]
+    turnover <- matrix(c(turnover),nrow = 1)
+    rownames(turnover) <- "Annualized Turnover"
+    summary <- rbind(summary,turnover)
+  }
+  
+  # ---- summary.yearly:summary of the yearly rtn
+  summary.yearly <- t(xts::apply.yearly(rtn,rtn.summary,hitFreq=hitFreq))
+  colnames(summary.yearly) <- lubridate::year(colnames(summary.yearly))
+  if(!is.null(attr(rtn,"turnover"))){
+    turnover.yearly <- t(xts::apply.yearly(attr(rtn,"turnover"),Turnover.annualized)[,"avg"])
+    colnames(turnover.yearly) <- lubridate::year(colnames(turnover.yearly))
+    summary.yearly <- plyr::rbind.fill.matrix(summary.yearly,turnover.yearly)
+  }
+  rownames(summary.yearly) <- rownames(summary)  
+  return(list(summary=summary,
+              summary.yearly=summary.yearly,
+              period.stats=period.stats,
+              rtn.stats=rtn.stats,              
+              DD.stats=DD.stats))  
+}
+
+
 #' @rdname backtest.longshort
 #' @param bar.freq the freq of the per-period performance bar chart
 #' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
@@ -853,12 +1011,12 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 }
 
 
-table.turnover <- function(PB){
-  
-}
-chart.turnover <- function(PB){
-  
-}
+# table.turnover <- function(PB){
+#   
+# }
+# chart.turnover <- function(PB){
+#   
+# }
 
 
 
