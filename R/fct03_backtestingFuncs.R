@@ -369,7 +369,9 @@ seri.Ngroup.rtn <- function(TSFR,N=5,stat=c("mean","median"),
     TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
     TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
   } else {
+    TSFR <- renameCol(TSFR,"date_end","date")
     TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
+    TSFR <- renameCol(TSFR,"date","date_end")
     TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
     TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
     TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
@@ -389,6 +391,72 @@ seri.Ngroup.rtn <- function(TSFR,N=5,stat=c("mean","median"),
   result <- rtn.xts
   return(result)  
 }
+
+#' @export
+seri.Ngroup.rtn_new <- function(TSFR,N=5,stat=c("mean","median"),
+                            sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
+                            backtestPar,
+                            bysector=FALSE){
+  stat <- match.arg(stat)
+  if(!missing(backtestPar)){
+    N <- getbacktestPar.Ngroup(backtestPar,"N")
+    stat <- getbacktestPar.Ngroup(backtestPar,"stat")
+    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
+    sectorAttr <- getbacktestPar.Ngroup(backtestPar,"sectorAttr")
+  }
+  check.TSFR(TSFR)
+  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
+  # ---- add the rank and groups of the factorscores 
+  if(!sectorNe & !bysector){
+    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
+  } else {
+    TSFR <- renameCol(TSFR,"date_end","date")
+    TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
+    TSFR <- renameCol(TSFR,"date","date_end")
+    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
+    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
+    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
+  }
+  
+  # ---- rtn seri of each group
+  
+  if(!bysector){ # -- return a xts
+    data.table::setkeyv(TSFR,c("date_end","group"))
+    if(stat=="mean"){
+      rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","group")]
+    } else if(stat=="median"){
+      rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date_end","group")]
+    }  
+    rtn.df <- as.data.frame(rtn.df)
+    rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
+    rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
+    colnames(rtn.xts) <- paste("Q",1:N,sep="") 
+    result <- rtn.xts
+  } else { # -- return a list of xts
+    data.table::setkeyv(TSFR,c("date_end","sector","group"))
+    if(stat=="mean"){
+      rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","sector","group")]
+    } else if(stat=="median"){
+      rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date_end","sector","group")]
+    }  
+    rtn.df <- as.data.frame(rtn.df)
+    rtn.mat <- reshape2::acast(rtn.df,date_end~sector~group,value.var="mean.rtn")
+    
+    result <- list()
+    for(ii in 1:dim(rtn.mat)[2]){
+      rtn.xts <- xts::as.xts(rtn.mat[,ii,],as.Date(rownames(rtn.mat),tz=""))
+      colnames(rtn.xts) <- paste("Q",1:N,sep="") 
+      result <- c(result, list(rtn.xts))
+    }
+    names(result) <- dimnames(rtn.mat)[[2]]
+  }
+  
+  return(result)  
+}
+
+
 #' @rdname backtest.Ngroup
 #' @param turnoverType a character of "num" or "wgt". If "wgt", consider the weight change due to the periodrtn when calculate the turnover.
 #' @return seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
@@ -500,6 +568,12 @@ table.Ngroup.overall <- function(TSFR,N=5,stat=c("mean","median"),
   re <- cbind(re.spread,re)  
   return(re)
 }
+
+
+table.Ngroup.overall_bysector <- function(){
+  
+}
+
 #' @rdname backtest.Ngroup
 #' @return table.Ngroup.spread return a matrix which giving the statistics of the rtn of top-bottom spread in each year.
 #' @export

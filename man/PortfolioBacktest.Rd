@@ -11,33 +11,35 @@
 \title{portfolio building and backtesting}
 \usage{
 getPort(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
-  "min", "max"), pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
-  buffer.in = 0, buffer.keep = 0, init_port = NULL, backtestPar,
-  dir = c("long", "short"))
+  "min", "max", "sectmean"), pick.sectorNe = FALSE,
+  sectorAttr = defaultSectorAttr(), buffer.in = 0, buffer.keep = 0,
+  init_port = NULL, backtestPar, dir = c("long", "short"))
 
-addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom"),
-  wgt.sectorNe = FALSE, wgtbmk = "EI000300",
+addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
+  "ffvsqrt"), wgt.sectorNe = FALSE, wgtbmk = "EI000300",
   sectorAttr = defaultSectorAttr(), backtestPar, tolerance = 0.2)
 
 port.substitute(port, TSF, wgt.max = NA, sectorAttr = defaultSectorAttr(),
   backtestPar, dir = c("long", "short"))
 
 getPort_throughout(TSF, topN = NA, topQ = NA, factorNA = c("median",
-  "mean", "na", "min", "max"), pick.sectorNe = FALSE, buffer.in = 0,
-  buffer.keep = 0, init_port = NULL, wgtType = c("eq", "fv", "fvsqrt",
-  "custom"), wgt.sectorNe = FALSE, wgtbmk = "EI000300", wgt.max = NA,
-  sectorAttr = defaultSectorAttr(), backtestPar, dir = c("long", "short"))
+  "mean", "na", "min", "max", "sectmean"), pick.sectorNe = FALSE,
+  buffer.in = 0, buffer.keep = 0, init_port = NULL, wgtType = c("eq",
+  "fv", "fvsqrt", "custom", "ffv", "ffvsqrt"), wgt.sectorNe = FALSE,
+  wgtbmk = "EI000300", wgt.max = NA, sectorAttr = defaultSectorAttr(),
+  backtestPar, dir = c("long", "short"))
 
 port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
   backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
   "simple"))
 
 getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
-  "min", "max"), pick.sectorNe = FALSE, buffer.in = 0, buffer.keep = 0,
-  init_port = NULL, wgtType = c("eq", "fv", "fvsqrt", "custom"),
-  wgt.sectorNe = FALSE, wgtbmk = "EI000300", wgt.max = NA,
-  holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = fee.buy,
-  sectorAttr = defaultSectorAttr(), backtestPar, dir = c("long", "short"))
+  "min", "max", "sectmean"), pick.sectorNe = FALSE, buffer.in = 0,
+  buffer.keep = 0, init_port = NULL, wgtType = c("eq", "fv", "fvsqrt",
+  "custom", "ffv", "ffvsqrt"), wgt.sectorNe = FALSE, wgtbmk = "EI000300",
+  wgt.max = NA, holdingEndT = Sys.Date(), fee.buy = 0,
+  fee.sell = fee.buy, sectorAttr = defaultSectorAttr(), backtestPar,
+  dir = c("long", "short"))
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object or a \bold{TSFR} object}

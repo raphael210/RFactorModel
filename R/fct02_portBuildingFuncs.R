@@ -66,7 +66,7 @@ rm.liquidity <- function(TS){#ZHANGTING
 #' groups <- cbind(tmp[-(N+1)],tmp[-1])
 #' port.list <- apply(groups,1,function(x)getPort(TSFR,,x))
 getPort <- function(TSF, topN=NA, topQ=NA, 
-                    factorNA=c("median","mean","na","min","max"),
+                    factorNA=c("median","mean","na","min","max","sectmean"),
                     pick.sectorNe=FALSE, sectorAttr=defaultSectorAttr(),
                     buffer.in=0, buffer.keep=0, init_port=NULL,
                     backtestPar,
@@ -166,7 +166,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 #' port <- getPort(TSF,20)
 #' port <- addwgt2port(port,"fv")
 addwgt2port <- function (port,
-                         wgtType= c("eq","fv","fvsqrt","custom"),
+                         wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                          wgt.sectorNe=FALSE, wgtbmk="EI000300", sectorAttr=defaultSectorAttr(),
                          backtestPar,                       
                          tolerance=0.2) {  
@@ -196,6 +196,14 @@ addwgt2port <- function (port,
     port$float_cap <- NULL
   } else if (wgtType=="custom"){
     port <- port
+  } else if (wgtType %in% c("ffv","ffvsqrt")){
+    port <- gf.free_float_sharesMV(port)
+    if (wgtType=="ffv") {
+      port <- plyr::ddply(port,"date",transform,wgt=factorscore/sum(factorscore,na.rm=TRUE))
+    } else {
+      port <- plyr::ddply(port,"date",transform,wgt=sqrt(factorscore)/sum(sqrt(factorscore),na.rm=TRUE))
+    }   
+    port$factorscore <- NULL
   }
   # ---- neutrualizing wgt by sectors 
   if (wgt.sectorNe) {
@@ -305,11 +313,11 @@ port.substitute <- function(port,TSF,
 getPort_throughout <- function (TSF,
                                 # getPort
                                 topN=NA, topQ=NA, 
-                                factorNA=c("median","mean","na","min","max"),
+                                factorNA=c("median","mean","na","min","max","sectmean"),
                                 pick.sectorNe=FALSE, 
                                 buffer.in=0, buffer.keep=0, init_port=NULL,
                                 # addwgt2port
-                                wgtType= c("eq","fv","fvsqrt","custom"),
+                                wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                                 wgt.sectorNe=FALSE, wgtbmk="EI000300",
                                 # port.substitute
                                 wgt.max=NA, 
@@ -446,11 +454,11 @@ port.backtest <- function(port,
 getPB <- function (TSF,
                    # getPort
                    topN=NA, topQ=NA, 
-                   factorNA=c("median","mean","na","min","max"),
+                   factorNA=c("median","mean","na","min","max","sectmean"),
                    pick.sectorNe=FALSE, 
                    buffer.in=0, buffer.keep=0, init_port=NULL,
                    # addwgt2port
-                   wgtType= c("eq","fv","fvsqrt","custom"),
+                   wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                    wgt.sectorNe=FALSE, wgtbmk="EI000300",
                    # port.substitute
                    wgt.max=NA, 
@@ -546,10 +554,10 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
     re <- getPeriodrtn_EI(stockID=bmk, begT=date_start, endT=date_end)
     re <- xts::xts(re$periodrtn, date_end)
     colnames(re) <- "bmk"
-  } else if(substr(bmk,1,2)=="IF"){
+  } else if(substr(bmk,1,2) %in% c("IF","IC","IH")){ # - to be modified...
     p_Nday <- periodicity_Ndays(rtn)
     if(p_Nday>2){
-      stop("The rtn series is not daily. can not use IF as bmk in the current!")
+      stop("The rtn series is not daily. can not use Index Future as bmk in the current!")
     }
     # bmk <- "IF00"
     begT <- rdate2ts(as.Date(start(rtn)))
@@ -567,7 +575,7 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
     re <- tsRemoteExecute(str)
     re <- plyr::ldply(re,as.data.frame)
     re <- xts::xts(re$Settlement/re$Prev_Settlement-1 ,as.Date(re$date))
-    colnames(re) <- "bmk"
+    colnames(re) <- bmk
   } 
   return(re)
 }

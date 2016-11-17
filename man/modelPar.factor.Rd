@@ -5,13 +5,13 @@
 \alias{buildFactorList_lcfs}
 \alias{modelPar.factor}
 \alias{setmodelPar.factor}
-\alias{setmodelPar.factor_multi}
+\alias{setmodelPar.factor_combi}
 \title{modelPar.factor}
 \usage{
 modelPar.factor(modelPar = modelPar.default(), factorFun = "gf.demo",
   factorPar = list(), factorDir = 1, factorStd = c("none", "norm",
   "sectorNe"), sectorAttr = defaultSectorAttr(), factorOutlier = 3,
-  factorNA = c("na", "mean", "median", "min", "max"),
+  factorNA = c("na", "mean", "median", "min", "max", "sectmean"),
   factorName = default.factorName(factorFun, factorPar, factorDir),
   factorID = "", factorType = "", factorDesc = "", FactorList)
 
@@ -19,19 +19,23 @@ setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorStd,
   sectorAttr, factorOutlier, factorNA, factorName, factorID, factorType,
   factorDesc, FactorList)
 
-setmodelPar.factor_multi(modelPar, factorLists, wgts, factorDir, factorStd,
-  sectorAttr, factorOutlier, factorNA, factorName = "multifactor", factorID,
-  factorType, factorDesc)
+setmodelPar.factor_combi(modelPar, factorLists, wgts,
+  factorStd_mult = c("none", "norm", "sectorNe"), factorNA_mult = c("na",
+  "mean", "median", "min", "max", "sectmean"),
+  sectorAttr_mult = defaultSectorAttr(), factorDir, factorStd, sectorAttr,
+  factorOutlier, factorNA, factorName = "multifactor", factorID, factorType,
+  factorDesc)
 
 buildFactorList(factorFun = "gf.demo", factorPar = list(), factorDir = 1,
   factorStd = c("none", "norm", "sectorNe"),
   sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = c("na",
-  "mean", "median", "min", "max"), factorName = default.factorName(factorFun,
-  factorPar, factorDir), factorID = "", factorType = "", factorDesc = "")
+  "mean", "median", "min", "max", "sectmean"),
+  factorName = default.factorName(factorFun, factorPar, factorDir),
+  factorID = "", factorType = "", factorDesc = "")
 
 buildFactorList_lcfs(factorID, factorStd = c("none", "norm", "sectorNe"),
   sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = c("na",
-  "mean", "median", "min", "max"))
+  "mean", "median", "min", "max", "sectmean"))
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
@@ -76,7 +80,7 @@ if \code{FactorList} is missing, then the factor related parametres is set by th
 \note{
 if the parammeter \code{factorFun} is \code{"gf_lcfs"}, then the factorDir, factorName, factorID, factorType and factorDesc will be mapped automatically by \code{\link{CT_FactorLists()}}.
 
-\code{setmodelPar.factor_multi} set \code{modelPar} by \code{factorFun="getMultiFactor"} and  \code{factorPar=list(factorLists,wgts)}.  It is used usually in testing the multi-factor-model. See \code{\link{getMultiFactor}}.
+\code{setmodelPar.factor_combi} set \code{modelPar} by \code{factorFun="getMultiFactor"} and  \code{factorPar=list(factorLists,wgts)}.  It is used usually in testing the multi-factor-model. See \code{\link{getMultiFactor}}.
 }
 \examples{
 modelPar <- modelPar.default()
@@ -87,12 +91,12 @@ modelPar <- modelPar.factor(modelPar,
                            factorStd = "sectorNe",
                            factorNA = "na",
                            factorOutlier = 3 )
-# -- setmodelPar.factor_multi
+# -- setmodelPar.factor_combi
 mp <- modelPar.default()
 factorIDs <- c("F000008","F000001","F000006")
 factorLists <- buildFactorLists_lcfs(factorIDs)
 wgts <- c(0.5, 0.3, 0.2)
-mp_m <- setmodelPar.factor_multi(mp, factorLists, wgts)
+mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
 # -- set modelPar.factor by a factorlist
 FactorList <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20))
 modelPar <- modelPar.factor(modelPar,FactorList=FactorList)
