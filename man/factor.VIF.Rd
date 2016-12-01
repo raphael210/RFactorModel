@@ -25,7 +25,7 @@ get factor's VIF
 RebDates <- getRebDates(as.Date('2012-12-31'),as.Date('2016-08-31'),rebFreq = 'month')
 TS <- getTS(RebDates,'EI000985')
 testfactorList <- buildFactorLists_lcfs('F000002',factorStd="norm",factorNA = "median")
-factorIDs <- c("F000003","F000004","F000007","F000008","F000011")
+factorIDs <- c("F000002","F000006","F000008")
 factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 VIF <- factor.VIF(TS,testfactorList,factorLists)
 }

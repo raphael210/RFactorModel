@@ -6,27 +6,51 @@
 \alias{regression_result}
 \title{regression_result}
 \usage{
-reg.TSFR(TSFR, regType = c("lm", "glm"), glm_wgt = c("sqrtFV", "res"),
+reg.TSFR(TSFR, regType = c("glm", "lm"), glm_wgt = c("sqrtFV", "res"),
   sectorAttr = defaultSectorAttr())
 
 reg.TS(TS, factorLists, regType = c("glm", "lm"), glm_wgt = c("sqrtFV",
   "res"), sectorAttr = defaultSectorAttr(), dure = months(1))
 }
 \arguments{
-\item{TSFR}{a TSFR object.}
+\item{TSFR}{a \bold{TSFR} object.}
 
-\item{regType}{the regress type,the default type is "lm".}
+\item{regType}{the regress type,the default type is "glm".}
+
+\item{TS}{a \bold{TS} object.}
+
+\item{factorLists}{a list of factor setting.}
+
+\item{regType}{the regress type,the default type is "glm".}
 }
 \value{
-reg.TSFR return a list, contains dataframes of frtn, residual, Rsquare, pfp
+reg.TSFR return a list, contains dataframes of frtn, residual and Rsquare
 
-reg.TS return a list, contains dataframes of TSFR,frtn, residual, Rsquare
+a list, contains a \bold{TSFR} and regression result list.
 }
 \description{
 Regression to the TSFR data, calculate factor return, residuals, and R squrare, etc.
 }
 \examples{
-reg.TSFR(TSFR)
+RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
+TS <- getTS(RebDates,indexID = 'EI000985')
+TS <- rmSuspend(TS)
+factorIDs <- c("F000002","F000006","F000008")
+tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+factorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.NP_YOY",
+                  factorPar=list(),
+                  factorDir=1),
+  factorStd="norm",factorNA = "median")
+factorLists <- c(tmp,factorLists)
+TSF <- getMultiFactor(TS,FactorLists = factorLists)
+TSFR <- getTSR(TSF)
+re <- reg.TSFR(TSFR)
+RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2016-09-30'),'month')
+TS <- getTS(RebDates,'EI000985')
+factorIDs <- c("F000002","F000006","F000008")
+factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+re <- reg.TS(TS,factorLists)
 }
 \author{
 Ruifei.yin
