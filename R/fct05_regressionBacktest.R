@@ -154,6 +154,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   TS <- TSFR[,c('date','stockID')]
   # get sector factor
   TSS <- gf.sector(TS,sectorAttr = sectorAttr)
+  TSS <- dplyr::select(TSS,-sector)
   TSFR <- merge.x(TSFR,TSS,by=c("date","stockID"))
   
   # regression
@@ -256,6 +257,7 @@ reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"
 factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAttr()){
   TSF <- getMultiFactor(TS,c(testfactorList,factorLists))
   TSS <- gf.sector(TS,sectorAttr = sectorAttr)
+  TSS <- dplyr::select(TSS,-sector)
   TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
   
   testfname <- sapply(testfactorList, '[[','factorName')
@@ -627,6 +629,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     
     
     tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
+    tmp <- dplyr::select(tmp,-sector)
     tmp.TSF <- merge.x(tmp.TSF,tmp)
     if('date' %in% colnames(fRtn) ){
       tmp.fRtn <- fRtn[fRtn$date==i,-1]
@@ -641,6 +644,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     #get benchmark stock component weight and sector info. 
     benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
     tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr,type = 'char')
+    tmp <- dplyr::select(tmp,-sector)
     benchmarkdata <- merge(benchmarkdata,tmp,by=c('date','stockID'))
     totwgt <- plyr::ddply(benchmarkdata,'sector',plyr::summarise,secwgt=sum(wgt))
     totwgt$wgtlb <- totwgt$secwgt*(1-indfexp)
@@ -863,18 +867,11 @@ charts.RA <- function(RA_tables){
 #' get factorscore of sector
 #' 
 #' @export
-gf.sector <- function(TS, sectorAttr,type=c('matrix','char','all')) {
-  type <- match.arg(type)
+gf.sector <- function(TS, sectorAttr) {
   TSS <- getSectorID(TS,sectorAttr = sectorAttr)
   TSS <- sectorNA_fill(TSS,sectorAttr=sectorAttr)
-  if(type=='matrix'){
-    re <- reshape2::dcast(TSS,date+stockID~sector,length,fill=0,value.var = 'sector')
-  }else if(type=='char'){
-    re <- TSS
-  }else{
-    re <- reshape2::dcast(TSS,date+stockID~sector,length,fill=0,value.var = 'sector')
-    re <- merge.x(re,TSS)
-  }
+  re <- reshape2::dcast(TSS,date+stockID~sector,length,fill=0,value.var = 'sector')
+  re <- merge.x(TSS,re,by = c("date","stockID"))
   return(re)
 }
 

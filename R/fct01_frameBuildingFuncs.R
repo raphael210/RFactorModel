@@ -584,16 +584,29 @@ factor.std <- function (TSF,factorStd=c("none","norm","sectorNe"),sectorAttr) {
   return(TSF)
 }
 # ---- deal with the missing values of factorscore
-factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"), trim = NA) {
+factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"), trim = 0.025) {
   method <- match.arg(method)
   if(method=="mean"){
+    TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())
+    TSS <- TSS[,c('date','stockID','sector')]
+    TSF <- merge.x(TSF,TSS,by=c('date','stockID'))
+    TSF <- dplyr::group_by(TSF, date, sector)
     if(is.na(trim)){
-      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+      #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
     }else{
-      TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+      #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
     }
+    TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
   } else if(method=="median"){
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())
+    TSS <- TSS[,c('date','stockID','sector')]
+    TSF <- merge.x(TSF,TSS,by=c('date','stockID'))
+    TSF <- dplyr::group_by(TSF, date, sector)
+    TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
   } else if(method=="min"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="max"){

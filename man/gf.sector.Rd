@@ -4,7 +4,7 @@
 \alias{gf.sector}
 \title{get factorscore of sector}
 \usage{
-gf.sector(TS, sectorAttr, type = c("matrix", "char", "all"))
+gf.sector(TS, sectorAttr)
 }
 \description{
 get factorscore of sector
