@@ -352,51 +352,9 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
 #' TSFR <- Model.TSFR(modelPar)
 #' re <- seri.Ngroup.rtn(TSFR,5)
 seri.Ngroup.rtn <- function(TSFR,N=5,stat=c("mean","median"),
-                            sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
-                            backtestPar){
-  stat <- match.arg(stat)
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    stat <- getbacktestPar.Ngroup(backtestPar,"stat")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-    sectorAttr <- getbacktestPar.Ngroup(backtestPar,"sectorAttr")
-  }
-  check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
-  # ---- add the rank and groups of the factorscores 
-  if(!sectorNe){
-    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
-  } else {
-    TSFR <- renameCol(TSFR,"date_end","date")
-    TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
-    TSFR <- renameCol(TSFR,"date","date_end")
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
-  }
-  
-  # ---- rtn seri of each group
-  data.table::setkeyv(TSFR,c("date_end","group"))
-  if(stat=="mean"){
-    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","group")]
-  } else if(stat=="median"){
-    rtn.df <- TSFR[,list(mean.rtn=median(periodrtn)), by=c("date_end","group")]
-  }  
-  rtn.df <- as.data.frame(rtn.df)
-  rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
-  rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
-  colnames(rtn.xts) <- paste("Q",1:N,sep="")   
-  result <- rtn.xts
-  return(result)  
-}
-
-#' @export
-seri.Ngroup.rtn_new <- function(TSFR,N=5,stat=c("mean","median"),
-                            sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
-                            backtestPar,
-                            bysector=FALSE){
+                                sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
+                                backtestPar,
+                                bysector=FALSE){
   stat <- match.arg(stat)
   if(!missing(backtestPar)){
     N <- getbacktestPar.Ngroup(backtestPar,"N")
@@ -455,6 +413,9 @@ seri.Ngroup.rtn_new <- function(TSFR,N=5,stat=c("mean","median"),
   
   return(result)  
 }
+
+
+
 
 
 #' @rdname backtest.Ngroup
@@ -569,9 +530,19 @@ table.Ngroup.overall <- function(TSFR,N=5,stat=c("mean","median"),
   return(re)
 }
 
-
-table.Ngroup.overall_bysector <- function(){
+#' @rdname backtest.Ngroup
+#' @return table.Ngroup.overall_bysector return a matrix which giving the annualized rtn of each group, by sectors.
+#' @export
+table.Ngroup.overall_bysector <- function(TSFR,N=5,stat=c("mean","median"),
+                                          sectorAttr=defaultSectorAttr(),
+                                          backtestPar){
+  stat <- match.arg(stat)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,stat=stat,sectorNe=TRUE,sectorAttr=sectorAttr,backtestPar=backtestPar,bysector=TRUE)
   
+  annu_rtn <- plyr::laply(rtnseri,Return.annualized)
+  rownames(annu_rtn) <- names(rtnseri)
+  re <- annu_rtn
+  return(re)
 }
 
 #' @rdname backtest.Ngroup
@@ -624,20 +595,30 @@ table.Ngroup.spread <- function(TSFR,N=5,stat=c("mean","median"),
 #' chart.Ngroup.overall(TSFR,5)
 chart.Ngroup.overall <- function(TSFR,N=5,stat=c("mean","median"),
                                  sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
-                                 plotPar){
+                                 plotPar,
+                                 bysector=FALSE){
   stat <- match.arg(stat)
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
     stat <- getplotPar.Ngroup(plotPar,"stat")
   }  
-  tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
-  rtn.annu <- tmptable[1,-1]
-  rtn.annu <- data.frame(group=as.integer(substring(names(rtn.annu),2)),rtn.annu=rtn.annu)
-  re <- ggplot(rtn.annu,aes(x=group,y=rtn.annu))+
-    geom_bar(position="dodge",stat="identity")+
-    ggtitle("Annualized return of each group")+
-    geom_text(aes(label=paste(round(rtn.annu*100,1),"%",sep="")),vjust=-0.5)+
-    scale_y_continuous(labels=scales::percent)
+  if(!bysector){
+    tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
+    rtn.annu <- tmptable[1,-1]
+    rtn.annu <- data.frame(group=as.integer(substring(names(rtn.annu),2)),rtn.annu=rtn.annu)
+    re <- ggplot(rtn.annu,aes(x=group,y=rtn.annu))+
+      geom_bar(position="dodge",stat="identity")+
+      ggtitle("Annualized return of each group")+
+      geom_text(aes(label=paste(round(rtn.annu*100,1),"%",sep="")),vjust=-0.5)+
+      scale_y_continuous(labels=scales::percent)
+  } else {
+    tmptable <- table.Ngroup.overall_bysector(TSFR=TSFR,N=N,stat=stat,sectorAttr=sectorAttr)
+    tmptable <- cbind(sector=rownames(tmptable),as.data.frame(tmptable))
+    tmptable <- reshape2::melt(tmptable, id.var="sector")
+    re <- ggplot(tmptable, aes(x=sector,y=variable,fill=value))+ geom_tile() +
+      scale_fill_gradient2(low = 'green', high = 'red')
+  }
+  
   return(re)
 }
 #' @rdname backtest.Ngroup
@@ -674,24 +655,37 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",stat=c("mean","median"),
 #' chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",stat=c("mean","median"),
                                   sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
-                                  plotPar){
+                                  plotPar,
+                                  bysector=FALSE){
   stat <- match.arg(stat)
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")    
     stat <- getplotPar.Ngroup(plotPar,"stat")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
   }  
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
-  rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
-  rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
-  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
-  rtnseri.melt$group <- as.integer(substring(rtnseri.melt$variable,2))
-  rtnseri.melt$time <- as.character(rtnseri.melt$time)
-  re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
-    geom_bar(position="dodge",stat="identity")+
-    facet_wrap(~ time, scales="free_y") +
-    ggtitle("Return of each group")+
-    scale_y_continuous(labels=scales::percent)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr,bysector = bysector)
+  if(!bysector){
+    rtn_aggr <- aggr.rtn(rtnseri,freq=Nbin)
+    rtn_aggr.df <- data.frame(time=time(rtn_aggr),zoo::coredata(rtn_aggr))
+    rtn_aggr.melt <- reshape2::melt(rtn_aggr.df,id.vars="time")
+    rtn_aggr.melt$group <- as.integer(substring(rtn_aggr.melt$variable,2))
+    rtn_aggr.melt$time <- as.character(rtn_aggr.melt$time)
+    re <- ggplot(rtn_aggr.melt,aes(x=group,y=value))+
+      geom_bar(position="dodge",stat="identity")+
+      facet_wrap(~ time, scales="free_y") +
+      ggtitle("Return of each group")+
+      scale_y_continuous(labels=scales::percent)
+  } else {
+    rtn_aggr <- plyr::laply(rtnseri,aggr.rtn,freq=Nbin)
+    dimnames(rtn_aggr)[[1]] <- names(rtnseri)
+    dimnames(rtn_aggr)[[2]] <- as.character(time(aggr.rtn(rtnseri[[1]],freq=Nbin)))
+    rtn_aggr.melt <- reshape2::melt(rtn_aggr,varnames =c("sector","time","group"))
+    rtn_aggr.melt$time <- as.character(rtn_aggr.melt$time)
+    re <- ggplot(rtn_aggr.melt,aes(x=sector,y=group,fill=value))+ geom_tile() +
+      scale_fill_gradient2(low = 'green', high = 'red')+
+      facet_wrap(~ time, scales="free_y") +
+      ggtitle("Return of each group by sector")
+  }
   return(re)
 }
 #' @rdname backtest.Ngroup
@@ -870,7 +864,8 @@ MC.table.Ngroup.overall <- function(TSFRs,N=5,stat=c("mean","median"),
 #' MC.chart.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall <- function(TSFRs,N=5,stat=c("mean","median"),
                                     sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
-                                    ncol=3,plotPar){
+                                    ncol=3,plotPar,
+                                    bysector=FALSE){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
   if(!missing(plotPar)){
@@ -882,7 +877,7 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,stat=c("mean","median"),
   } 
   NMs <- names(TSFRs)
   Ngroup.charts <- mapply(function(x,nm){
-    chart.Ngroup.overall(x,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)+  
+    chart.Ngroup.overall(x,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr,bysector=bysector)+  
       ggtitle(nm) +
       theme(axis.title.x= element_blank(),axis.title.y= element_blank())
   },TSFRs,NMs,SIMPLIFY = FALSE )
