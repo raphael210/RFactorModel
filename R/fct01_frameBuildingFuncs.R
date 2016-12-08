@@ -584,7 +584,7 @@ factor.std <- function (TSF,factorStd=c("none","norm","sectorNe"),sectorAttr) {
   return(TSF)
 }
 # ---- deal with the missing values of factorscore
-factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"), trim = 0.025) {
+factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"), trim = 0.05) {
   method <- match.arg(method)
   if(method=="mean"){
     TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())

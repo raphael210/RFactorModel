@@ -643,8 +643,8 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     
     #get benchmark stock component weight and sector info. 
     benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
-    tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr,type = 'char')
-    tmp <- dplyr::select(tmp,-sector)
+    tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr)
+    tmp <- tmp[,c('date','stockID','sector')]
     benchmarkdata <- merge(benchmarkdata,tmp,by=c('date','stockID'))
     totwgt <- plyr::ddply(benchmarkdata,'sector',plyr::summarise,secwgt=sum(wgt))
     totwgt$wgtlb <- totwgt$secwgt*(1-indfexp)
