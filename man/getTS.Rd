@@ -4,7 +4,11 @@
 \alias{getTS}
 \title{getTS}
 \usage{
+<<<<<<< HEAD
 getTS(RebDates, indexID = "EI000300", stocks = NULL)
+=======
+getTS(RebDates, indexID = "EI000300", stocks = NULL, rm = NULL)
+>>>>>>> 8cfb173f93398aa2e3ff8bbe75aa89ab5e15cdf1
 }
 \arguments{
 \item{RebDates}{a \bold{RebDates} object. a vector,with class of Date,usually the rebalancing dates list}
@@ -12,6 +16,11 @@ getTS(RebDates, indexID = "EI000300", stocks = NULL)
 \item{indexID}{a character string. The ID of the index, sector or plate. Could be a single-ID-code(eg. "EI000300","ES09440000",...) or a more complicated express containing some set operations and ID-codes(eg. "setdiff(union(EI000300,EI399006),ES09440000)"). See detail in \code{\link{getComps}}.}
 
 \item{stocks}{a vector of stockIDs}
+<<<<<<< HEAD
+=======
+
+\item{rm}{could be one or more of "suspend","priceLimit".default is NULL}
+>>>>>>> 8cfb173f93398aa2e3ff8bbe75aa89ab5e15cdf1
 }
 \value{
 a \bold{TS} object. a dataframe,with cols:

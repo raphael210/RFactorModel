@@ -5,24 +5,6 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 
-rm.sus <- function(TS){  
-  check.TS(TS)
-  
-  TS_next <- data.frame(date=trday.nearby(TS$date,by=-1), stockID=TS$stockID)
-  TS_next <- TS.getTech_ts(TS_next, funchar="istradeday4()",varname="trading")
-  TS <- TS[TS_next$trading == 1, ]
-  return(TS)
-}
-rm.blacklist <- function(TS,blklist=c("EQ600061")){
-  check.TS(TS)
-  TS <- TS[!TS$stockID %in% blklist, ]
-}
-rm.ST <- function(TS){
-  
-}
-rm.liquidity <- function(TS){#ZHANGTING
-  
-}
 
 #' portfolio building and backtesting
 #' 
@@ -398,7 +380,7 @@ port.backtest <- function(port,
       port0 <- dplyr::filter(port,date!=max(date)) 
       port1 <- dplyr::filter(port,date==max(date)) 
       port1$date_end <- holdingEndT
-      port1$periodrtn <- getPeriodrtn(stockID=port1$stockID, begT=port1$date, endT=holdingEndT, exclude.SP=TRUE)
+      port1$periodrtn <- getPeriodrtn(stockID=port1$stockID, begT=port1$date, endT=holdingEndT, drop=TRUE)
       port <- rbind(port0,port1)
     }
     R.df <- reshape2::dcast(port,date_end~stockID,value.var="periodrtn",fill=0)
@@ -418,7 +400,7 @@ port.backtest <- function(port,
     pb <- txtProgressBar(style = 3)
     for (ii in 1:length(datelist)){
       stocks <- port[port$date==datelist[ii],"stockID"]
-      begT <- trday.nearby(datelist = datelist[ii], by = -1L)
+      begT <- trday.nearby(datelist = datelist[ii], by = 1L)
       endT <- as.Date(ifelse(ii==length(datelist), holdingEndT, datelist[ii+1]), "1970-01-01")
       qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"))
       qt <- renameCol(qt, "pct_chg", "rtn")
@@ -545,9 +527,9 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
       p_Nday <- periodicity_Ndays(rtn)
       if(p_Nday>2){
         warning("The rtn series is not daily. The start point of the first rtn period is padded by an approximate value!")
-        date_start_pad <- trday.nearest(min(date_end) - p_Nday, dir = 1L)
+        date_start_pad <- trday.offset(min(date_end),by = lubridate::days(-round(periodicity_Ndays(date))), dir = -1L)
       } else { # daily rtn
-        date_start_pad <- trday.nearby(min(date_end),by = 1)
+        date_start_pad <- trday.nearby(min(date_end),by = -1)
       }
     }
     date_start <- c(date_start_pad, date_end[-length(date_end)])
