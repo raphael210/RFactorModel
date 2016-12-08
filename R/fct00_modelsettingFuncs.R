@@ -118,6 +118,7 @@ setmodelPar.time <- function(modelPar,
 #' @param modelPar a \bold{modelPar} object
 #' @param indexID  the ID of the index("EIxxxx"), sector("ESxxxx"), or plate("EPxxxx"). The function will recognize the universe type through the first two character of \code{indexID}.
 #' @param stocks
+#' @param rm
 #' @return a \bold{modelPar} object
 #' @seealso \code{\link{getTS}}
 #' @author Ruifei.Yin
@@ -125,16 +126,19 @@ setmodelPar.time <- function(modelPar,
 #' @family modelPar setting functions
 modelPar.univ <- function(modelPar  = modelPar.default(),
                           indexID   = "EI000300",
-                          stocks    = NULL){
+                          stocks    = NULL,
+                          rm        = NULL){
   modelPar$univ <- list(indexID  = indexID,
-                        stocks   = stocks)
+                        stocks   = stocks,
+                        rm       = rm)
   return(modelPar)
 }
 #' @rdname modelPar.univ
 #' @export
-setmodelPar.univ <- function(modelPar, indexID, stocks){
+setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
   if(!missing(indexID)) modelPar$univ$indexID <- indexID 
   if(!missing(stocks)) modelPar$univ$stocks <- stocks 
+  if(!missing(rm)) modelPar$univ$rm <- rm 
   return(modelPar)
 }
 

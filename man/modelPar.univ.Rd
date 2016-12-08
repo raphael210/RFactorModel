@@ -6,9 +6,9 @@
 \title{modelPar.univ}
 \usage{
 modelPar.univ(modelPar = modelPar.default(), indexID = "EI000300",
-  stocks = NULL)
+  stocks = NULL, rm = NULL)
 
-setmodelPar.univ(modelPar, indexID, stocks)
+setmodelPar.univ(modelPar, indexID, stocks, rm)
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}

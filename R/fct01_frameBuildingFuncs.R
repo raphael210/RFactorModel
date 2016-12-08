@@ -40,7 +40,7 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
       rebdays <- c(begT,rebdays) 
     } 
     # shift the rebalancing dates afterward
-    re <- trday.nearby(rebdays,-shiftby)
+    re <- trday.nearby(rebdays,shiftby)
   }
   
   return(re)
@@ -55,6 +55,7 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' @param RebDates a \bold{RebDates} object. a vector,with class of Date,usually the rebalancing dates list
 #' @param indexID a character string. The ID of the index, sector or plate. Could be a single-ID-code(eg. "EI000300","ES09440000",...) or a more complicated express containing some set operations and ID-codes(eg. "setdiff(union(EI000300,EI399006),ES09440000)"). See detail in \code{\link{getComps}}.
 #' @param stocks a vector of stockIDs
+#' @param rm could be one or more of "suspend","priceLimit".default is NULL
 #' @return a \bold{TS} object. a dataframe,with cols:
 #'   \itemize{
 #'   \item date: the rebalance dates, with \code{Date} class
@@ -70,11 +71,17 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' TS2 <- getTS(RebDates,'ES09440000')  # financial servive sector
 #' TS3 <- getTS(RebDates,'setdiff(EI000300,ES09440000)')  # CSI300 ex. financial servive sector
 #' TS4 <- getTS(RebDates,stocks=c("EQ000002","EQ000023","EQ600000"))
-getTS <- function(RebDates,indexID="EI000300",stocks=NULL){  
+getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){  
   if(!is.null(stocks)){
-    TS <- expand.grid(stockID=stocks,date=RebDates)
+    TS <- expand.grid(date=RebDates,stockID=stocks)
   } else {
     TS <- getComps(sectorIDs=indexID,endT=RebDates,drop=FALSE) 
+  }
+  if("suspend" %in% rm){
+    TS <- rm_suspend(TS, nearby = 1L)
+  }
+  if("priceLimit" %in% rm){
+    TS <- rm_priceLimit(TS, nearby = 1L, lim = c(-9.8,9.8))
   }
   return (TS)
 }
@@ -125,15 +132,15 @@ getTSR <- function(TS, dure=NULL, date_end_pad){
   date <- unique(TS$date)
   if (is.null(dure)){
     if(missing(date_end_pad)){ # calculate the padding value automatically
-      date_end_pad <- trday.nearest(max(date)+periodicity_Ndays(date), dir = -1L)
+      date_end_pad <- trday.offset(max(date),by = lubridate::days(round(periodicity_Ndays(date))), dir = 1L)
     }
     date_end <- c(date[-1],date_end_pad)
   } else {
-    date_end <- trday.offset(date,dure,dir=-1L)
+    date_end <- trday.offset(date,dure)
   }  
   merging <- data.frame(date,date_end)
   TS <- merge.x(TS,merging,by="date")  
-  periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),exclude.SP=TRUE))
+  periodrtn <- data.frame(periodrtn=getPeriodrtn(renameCol(TS,c("date","date_end"),c("begT","endT")),drop=TRUE))
   TSR <- cbind(TS,periodrtn)
   return(TSR)
 }
@@ -160,7 +167,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
     }
     date.decay <- data.frame()
     for(ii in 1:length(prd_lists)){
-      endT_i <- trday.offset(date,prd_lists[[ii]],dir=-1L)
+      endT_i <- trday.offset(date,prd_lists[[ii]])
       if(ii==1L){
         date.decay <- data.frame(endT_i)
       } else {
@@ -175,7 +182,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
     cat("Getting the decayed rtn ....\n")
     pb_ <- txtProgressBar(min=0,max=length(prd_lists),initial=0,style=3)
     for(ii in 1:length(prd_lists)){      
-      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT_",prd_names[ii],sep="")),tgt=c("begT","endT")),exclude.SP=TRUE))      
+      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT_",prd_names[ii],sep="")),tgt=c("begT","endT")),drop=TRUE))      
       rtnI <- renameCol(rtnI,"rtn",paste("prdrtn_",prd_names[ii],sep=""))
       TS <- cbind(TS,rtnI)
       setTxtProgressBar(pb_,ii)
@@ -299,7 +306,7 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
   }
   TS_ <- data.frame(idx,TS)
   TS_ <- dplyr::group_by(TS_,idx)
-  re <- dplyr::do(TS_, subFun(.))
+  re <- dplyr::do(TS_, subFun(as.data.frame(.)))
   re <- as.data.frame(re)
   re <- dplyr::select(re,-idx)
   return(re)
@@ -559,6 +566,7 @@ MultiFactor2TSFs <- function(TSF_M,
 
 
 # --------------------  ~~ intermediately called functions ----------------
+
 # ---- deal with the outliers of factorscore
 factor.outlier <- function (TSF, factorOutlier) {
   TSF <- plyr::ddply(TSF,"date",
@@ -654,6 +662,78 @@ gf.ezsec <- function(ts){
 }
 
 
+# --------------------  ~~ TS removing functions ----------------
 
+#' remove suspension stock from TS
+#'
+#' @param TS 
+#' @param nearby a integer vector. default is 1L, which means remove the suspending of the next tradingday. see detail in \code{\link{trday.nearby}}.
+#' @param datasrc
+#' @examples
+#' RebDates <- getRebDates(as.Date('2013-03-17'),as.Date('2016-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000985')
+#' re <- rm_suspend(TS) # remove Suspend of nextday
+#' re1 <- rm_suspend(TS,nearby=c(0,1))# remove Suspend of today and nextday
+#' @export
+rm_suspend <- function(TS,nearby=1L,
+                       datasrc=defaultDataSRC()){
+  check.TS(TS)
+  if(datasrc=='ts'){
+    for (by in nearby){
+      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
+      TS_ <- TS.getTech_ts(TS_, funchar="istradeday4()",varname="trading")
+      TS <- TS[TS_$trading == 1, ]
+    }
+  } else {
+    for (by in nearby){
+      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
+      istradingday <- trday.is(TS=TS_, drop = TRUE)
+      TS <- TS[istradingday,]
+    }
+  }
+  
+  return(TS)
+}
 
+#' remove price limits
+#' 
+#' @param lim a vector of length 2.
+#' @examples
+#' RebDates <- getRebDates(as.Date('2013-03-17'),as.Date('2016-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000985')
+#' re <- rm_priceLimit(TS)
+#' re1 <- rm_priceLimit(TS,nearby=-1:1)
+#' re2 <- rm_priceLimit(TS,lim=c(-Inf,10)) # remove limit-up
+#' @export
+rm_priceLimit <- function(TS,nearby=1L,lim=c(-10, 10),
+                          datasrc=defaultDataSRC()){
+  check.TS(TS)
+  if(datasrc=='ts'){
+    for (by in nearby){
+      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
+      TS_1 <- TS.getTech_ts(TS_, funchar="StockPrevClose3()",varname="pre_close")
+      TS_2 <- TS.getTech_ts(TS_, funchar="close()",varname="close")
+      in_lim <- TS_2$close > round(TS_1$pre_close*(1+lim[1]/100),2) & TS_2$close < round(TS_1$pre_close*(1+lim[2]/100),2)
+      TS <- TS[in_lim, ]
+    }
+  } else {
+    for (by in nearby){
+      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
+      TS_ <- TS.getTech(TS_,variables=c("pre_close","close") ,datasrc = datasrc)
+      in_lim <- TS_$close > round(TS_$pre_close*(1+lim[1]/100),2) & TS_$close < round(TS_$pre_close*(1+lim[2]/100),2)
+      TS <- TS[in_lim, ]
+    }
+  }
+  
+  return(TS)
+}
 
+rm_blacklist <- function(TS){
+  
+}
+rm_whitelist <- function(TS){
+  
+}
+rm_ST <- function(TS){
+  
+}

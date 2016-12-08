@@ -883,7 +883,8 @@ getActivewgt <- function(port,bmk,res=c("all","active")) {
   res <- match.arg(res)
   benchdata <- getIndexCompWgt(indexID = bmk,endT = unique(port$date))
   colnames(benchdata) <- c('date','stockID','benchwgt')
-  colnames(port) <- c('date','stockID','portwgt')
+  # colnames(port) <- c('date','stockID','portwgt')
+  port <- renameCol(port,"wgt","portwgt")
   port <- merge(benchdata,port,by=c('date','stockID'),all=TRUE)
   port[is.na(port$portwgt),'portwgt'] <- 0
   port[is.na(port$benchwgt),'benchwgt'] <- 0

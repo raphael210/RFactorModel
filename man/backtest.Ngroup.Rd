@@ -13,11 +13,12 @@
 \alias{seri.Ngroup.rtn}
 \alias{seri.Ngroup.turnover}
 \alias{table.Ngroup.overall}
+\alias{table.Ngroup.overall_bysector}
 \alias{table.Ngroup.spread}
 \title{backtest.Ngroup}
 \usage{
 seri.Ngroup.rtn(TSFR, N = 5, stat = c("mean", "median"), sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), backtestPar)
+  sectorAttr = defaultSectorAttr(), backtestPar, bysector = FALSE)
 
 seri.Ngroup.turnover(TSFR, N = 5, turnoverType = c("num", "wgt"),
   sectorNe = FALSE, sectorAttr = defaultSectorAttr(), backtestPar)
@@ -26,18 +27,23 @@ table.Ngroup.overall(TSFR, N = 5, stat = c("mean", "median"),
   turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
   sectorAttr = defaultSectorAttr(), backtestPar)
 
+table.Ngroup.overall_bysector(TSFR, N = 5, stat = c("mean", "median"),
+  sectorAttr = defaultSectorAttr(), backtestPar)
+
 table.Ngroup.spread(TSFR, N = 5, stat = c("mean", "median"),
   turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
   sectorAttr = defaultSectorAttr(), backtestPar)
 
 chart.Ngroup.overall(TSFR, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
+  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar,
+  bysector = FALSE)
 
 chart.Ngroup.seri_point(TSFR, N = 5, Nbin = "day", stat = c("mean",
   "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
 
 chart.Ngroup.seri_bar(TSFR, N = 5, Nbin = "day", stat = c("mean",
-  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
+  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar,
+  bysector = FALSE)
 
 chart.Ngroup.seri_line(TSFR, N = 5, stat = c("mean", "median"),
   sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
@@ -53,7 +59,8 @@ MC.table.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
   sectorAttr = defaultSectorAttr(), backtestPar)
 
 MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar)
+  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar,
+  bysector = FALSE)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
@@ -86,6 +93,8 @@ seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
 seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
 
 table.Ngroup.overall return a matrix which giving the statistics of the rtn of each group, as well as the rtn of top-bottom spread.
+
+table.Ngroup.overall_bysector return a matrix which giving the annualized rtn of each group, by sectors.
 
 table.Ngroup.spread return a matrix which giving the statistics of the rtn of top-bottom spread in each year.
 

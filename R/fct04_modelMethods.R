@@ -39,7 +39,8 @@ Model.TS <- function(modelPar){
   # ---- build the TS
   indexID <- modelPar$univ$indexID
   stocks <- modelPar$univ$stocks
-  TS <- getTS(RebDates,indexID=indexID,stocks=stocks)
+  rm <- modelPar$univ$rm
+  TS <- getTS(RebDates,indexID=indexID,stocks=stocks,rm=rm)
   attr(TS,"MP") <- modelPar
   return(TS)
 }

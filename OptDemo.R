@@ -31,6 +31,8 @@ FactorLists <- buildFactorLists(
 FactorLists <- c(tmp,FactorLists)
 TSF <- getMultiFactor(TS,FactorLists = FactorLists)
 
+TSFR <- getTSR(TSF)
+
 
 
 
