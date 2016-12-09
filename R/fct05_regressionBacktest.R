@@ -150,6 +150,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   #ptm <- proc.time()
   regType <- match.arg(regType)
   glm_wgt <- match.arg(glm_wgt)
+  TSFRold <- TSFR
   
   TS <- TSFR[,c('date','stockID')]
   # get sector factor
@@ -198,7 +199,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   }
   rownames(fRtn) <- NULL
   fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
-  re <- list(fRtn=fRtn,res=res,RSquare=RSquare)
+  re <- list(TSFR=TSFRold,fRtn=fRtn,res=res,RSquare=RSquare)
   
   # tpassed <- proc.time()-ptm
   # tpassed <- tpassed[3]
@@ -231,7 +232,7 @@ reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"
   TSF <- getMultiFactor(TS,FactorLists = factorLists)
   TSFR <- getTSR(TSF,dure=dure)
   reg <- reg.TSFR(TSFR = TSFR,regType = regType,glm_wgt=glm_wgt,sectorAttr = sectorAttr)
-  re <- list(TSFR=TSFR,reg=reg)
+  re <- list(TSFR=TSFR,fRtn=reg$fRtn,res=reg$res,RSquare=reg$RSquare)
   return(re)
 }
 
@@ -244,7 +245,8 @@ reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"
 #' @param TS is a \bold{TS} object.
 #' @param testfactorList is a factor list for test.
 #' @param factorLists is a set of factors in use.
-#' @param sectorAttr is sector attribution.
+#' @param sectorAttr is sector.
+#' @param TSF is \bold{TSF} object.
 #' @return a VIF time series.
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2012-12-31'),as.Date('2016-08-31'),rebFreq = 'month')
@@ -253,25 +255,50 @@ reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"
 #' factorIDs <- c("F000002","F000006","F000008")
 #' factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 #' VIF <- factor.VIF(TS,testfactorList,factorLists)
+#' VIF <- factor.VIF(TSF=TSF)
 #' @export
-factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAttr()){
-  TSF <- getMultiFactor(TS,c(testfactorList,factorLists))
-  TSS <- gf.sector(TS,sectorAttr = sectorAttr)
-  TSS <- dplyr::select(TSS,-sector)
-  TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
-  
-  testfname <- sapply(testfactorList, '[[','factorName')
-  fname <- c(sapply(factorLists, '[[','factorName'),setdiff(colnames(TSS),c('date','stockID','sector')))
-  # loop of regression
-  dates <- unique(TSF$date)
-  VIF <- data.frame()
-  for(i in 1:length(dates)){ 
-    tmp.tsf <- TSF[TSF$date==dates[i],]
-    fml <- formula(paste(testfname," ~ ", paste(fname, collapse= "+"),"-1",sep=''))
-    lmm <- lm(fml,data = tmp.tsf)
-    smry <- summary(lmm)
-    VIF <- rbind(VIF,data.frame(date=dates[i],VIF=1/(1-smry$r.squared)))
+factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAttr(),TSF){
+  if(missing(TSF)){
+    TSS <- gf.sector(TS,sectorAttr = sectorAttr)
+    TSS <- dplyr::select(TSS,-sector)
+    TSF <- getMultiFactor(TS,c(testfactorList,factorLists))
+    TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
+    
+    testfname <- sapply(testfactorList, '[[','factorName')
+    fname <- c(sapply(factorLists, '[[','factorName'),setdiff(colnames(TSS),c('date','stockID','sector')))
+    # loop of regression
+    dates <- unique(TSF$date)
+    VIF <- data.frame()
+    for(i in 1:length(dates)){ 
+      tmp.tsf <- TSF[TSF$date==dates[i],]
+      fml <- formula(paste(testfname," ~ ", paste(fname, collapse= "+"),"-1",sep=''))
+      lmm <- lm(fml,data = tmp.tsf)
+      smry <- summary(lmm)
+      VIF <- rbind(VIF,data.frame(date=dates[i],VIF=1/(1-smry$r.squared)))
+    }
+  }else{
+    TS <- TSF[,c('date','stockID')]
+    TSS <- gf.sector(TS,sectorAttr = sectorAttr)
+    TSS <- dplyr::select(TSS,-sector)
+    fname <- setdiff(colnames(TSF),c('date','stockID'))
+    TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
+    indname <- setdiff(colnames(TSF),c(fname,c('date','stockID')))
+    # loop of regression
+    dates <- unique(TSF$date)
+    VIF <- data.frame()
+    for(i in 1:length(dates)){ 
+      tmp.tsf <- TSF[TSF$date==dates[i],]
+      for(j in fname){
+        tmp <- c(indname,setdiff(fname,j))
+        fml <- formula(paste(j," ~ ", paste(tmp, collapse= "+"),"-1",sep=''))
+        lmm <- lm(fml,data = tmp.tsf)
+        smry <- summary(lmm)
+        VIF <- rbind(VIF,data.frame(date=dates[i],factorName=j,VIF=1/(1-smry$r.squared)))
+      }
+   
+    }
   }
+
   return(VIF)
 }
 
@@ -284,19 +311,87 @@ factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAtt
 
 # ---------------------  ~~ Backtesting results --------------
 
-tables.reg <- function(reg_results){
-  
-  # annrtn,annvol,sharpe,hitRatio,avg_T_sig
+table.reg.rsquare <- function(reg_results){
   # Rsquare 
-  tmp <- re$frtn
-  ddply(tmp,'fname',summarise,n=sum(abs(Tstat)>2)/length(Tstat))
-}
-charts.reg <- function(reg_results){
-  # charts for each factor
+  RSquare <- reg_results$RSquare
+  re <- round(summary(RSquare$RSquare),3)
+  re <- data.frame(cbind(begT=min(RSquare$date),
+                   endT=max(RSquare$date),
+                   NPeriod=nrow(RSquare),
+                   t(re)))
+  re <- transform(re,begT=as.Date(begT,origin='1970-01-01'),
+                  endT=as.Date(endT,origin='1970-01-01'))
+  colnames(re) <- c("begT","endT","NPeriod","Min","Qu.1st","Median","Mean","Qu.3rd","Max")
+  return(re)
 }
 
-MC.chart.reg <- function(reg_results){
+
+table.reg.fRtn <- function(reg_results){
+  # annrtn,annvol,sharpe,hitRatio,avg_T_sig
+  fRtn <- reg_results$fRtn
   
+  tstat <- summarise(group_by(fRtn,fname),avgT=mean(abs(Tstat)),
+                     TPer=sum(abs(Tstat)>2)/length(Tstat))
+  colnames(tstat) <- c("fname","mean(abs(T))","percent abs(T)>2")
+  tstat$fname <- as.character(tstat$fname)
+  
+  fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
+  fRtn <- xts::xts(fRtn[,-1],fRtn[,1])
+  rtnsum <- t(rtn.summary(fRtn))
+  rtnsum <- data.frame(fname=rownames(rtnsum),rtnsum)
+  rownames(rtnsum) <- NULL
+  colnames(rtnsum) <- c("fname","Annual Return","Annual StdDev","Sharpe","HitRatio","Worst Drawdown" )
+  rtnsum$fname <- as.character(rtnsum$fname)
+  
+  TSF <- reg_results$TSFR
+  TSF <- dplyr::select(TSF,-date_end,-periodrtn)
+  VIF <- factor.VIF(TSF=TSF)
+  VIF <- summarise(group_by(VIF,factorName),VIF=mean(VIF))
+  VIF <- dplyr::rename(VIF,fname=factorName)
+  VIF$fname <- as.character(VIF$fname)
+  
+  re <- left_join(rtnsum,tstat,by='fname')
+  re <- left_join(re,VIF,by='fname')
+  return(re)
+}
+
+
+chart.reg.fRtnWealthIndex <- function(reg_results){
+  # charts for each factor
+  fRtn <- reg_results$fRtn
+  fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
+  fRtn <- xts::xts(fRtn[,-1],fRtn[,1])
+  ggplot.WealthIndex(fRtn)
+}
+
+chart.reg.fRtnBar <- function(reg_results){
+  # charts for each factor
+  fRtn <- reg_results$fRtn
+  ggplot(fRtn, aes(x=date, y=frtn)) +ggtitle('factor return')+
+    geom_bar(position="dodge",stat="identity")+facet_grid(fname ~ .)
+}
+
+chart.reg.rsquare <- function(reg_results){
+  RSquare <- reg_results$RSquare
+  RSquare <- xts::xts(RSquare[,-1],RSquare[,1])
+  colnames(RSquare) <- c('RSquare')
+  tmp <- zoo::rollmean(RSquare,12,align='right')
+  tmp <- data.frame(date=zoo::index(tmp),RSquareMA=zoo::coredata(tmp))
+  RSquare <- data.frame(time=time(RSquare),zoo::coredata(RSquare))
+  ggplot(RSquare, aes(x=time, y=RSquare))+geom_line(color="#D55E00") +
+      ggtitle('RSquare(with MA series)') +geom_line(data=tmp,aes(x=date,y=RSquare),size=1,color="#56B4E9")
+  
+}
+
+
+MC.chart.regCorr <- function(reg_results){
+  fRtn <- reg_results$fRtn
+
+  fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
+  fRtn <- as.matrix(fRtn[,-1])
+  fRtn.cor <- cor(fRtn)
+  corrplot::corrplot(fRtn.cor,method = 'number')
+
 }
 
 

@@ -34,7 +34,7 @@ TSF <- getMultiFactor(TS,FactorLists = FactorLists)
 TSFR <- getTSR(TSF)
 
 
-
+reg_results <- reg.TSFR(TSFR)
 
 #get factor return
 fNames <- sapply(FactorLists, '[[','factorName')

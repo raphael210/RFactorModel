@@ -4,7 +4,8 @@
 \alias{factor.VIF}
 \title{get factor's VIF}
 \usage{
-factor.VIF(TS, testfactorList, factorLists, sectorAttr = defaultSectorAttr())
+factor.VIF(TS, testfactorList, factorLists, sectorAttr = defaultSectorAttr(),
+  TSF)
 }
 \arguments{
 \item{TS}{is a \bold{TS} object.}
@@ -13,7 +14,9 @@ factor.VIF(TS, testfactorList, factorLists, sectorAttr = defaultSectorAttr())
 
 \item{factorLists}{is a set of factors in use.}
 
-\item{sectorAttr}{is sector attribution.}
+\item{sectorAttr}{is sector.}
+
+\item{TSF}{is \bold{TSF} object.}
 }
 \value{
 a VIF time series.
@@ -28,6 +31,7 @@ testfactorList <- buildFactorLists_lcfs('F000002',factorStd="norm",factorNA = "m
 factorIDs <- c("F000002","F000006","F000008")
 factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 VIF <- factor.VIF(TS,testfactorList,factorLists)
+VIF <- factor.VIF(TSF=TSF)
 }
 \author{
 Andrew Dow
