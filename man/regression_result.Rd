@@ -7,21 +7,26 @@
 \title{regression_result}
 \usage{
 reg.TSFR(TSFR, regType = c("glm", "lm"), glm_wgt = c("sqrtFV", "res"),
-  sectorAttr = defaultSectorAttr())
+  sectorAttr = defaultSectorAttr(), secRtnOut = FALSE)
 
 reg.TS(TS, factorLists, regType = c("glm", "lm"), glm_wgt = c("sqrtFV",
-  "res"), sectorAttr = defaultSectorAttr(), dure = months(1))
+  "res"), sectorAttr = defaultSectorAttr(), dure = months(1),
+  secRtnOut = FALSE)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
 
 \item{regType}{the regress type,the default type is "glm".}
 
+\item{secRtnOut}{whether output sector's return,default value is FALSE.}
+
 \item{TS}{a \bold{TS} object.}
 
 \item{factorLists}{a list of factor setting.}
 
 \item{regType}{the regress type,the default type is "glm".}
+
+\item{secRtnOut}{whether output sector's return,default value is FALSE.}
 }
 \value{
 reg.TSFR return a list, contains dataframes of frtn, residual and Rsquare

@@ -27,6 +27,15 @@ FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
+  buildFactorList(factorFun="gf.ILLIQ",
+                  factorPar=list(),
+                  factorDir=1),
+  buildFactorList(factorFun="gf.disposition",
+                  factorPar=list(),
+                  factorDir=-1),
+  buildFactorList(factorFun="gf.volatility",
+                  factorPar=list(),
+                  factorDir=-1),
   factorStd="norm",factorNA = "mean")
 FactorLists <- c(tmp,FactorLists)
 TSF <- getMultiFactor(TS,FactorLists = FactorLists)
@@ -102,4 +111,48 @@ allrtn2 <- addrtn.hedge(re2,benchrtn2)
 ggplot.WealthIndex(allrtn2)
 rtn.summary(allrtn2)
 rtn.periods(allrtn2)
+
+
+
+factorFun <- 'gf.beta'
+factorPar <- ''
+factorID='F000014'                     
+begT = as.Date("1990-01-01")
+endT = Sys.Date()
+splitNbin = "month"
+
+con <- db.local()
+
+loopT <- dbGetQuery(con,"select distinct tradingday from QT_FactorScore order by tradingday")[[1]]
+loopT <- loopT[loopT>=rdate2int(begT) & loopT<=rdate2int(endT)]    
+loopT.L <- split(loopT,cut(intdate2r(loopT),splitNbin))
+
+subfun <- function(Ti){
+  cat(paste(" ",min(Ti),"to",max(Ti)," ...\n"))
+  dates <- paste(Ti,collapse=",")
+  TS <- dbGetQuery(con,paste("select TradingDay as date, ID as stockID from QT_FactorScore where TradingDay in (",dates,")"))
+  TS$date <- intdate2r(TS$date)    
+  TSF <- getTSF(TS,factorFun,factorPar)
+  TSF$date <- rdate2int(TSF$date)
+  colnames(TSF) <- c('date','stockID',factorID)
+  
+  for(Tij in Ti){ # update the factorscore day by day.
+    #     Tij <- Ti[1]
+    # cat(paste(" ",Tij))
+    dbWriteTable(con,"yrf_tmp",TSF[TSF$date==Tij,],overwrite=TRUE,append=FALSE,row.names=FALSE)
+    qr <- paste("UPDATE QT_FactorScore
+                SET ",factorID,"= (SELECT ",factorID," FROM yrf_tmp WHERE yrf_tmp.stockID =QT_FactorScore.ID) 
+                WHERE QT_FactorScore.ID = (SELECT stockID FROM yrf_tmp WHERE yrf_tmp.stockID =QT_FactorScore.ID)
+                and QT_FactorScore.TradingDay =",Tij)
+    res <- dbSendQuery(con,qr)
+    dbClearResult(res)  
+  }   
+  gc()
+}  
+
+cat(paste("Function lcfs.add: updateing factor score of",factorID,".... \n"))
+plyr::l_ply(loopT.L, subfun, .progress = plyr::progress_text(style=3))   
+dbDisconnect(con)
+
+
 

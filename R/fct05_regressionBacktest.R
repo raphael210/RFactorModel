@@ -128,6 +128,7 @@ update.lcdb.RegTables <- function(FactorLists){
 #' @param regType the regress type,the default type is "glm".
 #' @param glm_wgt
 #' @param sectorAttr
+#' @param secRtnOut whether output sector's return,default value is FALSE.
 #' @return reg.TSFR return a list, contains dataframes of frtn, residual and Rsquare
 #' @export
 #' @author Ruifei.yin
@@ -146,7 +147,7 @@ update.lcdb.RegTables <- function(FactorLists){
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' TSFR <- getTSR(TSF)
 #' re <- reg.TSFR(TSFR)
-reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sectorAttr=defaultSectorAttr()){
+reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sectorAttr=defaultSectorAttr(),secRtnOut=FALSE){
   #ptm <- proc.time()
   regType <- match.arg(regType)
   glm_wgt <- match.arg(glm_wgt)
@@ -198,7 +199,9 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
     # pfpwgt <- rbind(pfpwgt,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,t(tmp.f)))
   }
   rownames(fRtn) <- NULL
-  fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
+  if(secRtnOut==FALSE){
+    fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
+  }
   re <- list(TSFR=TSFRold,fRtn=fRtn,res=res,RSquare=RSquare)
   
   # tpassed <- proc.time()-ptm
@@ -216,6 +219,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
 #' @param glm_wgt
 #' @param sectorAttr
 #' @param dure
+#' @param secRtnOut whether output sector's return,default value is FALSE.
 #' @return a list, contains a \bold{TSFR} and regression result list.
 #' @export
 #' @examples 
@@ -226,7 +230,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
 #' re <- reg.TS(TS,factorLists)
 reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
                    sectorAttr=defaultSectorAttr(),
-                   dure=months(1)){
+                   dure=months(1),secRtnOut=FALSE){
   regType <- match.arg(regType)
   glm_wgt <- match.arg(glm_wgt)
   TSF <- getMultiFactor(TS,FactorLists = factorLists)
@@ -892,10 +896,14 @@ exposure.port <- function(port,factorLists){
 #' 
 #' @export
 #' @examples 
+#' tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
+#'                 factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
 #' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
-#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),,factorStd="norm",factorNA = "median")
-#' re <- getPAData(port,c(alphaLists,riskLists))
-tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
+#' alphaLists <- c(tmp,alphaLists)
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+#' PA_tables <- getPAData(port,c(alphaLists,riskLists))
+#' PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
+getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   
   # get active wgt, if necessary
   if(!missing(bmk)){
@@ -908,24 +916,38 @@ tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   TS <- getTS(dates,indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
   TSR <- getTSR(TS)
   TSFR <- getMultiFactor(TSR,factorLists)
-  regdata <- reg.TSFR(TSFR = TSFR,regType = "lm",sectorAttr = sectorAttr )
-  frtn <- regdata$frtn[,c("date","fname","frtn")]
+  regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = T)
+  frtn <- regdata$fRtn[,c("date","fname","frtn")]
   frtn <- reshape2::dcast(frtn,date~fname,value.var = 'frtn')
   frtn <- dplyr::arrange(frtn,date)
 
   # calculate factor exposure
   TSWF <- merge.x(port,TSFR,by=c('date','stockID'))
+  TSWF <- na.omit(TSWF)
   TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
   fexp <- exposure.TSWF(TSWF) 
   fexp <- dplyr::arrange(fexp,date)
   
   # calculate performance attribution
-  portrtn <- plyr::ddply(TSWF,"date",plyr::summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
-  portrtn <- dplyr::arrange(portrtn,date)[-nrow(portrtn), ]
+  if(!missing(bmk)){
+    rtn.short <- unique(TSWF[,c('date','date_end')])
+    rtn.short <- getPeriodrtn_EI(stockID=bmk,begT=rtn.short$date, endT=rtn.short$date_end)
+    rtn.short <- dplyr::rename(rtn.short,date=begT,date_end=endT,bmkrtn=periodrtn)
+    rtn.short <- rtn.short[,c( "date","date_end","bmkrtn")]
+    TSWF <- merge.x(TSWF,rtn.short)
+    TSWF$periodrtn <- TSWF$periodrtn-TSWF$bmkrtn
+    portrtn <- plyr::ddply(TSWF,"date",plyr::summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
+  }else(
+    portrtn <- plyr::ddply(TSWF,"date",plyr::summarise,rtn=sum(wgt*periodrtn, na.rm = TRUE))
+    
+  )
+  #portrtn <- dplyr::arrange(portrtn,date)[-nrow(portrtn), ]
+  portrtn <- dplyr::arrange(portrtn,date)
   portrtn_m <- as.matrix(portrtn[, -1])
   frtn <- dplyr::select(frtn,one_of(colnames(fexp))) # make the order of cols same with fexp
   frtn_m <- as.matrix(frtn[, -1])
-  fexp_m <- as.matrix(fexp[-nrow(fexp), -1])
+  #fexp_m <- as.matrix(fexp[-nrow(fexp), -1])
+  fexp_m <- as.matrix(fexp[, -1])
   fattr_m <- frtn_m*fexp_m
   res_m <- portrtn_m - as.matrix(rowSums(fattr_m))
   perfattr <- data.frame(date=portrtn$date,fattr_m,res=res_m)
@@ -935,9 +957,161 @@ tables.PA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
 
 
 
-charts.PA <- function(PA_tables,riskfnames){
+getPAPlot <- function(PAData,alphafname,riskfname,attributeAnn=T){
+  factorexp <- PAData$factorexp
+  perfattr <- PAData$perfattr
+  
+  #plot factor exposure
+  factormean <- colMeans(factorexp[,c(alphafname,riskfname)])
+  tmp <- setdiff(colnames(factorexp)[-1],c(alphafname,riskfname))
+  indmean <- sum(colMeans(factorexp[,tmp]))
+  names(indmean) <- 'industry'
+  factormean <- c(factormean,indmean)
+  factormean <- data.frame(factorName=names(factormean),factorExposure=unname(factormean))
+  factormean$tag <- ""
+  factormean[factormean$factorName %in% alphafname,'tag'] <- 'alpha'
+  factormean[factormean$factorName %in% riskfname,'tag'] <- 'risk'
+  factormean[factormean$factorName=='industry','tag'] <- 'industry'
+  fig_exposure <- ggplot(factormean,aes(x=factor(factorName),y=factorExposure,fill=tag))+geom_bar(stat = "identity")+labs(title='Factor Exposure',x='',y='')
+  
+  #plot summary factor performance attribution
+  tmp <- setdiff(colnames(perfattr)[-1],c(alphafname,riskfname,'res'))
+  perfattr$industry <- rowSums(perfattr[,tmp])
+  perfattr <- perfattr[,c('date',alphafname,riskfname,'industry','res')]
+  perfts <- xts::xts(perfattr[,-1],order.by = perfattr[,1])
+  
+  if(attributeAnn==TRUE){
+    rtnsum <- rtn.summary(perfts)
+    rtnsum <- rtnsum['Annualized Return',]
+  }else{
+    rtnsum <- rtn.periods(perfts)
+    rtnsum <- rtnsum["Cumulative Return",]
+  }
+  rtnsum <- data.frame(factorName=names(rtnsum),factorAttribution=unname(rtnsum))
+  rtnsum$tag <- ""
+  rtnsum[rtnsum$factorName %in% alphafname,'tag'] <- 'alpha'
+  rtnsum[rtnsum$factorName %in% riskfname,'tag'] <- 'risk'
+  rtnsum[rtnsum$factorName=='industry','tag'] <- 'industry'
+  rtnsum[rtnsum$factorName=='res','tag'] <- 'residual'
+  if(attributeAnn==TRUE){
+    fig_SeperateFactorAttribution <- ggplot(rtnsum,aes(x=factor(factorName),y=factorAttribution,fill=tag))+geom_bar(stat = "identity")+labs(title='Seperate Factor Attribution(Annulized)',x='',y='')
+    tmp <- ddply(rtnsum,.(tag),summarise,n=sum(factorAttribution))
+    colnames(tmp) <- c('factorType','factorAttribution')
+    fig_GroupFactorAttribution <- ggplot(tmp,aes(x=factor(factorType),y=factorAttribution,fill=factorType))+geom_bar(stat = "identity")+labs(title='Group Factor Attribution(Annulized)',x='',y='')
+  }else{
+    fig_SeperateFactorAttribution <- ggplot(rtnsum,aes(x=factor(factorName),y=factorAttribution,fill=tag))+geom_bar(stat = "identity")+labs(title='Seperate Factor Attribution',x='',y='')
+    tmp <- ddply(rtnsum,.(tag),summarise,n=sum(factorAttribution))
+    colnames(tmp) <- c('factorType','factorAttribution')
+    fig_GroupFactorAttribution <- ggplot(tmp,aes(x=factor(factorType),y=factorAttribution,fill=factorType))+geom_bar(stat = "identity")+labs(title='Group Factor Attribution',x='',y='')
+  }
+  
+  #plot factor performance attribution time series
+  fig_SeperateFactorWealthIndex <- ggplot.WealthIndex(perfts,main = 'Seperate Factor Wealth Index')
+  tmp <- perfts
+  tmp$alpha <- rowSums(tmp[,alphafname])
+  tmp$risk <- rowSums(tmp[,riskfname])
+  tmp <- tmp[,c('alpha','risk','industry','res')]
+  fig_GroupFactorWealthIndex <- ggplot.WealthIndex(tmp,main = 'Group Factor Wealth Index')
+  return(list(fig_exposure,fig_SeperateFactorAttribution,
+              fig_GroupFactorAttribution,fig_SeperateFactorWealthIndex,
+              fig_GroupFactorWealthIndex))
   
 }
+
+
+
+
+#' chart.PA.exposure
+#' 
+#' @export
+#' @examples 
+#' riskfnames <- sapply(riskLists,'[[','factorName')
+#' chart.PA.exposure(PA_tables,riskfnames,plotInd=FALSE)
+#' chart.PA.exposure(PA_tables,riskfnames,plotInd=TRUE)
+chart.PA.exposure <- function(PA_tables,riskfnames,plotInd=FALSE){
+  factorexp <- PA_tables$fexp
+ 
+  #plot factor exposure
+  indnames <- colnames(factorexp)[substr(colnames(factorexp),1,2)=='ES']
+  alphafnames <- setdiff(colnames(factorexp),c('date',indnames,riskfnames))
+  factormean <- colMeans(factorexp[,c(alphafnames,riskfnames)])
+  
+  if(plotInd==TRUE){
+    indmean <- colMeans(factorexp[,indnames])
+    indmean <- data.frame(factorName=sectorID2name(names(indmean)),
+                      factorExposure=unname(indmean))
+    factormean <- data.frame(factorName=names(factormean),factorExposure=unname(factormean))
+    factormean <- rbind(factormean,indmean)
+    
+    factormean$tag <- "industry"
+    factormean[factormean$factorName %in% alphafnames,'tag'] <- 'alpha'
+    factormean[factormean$factorName %in% riskfnames,'tag'] <- 'risk'
+  }else{
+    factormean <- data.frame(factorName=names(factormean),factorExposure=unname(factormean))
+    factormean$tag <- ""
+    factormean[factormean$factorName %in% alphafnames,'tag'] <- 'alpha'
+    factormean[factormean$factorName %in% riskfnames,'tag'] <- 'risk'
+  }
+  ggplot(factormean,aes(x=reorder(factorName,-factorExposure),y=factorExposure,fill=tag))+
+    geom_bar(stat = "identity")+labs(title='Factor Exposure',x='',y='')+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+
+#' chart.PA.attr
+#' 
+#' @export
+#' @examples 
+#' riskfnames <- sapply(riskLists,'[[','factorName')
+#' chart.PA.attr(PA_tables,riskfnames)
+#' chart.PA.attr(PA_tables,riskfnames,plotInd=TRUE)
+chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
+  perfattr <- PA_tables$perfattr
+  
+  indnames <- colnames(perfattr)[substr(colnames(perfattr),1,2)=='ES']
+  alphafnames <- setdiff(colnames(factorexp),c('date',indnames,riskfnames,'res'))
+  
+  #plot summary factor performance attribution
+  if(plotInd==FALSE){
+    perfattr <- perfattr[,c('date',alphafnames,riskfnames,'res')]
+  }
+  perfts <- xts::xts(perfattr[,-1],order.by = perfattr[,1])
+  
+  if(attributeAnn==TRUE){
+    rtnsum <- rtn.summary(perfts)
+    rtnsum <- rtnsum['Annualized Return',]
+  }else{
+    rtnsum <- rtn.periods(perfts)
+    rtnsum <- rtnsum["Cumulative Return",]
+  }
+  
+  rtnsum <- data.frame(factorName=names(rtnsum),factorAttribution=unname(rtnsum))
+  if(plotInd==TRUE){
+    rtnsum$tag <- "industry"
+    rtnsum.p1 <- rtnsum[rtnsum$factorName %in% indnames,]
+    rtnsum.p1$factorName <- sectorID2name(rtnsum.p1$factorName)
+    rtnsum.p2 <- rtnsum[!(rtnsum$factorName %in% indnames),]
+    rtnsum <- rbind(rtnsum.p1,rtnsum.p2)
+  }else{
+    rtnsum$tag <- ""
+  }
+  rtnsum[rtnsum$factorName %in% alphafnames,'tag'] <- 'alpha'
+  rtnsum[rtnsum$factorName %in% riskfnames,'tag'] <- 'risk'
+  rtnsum[rtnsum$factorName=='res','tag'] <- 'residual'
+  
+  if(attributeAnn==TRUE){
+    ggplot(rtnsum,aes(x=reorder(factorName,-factorAttribution),y=factorAttribution,fill=tag))+
+      geom_bar(stat = "identity")+labs(title='Factor Attribution(Annulized)',x='',y='')+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  }else{
+    ggplot(rtnsum,aes(x=reorder(factorName,-factorAttribution),y=factorAttribution,fill=tag))+
+      geom_bar(stat = "identity")+labs(title='Factor Attribution',x='',y='')+
+      theme(axis.text.x = element_text(angle = 90, hjust = 1))
+   }
+  
+  
+}
+
 
 
 # ---------------------  ~~ Risk attribution --------------
