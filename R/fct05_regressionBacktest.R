@@ -957,70 +957,6 @@ getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
 
 
 
-getPAPlot <- function(PAData,alphafname,riskfname,attributeAnn=T){
-  factorexp <- PAData$factorexp
-  perfattr <- PAData$perfattr
-  
-  #plot factor exposure
-  factormean <- colMeans(factorexp[,c(alphafname,riskfname)])
-  tmp <- setdiff(colnames(factorexp)[-1],c(alphafname,riskfname))
-  indmean <- sum(colMeans(factorexp[,tmp]))
-  names(indmean) <- 'industry'
-  factormean <- c(factormean,indmean)
-  factormean <- data.frame(factorName=names(factormean),factorExposure=unname(factormean))
-  factormean$tag <- ""
-  factormean[factormean$factorName %in% alphafname,'tag'] <- 'alpha'
-  factormean[factormean$factorName %in% riskfname,'tag'] <- 'risk'
-  factormean[factormean$factorName=='industry','tag'] <- 'industry'
-  fig_exposure <- ggplot(factormean,aes(x=factor(factorName),y=factorExposure,fill=tag))+geom_bar(stat = "identity")+labs(title='Factor Exposure',x='',y='')
-  
-  #plot summary factor performance attribution
-  tmp <- setdiff(colnames(perfattr)[-1],c(alphafname,riskfname,'res'))
-  perfattr$industry <- rowSums(perfattr[,tmp])
-  perfattr <- perfattr[,c('date',alphafname,riskfname,'industry','res')]
-  perfts <- xts::xts(perfattr[,-1],order.by = perfattr[,1])
-  
-  if(attributeAnn==TRUE){
-    rtnsum <- rtn.summary(perfts)
-    rtnsum <- rtnsum['Annualized Return',]
-  }else{
-    rtnsum <- rtn.periods(perfts)
-    rtnsum <- rtnsum["Cumulative Return",]
-  }
-  rtnsum <- data.frame(factorName=names(rtnsum),factorAttribution=unname(rtnsum))
-  rtnsum$tag <- ""
-  rtnsum[rtnsum$factorName %in% alphafname,'tag'] <- 'alpha'
-  rtnsum[rtnsum$factorName %in% riskfname,'tag'] <- 'risk'
-  rtnsum[rtnsum$factorName=='industry','tag'] <- 'industry'
-  rtnsum[rtnsum$factorName=='res','tag'] <- 'residual'
-  if(attributeAnn==TRUE){
-    fig_SeperateFactorAttribution <- ggplot(rtnsum,aes(x=factor(factorName),y=factorAttribution,fill=tag))+geom_bar(stat = "identity")+labs(title='Seperate Factor Attribution(Annulized)',x='',y='')
-    tmp <- ddply(rtnsum,.(tag),summarise,n=sum(factorAttribution))
-    colnames(tmp) <- c('factorType','factorAttribution')
-    fig_GroupFactorAttribution <- ggplot(tmp,aes(x=factor(factorType),y=factorAttribution,fill=factorType))+geom_bar(stat = "identity")+labs(title='Group Factor Attribution(Annulized)',x='',y='')
-  }else{
-    fig_SeperateFactorAttribution <- ggplot(rtnsum,aes(x=factor(factorName),y=factorAttribution,fill=tag))+geom_bar(stat = "identity")+labs(title='Seperate Factor Attribution',x='',y='')
-    tmp <- ddply(rtnsum,.(tag),summarise,n=sum(factorAttribution))
-    colnames(tmp) <- c('factorType','factorAttribution')
-    fig_GroupFactorAttribution <- ggplot(tmp,aes(x=factor(factorType),y=factorAttribution,fill=factorType))+geom_bar(stat = "identity")+labs(title='Group Factor Attribution',x='',y='')
-  }
-  
-  #plot factor performance attribution time series
-  fig_SeperateFactorWealthIndex <- ggplot.WealthIndex(perfts,main = 'Seperate Factor Wealth Index')
-  tmp <- perfts
-  tmp$alpha <- rowSums(tmp[,alphafname])
-  tmp$risk <- rowSums(tmp[,riskfname])
-  tmp <- tmp[,c('alpha','risk','industry','res')]
-  fig_GroupFactorWealthIndex <- ggplot.WealthIndex(tmp,main = 'Group Factor Wealth Index')
-  return(list(fig_exposure,fig_SeperateFactorAttribution,
-              fig_GroupFactorAttribution,fig_SeperateFactorWealthIndex,
-              fig_GroupFactorWealthIndex))
-  
-}
-
-
-
-
 #' chart.PA.exposure
 #' 
 #' @export
@@ -1069,7 +1005,7 @@ chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
   perfattr <- PA_tables$perfattr
   
   indnames <- colnames(perfattr)[substr(colnames(perfattr),1,2)=='ES']
-  alphafnames <- setdiff(colnames(factorexp),c('date',indnames,riskfnames,'res'))
+  alphafnames <- setdiff(colnames(perfattr),c('date',indnames,riskfnames,'res'))
   
   #plot summary factor performance attribution
   if(plotInd==FALSE){
