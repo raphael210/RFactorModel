@@ -117,7 +117,7 @@ rtn.periods(allrtn2)
 factorFun <- 'gf.beta'
 factorPar <- ''
 factorID='F000014'                     
-begT = as.Date("1990-01-01")
+begT = as.Date("2009-01-01")
 endT = Sys.Date()
 splitNbin = "month"
 

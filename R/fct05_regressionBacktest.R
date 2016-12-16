@@ -884,8 +884,22 @@ exposure.TSWF <- function(TSWF) {
   return(factorexp)
 }
 
-exposure.port <- function(port,factorLists){
+#' calculate port exposure
+#' 
+#' @export
+exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
+  dates <- unique(port$date)
+  TS <- getTS(dates,indexID = 'EI801003')   # get TSFR within rebDates==dates & univ==EI000985
+  TSF <- getMultiFactor(TS,factorLists)
+  TSWF <- merge.x(port,TSF,by=c('date','stockID'))
+  TSWF <- na.omit(TSWF)
+  if(sectorAttr!=NULL){
+    TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
+  }
   
+  fexp <- exposure.TSWF(TSWF) 
+  fexp <- dplyr::arrange(fexp,date)
+  return(fexp)
 }
 
 
@@ -1051,11 +1065,29 @@ chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
 
 
 # ---------------------  ~~ Risk attribution --------------
-tables.RA <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
+
+#' getRAData
+#' 
+#' @export
+#' @examples 
+#' tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
+#'                 factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
+#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
+#' alphaLists <- c(tmp,alphaLists)
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+#' RA_tables <- getPAData(port,c(alphaLists,riskLists))
+#' RA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
+getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   
 }
 
-charts.RA <- function(RA_tables){
+
+
+#' chart.RA.attr
+#' 
+#' @export
+#' @examples 
+chart.RA.attr <- function(RA_tables){
   
 }
 
