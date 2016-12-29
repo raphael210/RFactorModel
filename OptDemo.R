@@ -16,33 +16,25 @@ system.time(build.lcdb.RegTables(FactorLists))
 
 
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-# ---------------------  optimization demo -------------
+# ---------------------  optimization demo -----------------------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-RebDates <- getRebDates(as.Date('2010-01-31'),as.Date('2016-10-31'))
+RebDates <- getRebDates(as.Date('2009-01-31'),as.Date('2016-10-31'))
 TS <- getTS(RebDates,indexID = 'EI000985')
 
-factorIDs <- c("F000002","F000006","F000008","F000012","F000013","F000014","F000015")
+factorIDs <- c("F000006","F000008","F000012","F000013","F000014","F000016","F000017")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
 FactorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorPar=list(),
+                  factorDir=-1),
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
-  buildFactorList(factorFun="gf.ILLIQ",
-                  factorPar=list(),
-                  factorDir=1),
-  buildFactorList(factorFun="gf.disposition",
-                  factorPar=list(),
-                  factorDir=-1),
-  buildFactorList(factorFun="gf.volatility",
-                  factorPar=list(),
-                  factorDir=-1),
   factorStd="norm",factorNA = "mean")
 FactorLists <- c(tmp,FactorLists)
 TSF <- getMultiFactor(TS,FactorLists = FactorLists)
 
 TSFR <- getTSR(TSF)
-
-
 reg_results <- reg.TSFR(TSFR)
 
 #get factor return
@@ -114,45 +106,8 @@ rtn.periods(allrtn2)
 
 
 
-factorFun <- 'gf.beta'
-factorPar <- ''
-factorID='F000014'                     
-begT = as.Date("2009-01-01")
-endT = Sys.Date()
-splitNbin = "month"
 
-con <- db.local()
 
-loopT <- dbGetQuery(con,"select distinct tradingday from QT_FactorScore order by tradingday")[[1]]
-loopT <- loopT[loopT>=rdate2int(begT) & loopT<=rdate2int(endT)]    
-loopT.L <- split(loopT,cut(intdate2r(loopT),splitNbin))
-
-subfun <- function(Ti){
-  cat(paste(" ",min(Ti),"to",max(Ti)," ...\n"))
-  dates <- paste(Ti,collapse=",")
-  TS <- dbGetQuery(con,paste("select TradingDay as date, ID as stockID from QT_FactorScore where TradingDay in (",dates,")"))
-  TS$date <- intdate2r(TS$date)    
-  TSF <- getTSF(TS,factorFun,factorPar)
-  TSF$date <- rdate2int(TSF$date)
-  colnames(TSF) <- c('date','stockID',factorID)
-  
-  for(Tij in Ti){ # update the factorscore day by day.
-    #     Tij <- Ti[1]
-    # cat(paste(" ",Tij))
-    dbWriteTable(con,"yrf_tmp",TSF[TSF$date==Tij,],overwrite=TRUE,append=FALSE,row.names=FALSE)
-    qr <- paste("UPDATE QT_FactorScore
-                SET ",factorID,"= (SELECT ",factorID," FROM yrf_tmp WHERE yrf_tmp.stockID =QT_FactorScore.ID) 
-                WHERE QT_FactorScore.ID = (SELECT stockID FROM yrf_tmp WHERE yrf_tmp.stockID =QT_FactorScore.ID)
-                and QT_FactorScore.TradingDay =",Tij)
-    res <- dbSendQuery(con,qr)
-    dbClearResult(res)  
-  }   
-  gc()
-}  
-
-cat(paste("Function lcfs.add: updateing factor score of",factorID,".... \n"))
-plyr::l_ply(loopT.L, subfun, .progress = plyr::progress_text(style=3))   
-dbDisconnect(con)
 
 
 

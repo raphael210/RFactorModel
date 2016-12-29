@@ -569,13 +569,24 @@ MultiFactor2TSFs <- function(TSF_M,
 
 # ---- deal with the outliers of factorscore
 factor.outlier <- function (TSF, factorOutlier) {
-  TSF <- plyr::ddply(TSF,"date",
-               function(x,outlier){  
-                 outlier_u <- with(x,mean(factorscore,na.rm=TRUE)+outlier*sd(factorscore,na.rm=TRUE))
-                 outlier_l <- with(x,mean(factorscore,na.rm=TRUE)-outlier*sd(factorscore,na.rm=TRUE))
-                 transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                                  ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-               },outlier=factorOutlier)
+  if(factorOutlier>=1){
+    TSF <- plyr::ddply(TSF,"date",
+                       function(x,outlier){  
+                         outlier_u <- with(x,mean(factorscore,na.rm=TRUE)+outlier*sd(factorscore,na.rm=TRUE))
+                         outlier_l <- with(x,mean(factorscore,na.rm=TRUE)-outlier*sd(factorscore,na.rm=TRUE))
+                         transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
+                                                          ifelse(factorscore < outlier_l, outlier_l, factorscore)))
+                       },outlier=factorOutlier)
+  }else{
+    TSF <- plyr::ddply(TSF,"date",
+                       function(x,outlier){  
+                         outlier_u <- with(x,quantile(factorscore,1-outlier,na.rm=TRUE))
+                         outlier_l <- with(x,quantile(factorscore,outlier,na.rm=TRUE))
+                         transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
+                                                          ifelse(factorscore < outlier_l, outlier_l, factorscore)))
+                       },outlier=factorOutlier)
+  }
+
   return(TSF)
 }
 # ---- standardize the factorscore
