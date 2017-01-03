@@ -369,12 +369,20 @@ table.reg.fRtn <- function(reg_results){
 #' chart.reg.fRtnWealthIndex
 #' 
 #' @export
-chart.reg.fRtnWealthIndex <- function(reg_results){
+chart.reg.fRtnWealthIndex <- function(reg_results,facet=FALSE){
   # charts for each factor
   fRtn <- reg_results$fRtn
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
   fRtn <- xts::xts(fRtn[,-1],fRtn[,1])
-  ggplot.WealthIndex(fRtn)
+  if(facet==FALSE){
+    ggplot.WealthIndex(fRtn)
+  }else{
+    N <- floor(sqrt(ncol(fRtn)))
+    fRtn <- WealthIndex(fRtn)
+    fRtn <- melt.ts(fRtn)
+    ggplot(fRtn, aes(x=time, y=value)) +ggtitle('wealth index')+
+      geom_line(size=1,colour = "red")+facet_wrap( ~ variable,ncol = N)
+  }
 }
 
 
@@ -384,8 +392,9 @@ chart.reg.fRtnWealthIndex <- function(reg_results){
 chart.reg.fRtnBar <- function(reg_results){
   # charts for each factor
   fRtn <- reg_results$fRtn
+  N <- floor(sqrt(length(unique(fRtn$fname))))
   ggplot(fRtn, aes(x=date, y=frtn)) +ggtitle('factor return')+
-    geom_bar(position="dodge",stat="identity")+facet_grid(fname ~ .)
+    geom_bar(position="dodge",stat="identity")+facet_wrap( ~ fname,ncol = N)
 }
 
 

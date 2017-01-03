@@ -4,7 +4,7 @@
 \alias{chart.reg.fRtnWealthIndex}
 \title{chart.reg.fRtnWealthIndex}
 \usage{
-chart.reg.fRtnWealthIndex(reg_results)
+chart.reg.fRtnWealthIndex(reg_results, facet = FALSE)
 }
 \description{
 chart.reg.fRtnWealthIndex
