@@ -315,7 +315,15 @@ factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAtt
 
 # ---------------------  ~~ Backtesting results --------------
 
-#' table.reg.rsquare
+#' regression_result_summary
+#'
+#' @param reg_results is regression_result
+#' @name regression_result_summary
+#' @seealso \link{reg.TSFR}
+NULL
+
+
+#' @rdname regression_result_summary
 #' 
 #' @export
 table.reg.rsquare <- function(reg_results){
@@ -333,7 +341,7 @@ table.reg.rsquare <- function(reg_results){
 }
 
 
-#' table.reg.fRtn
+#' @rdname regression_result_summary
 #' 
 #' @export
 table.reg.fRtn <- function(reg_results){
@@ -366,7 +374,7 @@ table.reg.fRtn <- function(reg_results){
 }
 
 
-#' chart.reg.fRtnWealthIndex
+#' @rdname regression_result_summary
 #' 
 #' @export
 chart.reg.fRtnWealthIndex <- function(reg_results,facet=FALSE){
@@ -386,7 +394,7 @@ chart.reg.fRtnWealthIndex <- function(reg_results,facet=FALSE){
 }
 
 
-#' chart.reg.fRtnBar
+#' @rdname regression_result_summary
 #' 
 #' @export
 chart.reg.fRtnBar <- function(reg_results){
@@ -398,7 +406,7 @@ chart.reg.fRtnBar <- function(reg_results){
 }
 
 
-#' chart.reg.rsquare
+#' @rdname regression_result_summary
 #' 
 #' @export
 chart.reg.rsquare <- function(reg_results){
@@ -414,7 +422,7 @@ chart.reg.rsquare <- function(reg_results){
 }
 
 
-#' MC.chart.regCorr
+#' @rdname regression_result_summary
 #' 
 #' @export
 MC.chart.regCorr <- function(reg_results){
@@ -428,9 +436,14 @@ MC.chart.regCorr <- function(reg_results){
 }
 
 
-#' MC.chart.fCorr
+#' raw_factor_correlation
 #' 
+#' @name raw_factor_correlation
+#' @param TSF is a \bold{TSF} object.
+#' @param Nbin the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.
 #' @examples
+#' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
+#' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000006","F000008","F000012")
 #' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
 #' TSF <- getMultiFactor(TS,FactorLists = FactorLists)
@@ -470,12 +483,12 @@ MC.chart.fCorr <- function(TSF,Nbin){
       geom_text(aes(fname,fnamecor, label = value), color = "black")+
       theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
   }else{
-    cordata$tmp <- cut.Date2(cordata$date,Nbin)
-    N <- length(unique(cordata$tmp))
+    cordata$date <- cut.Date2(cordata$date,Nbin)
+    N <- length(unique(cordata$date))
     N <- floor(sqrt(N))
-    cordata_by <- dplyr::group_by(cordata,tmp,fname,fnamecor)
+    cordata_by <- dplyr::group_by(cordata,date,fname,fnamecor)
     cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- split(cordata_by[,-1],unique(cordata_by$tmp))
+    cordata_by <- split(cordata_by[,-1],cordata_by$date)
     cordata_by <- plyr::ldply(cordata_by,subfun,.id = 'date')
     
     cordata_by$value <- round(cordata_by$value,2)
@@ -490,10 +503,9 @@ MC.chart.fCorr <- function(TSF,Nbin){
 
 #' MC.table.fCorr
 #' 
-#' @examples
-#' factorIDs <- c("F000006","F000008","F000012")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
-#' TSF <- getMultiFactor(TS,FactorLists = FactorLists)
+#' @rdname raw_factor_correlation
+#' @examples 
+#' #-------------------------------------------------------#
 #' MC.table.fCorr(TSF)
 #' MC.table.fCorr(TSF,Nbin='year')
 #' @export
