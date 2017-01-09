@@ -12,8 +12,9 @@
 \usage{
 getPort(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
   "min", "max", "sectmean"), pick.sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), buffer.in = 0, buffer.keep = 0,
-  init_port = NULL, backtestPar, dir = c("long", "short"))
+  sectorAttr = defaultSectorAttr(), force_in = 0, buffer_keep = 0,
+  buffer_rate = 0, init_port = NULL, backtestPar, dir = c("long",
+  "short"))
 
 addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
   "ffvsqrt"), wgt.sectorNe = FALSE, wgtbmk = "EI000300",
@@ -24,22 +25,22 @@ port.substitute(port, TSF, wgt.max = NA, sectorAttr = defaultSectorAttr(),
 
 getPort_throughout(TSF, topN = NA, topQ = NA, factorNA = c("median",
   "mean", "na", "min", "max", "sectmean"), pick.sectorNe = FALSE,
-  buffer.in = 0, buffer.keep = 0, init_port = NULL, wgtType = c("eq",
-  "fv", "fvsqrt", "custom", "ffv", "ffvsqrt"), wgt.sectorNe = FALSE,
-  wgtbmk = "EI000300", wgt.max = NA, sectorAttr = defaultSectorAttr(),
-  backtestPar, dir = c("long", "short"))
+  force_in = 0, buffer_keep = 0, buffer_rate = 0, init_port = NULL,
+  wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv", "ffvsqrt"),
+  wgt.sectorNe = FALSE, wgtbmk = "EI000300", wgt.max = NA,
+  sectorAttr = defaultSectorAttr(), backtestPar, dir = c("long", "short"))
 
 port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
   backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
   "simple"))
 
 getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
-  "min", "max", "sectmean"), pick.sectorNe = FALSE, buffer.in = 0,
-  buffer.keep = 0, init_port = NULL, wgtType = c("eq", "fv", "fvsqrt",
-  "custom", "ffv", "ffvsqrt"), wgt.sectorNe = FALSE, wgtbmk = "EI000300",
-  wgt.max = NA, holdingEndT = Sys.Date(), fee.buy = 0,
-  fee.sell = fee.buy, sectorAttr = defaultSectorAttr(), backtestPar,
-  dir = c("long", "short"))
+  "min", "max", "sectmean"), pick.sectorNe = FALSE, force_in = 0,
+  buffer_keep = 0, buffer_rate = 0, init_port = NULL, wgtType = c("eq",
+  "fv", "fvsqrt", "custom", "ffv", "ffvsqrt"), wgt.sectorNe = FALSE,
+  wgtbmk = "EI000300", wgt.max = NA, holdingEndT = Sys.Date(),
+  fee.buy = 0, fee.sell = fee.buy, sectorAttr = defaultSectorAttr(),
+  backtestPar, dir = c("long", "short"))
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object or a \bold{TSFR} object}
@@ -48,9 +49,9 @@ getPB(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
 
 \item{topQ}{a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.}
 
-\item{buffer.in}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% (\code{topN*(1-buffer.in)}) or pct less than topQ*90\% will be incorporated coercively.}
+\item{force_in}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.}
 
-\item{buffer.keep}{a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer.in)}) or pct less than topQ*110\% will be kept coercively.}
+\item{buffer_keep}{a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer_keep)}) or pct less than topQ*110\% will be kept coercively.}
 
 \item{init_port}{a charactor vector of stockIDs.}
 
@@ -136,6 +137,17 @@ N <- 5
 tmp <- seq(0,1,by=1/N)
 groups <- cbind(tmp[-(N+1)],tmp[-1])
 port.list <- apply(groups,1,function(x)getPort(TSFR,,x))
+# -- with buffer_in_keep
+ts <- getTS(as.Date(c("2016-03-31","2016-04-29")),indexID = "EI000016")
+tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
+pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
+factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorStd = "norm", factorNA = "na")
+pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,pick.sectorNe = T,sectorAttr = list(list(factorList),list(2)))
+# -- with buffer_rate
+pt3 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =F)
+pt4 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =F)
+pt5 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
+pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 # -- add wgt to port
 port <- getPort(TSF,20)
 port <- addwgt2port(port,"fv")

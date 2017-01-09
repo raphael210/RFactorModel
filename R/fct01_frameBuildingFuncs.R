@@ -72,6 +72,7 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' TS3 <- getTS(RebDates,'setdiff(EI000300,ES09440000)')  # CSI300 ex. financial servive sector
 #' TS4 <- getTS(RebDates,stocks=c("EQ000002","EQ000023","EQ600000"))
 getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){  
+  RebDates <- trday.nearest(RebDates)
   if(!is.null(stocks)){
     TS <- expand.grid(date=RebDates,stockID=stocks)
   } else {
@@ -81,7 +82,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){
     TS <- rm_suspend(TS, nearby = 1L)
   }
   if("priceLimit" %in% rm){
-    TS <- rm_priceLimit(TS, nearby = 1L, lim = c(-9.8,9.8))
+    TS <- rm_priceLimit(TS, nearby = 1L, lim = c(-Inf,10))
   }
   return (TS)
 }
@@ -607,8 +608,8 @@ factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"
   } else if(method=="max"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="sectmean"){
-    TSF <- gf.ezsec(TSF)
-    TSF <- dplyr::group_by(TSF, date, secID)
+    TSF <- getSectorID(TSF, sectorAttr = list("std" = 336, "level" = 1))
+    TSF <- dplyr::group_by(TSF, date, sector)
     if(is.na(trim)){
       TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
     }else{
@@ -617,35 +618,6 @@ factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"
     TSF <- as.data.frame(TSF)
   }
   return(TSF)
-}
-# ---- get simple sector categories
-gf.ezsec <- function(ts){
-  ts.tmp <- subset(ts, select = c("date","stockID"))
-  ts.tmp <- gf.sector(ts.tmp, sectorAttr = defaultSectorAttr())
-  seclist <- list()
-  # BigCycle
-  seclist[[1]]<- c("ES33110000","ES33210000","ES33220000","ES33230000","ES33240000")
-  #FinRealEstate
-  seclist[[2]]<- c("ES33480000","ES33490000","ES33430000")
-  #TMT
-  seclist[[3]]<- c("ES33710000","ES33720000","ES33730000","ES33270000")
-  #Comsump
-  seclist[[4]]<- c("ES33280000","ES33330000","ES33340000","ES33350000","ES33460000","ES33370000","ES33450000")
-  #Manufac
-  seclist[[5]]<- c("ES33360000","ES33630000","ES33640000","ES33610000","ES33620000","ES33650000")
-  #Others
-  seclist[[6]]<- c("ES33420000","ES33410000","ES33510000")
-  for(ii in 1:length(seclist)){
-    V2 <- paste("ES",ii,sep = "")
-    seclist[[ii]] <- as.data.frame(seclist[[ii]])
-    seclist[[ii]] <- cbind(seclist[[ii]], V2)
-    names(seclist[[ii]]) <- c("sector","secID")
-  }
-  secdf <- data.table::rbindlist(seclist)
-  re <- merge(ts.tmp, secdf, by = c("sector"))
-  re2 <- subset(re, select = c("date","stockID","secID"))
-  re3 <- merge(ts,re2,by=c("date","stockID"))
-  return(re3)
 }
 
 
@@ -664,27 +636,18 @@ gf.ezsec <- function(ts){
 #' @export
 rm_suspend <- function(TS,nearby=1L,
                        datasrc=defaultDataSRC()){
-  check.TS(TS)
-  if(datasrc=='ts'){
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_ <- TS.getTech_ts(TS_, funchar="istradeday4()",varname="trading")
-      TS <- TS[TS_$trading == 1, ]
-    }
-  } else {
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      istradingday <- trday.is(TS=TS_, drop = TRUE)
-      TS <- TS[istradingday,]
-    }
-  }
-  
+  TS_ <- is_suspend(TS=TS,nearby=nearby,datasrc = datasrc)
+  TS <- TS[!TS_$sus,]
   return(TS)
 }
 
+
+
 #' remove price limits
 #' 
+#' @param nearby
 #' @param lim a vector of length 2.
+#' @param priceType "close" or "open".
 #' @examples
 #' RebDates <- getRebDates(as.Date('2013-03-17'),as.Date('2016-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000985')
@@ -692,32 +655,20 @@ rm_suspend <- function(TS,nearby=1L,
 #' re1 <- rm_priceLimit(TS,nearby=-1:1)
 #' re2 <- rm_priceLimit(TS,lim=c(-Inf,10)) # remove limit-up
 #' @export
-rm_priceLimit <- function(TS,nearby=1L,lim=c(-10, 10),
+rm_priceLimit <- function(TS,nearby=1,lim=c(-10, 10),priceType=c("close","open"),
                           datasrc=defaultDataSRC()){
-  check.TS(TS)
-  if(datasrc=='ts'){
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_1 <- TS.getTech_ts(TS_, funchar="StockPrevClose3()",varname="pre_close")
-      TS_2 <- TS.getTech_ts(TS_, funchar="close()",varname="close")
-      in_lim <- TS_2$close > round(TS_1$pre_close*(1+lim[1]/100),2) & TS_2$close < round(TS_1$pre_close*(1+lim[2]/100),2)
-      TS <- TS[in_lim, ]
-    }
-  } else {
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_ <- TS.getTech(TS_,variables=c("pre_close","close") ,datasrc = datasrc)
-      in_lim <- TS_$close > round(TS_$pre_close*(1+lim[1]/100),2) & TS_$close < round(TS_$pre_close*(1+lim[2]/100),2)
-      TS <- TS[in_lim, ]
-    }
-  }
-  
+  TS_ <- is_priceLimit(TS=TS,nearby = nearby,lim = lim, datasrc = datasrc)
+  TS <- TS[!TS_$overlim,]
   return(TS)
 }
 
+
+#' @export
 rm_blacklist <- function(TS){
-  
+  TS_ <- is_blacklist(TS=TS)
+  TS <- TS[!TS_$is_blacklist,]
 }
+
 rm_whitelist <- function(TS){
   
 }

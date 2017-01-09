@@ -871,8 +871,8 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 #' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
-#' @param buffer.in
-#' @param buffer.keep
+#' @param force_in
+#' @param buffer_keep
 #' @param init_port
 #' @param holdingEndT the ending date of the holding portfolio.
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
@@ -893,8 +893,9 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   factorNA = c("na","mean","median","min","max","sectmean"),
                                   pick.sectorNe=FALSE, 
                                   sectorAttr=defaultSectorAttr(),
-                                  buffer.in=0, 
-                                  buffer.keep=0,
+                                  force_in=0, 
+                                  buffer_keep=0,
+                                  buffer_rate=0,
                                   init_port=NULL,
                                   holdingEndT = Sys.Date(),
                                   wgtType = c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"), 
@@ -911,8 +912,9 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                factorNA     = factorNA,
                                pick.sectorNe= pick.sectorNe,
                                sectorAttr   = sectorAttr,
-                               buffer.in    = buffer.in,
-                               buffer.keep  = buffer.keep,
+                               force_in    = force_in,
+                               buffer_keep  = buffer_keep,
+                               buffer_rate  = buffer_rate,
                                init_port    = init_port,
                                holdingEndT  = holdingEndT,
                                wgtType      = wgtType,
@@ -932,8 +934,9 @@ setbacktestPar.longshort <- function(backtestPar,
                                      factorNA,
                                      pick.sectorNe,
                                      sectorAttr,
-                                     buffer.in,
-                                     buffer.keep,
+                                     force_in,
+                                     buffer_keep,
+                                     buffer_rate,
                                      init_port,
                                      holdingEndT,
                                      wgtType,
@@ -954,8 +957,9 @@ setbacktestPar.longshort <- function(backtestPar,
   if(!missing(factorNA)) backtestPar$longshort$factorNA <- factorNA
   if(!missing(pick.sectorNe)) backtestPar$longshort$pick.sectorNe <- pick.sectorNe  
   if(!missing(sectorAttr)) backtestPar$longshort$sectorAttr <- sectorAttr
-  if(!missing(buffer.in)) backtestPar$longshort$buffer.in <- buffer.in
-  if(!missing(buffer.keep)) backtestPar$longshort$buffer.keep <- buffer.keep
+  if(!missing(force_in)) backtestPar$longshort$force_in <- force_in
+  if(!missing(buffer_keep)) backtestPar$longshort$buffer_keep <- buffer_keep
+  if(!missing(buffer_rate)) backtestPar$longshort$buffer_rate <- buffer_rate
   if(!missing(init_port)) backtestPar$longshort$init_port <- init_port
   if(!missing(holdingEndT)) backtestPar$longshort$holdingEndT <- holdingEndT
   if(!missing(wgtType)) backtestPar$longshort$wgtType <- wgtType

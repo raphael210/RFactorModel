@@ -7,15 +7,15 @@
 \usage{
 backtestPar.longshort(backtestPar = backtestPar.default(), topN = 50,
   topQ = NA, factorNA = c("na", "mean", "median", "min", "max", "sectmean"),
-  pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(), buffer.in = 0,
-  buffer.keep = 0, init_port = NULL, holdingEndT = Sys.Date(),
-  wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv", "ffvsqrt"),
-  wgt.sectorNe = FALSE, wgt.max = NA, bmk = "EI000300",
+  pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(), force_in = 0,
+  buffer_keep = 0, buffer_rate = 0, init_port = NULL,
+  holdingEndT = Sys.Date(), wgtType = c("eq", "fv", "fvsqrt", "custom",
+  "ffv", "ffvsqrt"), wgt.sectorNe = FALSE, wgt.max = NA, bmk = "EI000300",
   hedge.rebFreq = "month", hedge.posi = 1, hitFreq = "month")
 
 setbacktestPar.longshort(backtestPar, topN, topQ, factorNA, pick.sectorNe,
-  sectorAttr, buffer.in, buffer.keep, init_port, holdingEndT, wgtType,
-  wgt.sectorNe, wgt.max, bmk, hedge.rebFreq, hedge.posi, hitFreq)
+  sectorAttr, force_in, buffer_keep, buffer_rate, init_port, holdingEndT,
+  wgtType, wgt.sectorNe, wgt.max, bmk, hedge.rebFreq, hedge.posi, hitFreq)
 }
 \arguments{
 \item{backtestPar}{a \bold{backtestPar} object}

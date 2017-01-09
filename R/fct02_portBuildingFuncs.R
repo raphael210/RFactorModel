@@ -18,8 +18,9 @@
 #' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
-#' @param buffer.in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*90\% (\code{topN*(1-buffer.in)}) or pct less than topQ*90\% will be incorporated coercively.
-#' @param buffer.keep a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer.in)}) or pct less than topQ*110\% will be kept coercively.
+#' @param force_in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.
+#' @param buffer_keep a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer_keep)}) or pct less than topQ*110\% will be kept coercively.
+#' @param buffer_rate
 #' @param init_port a charactor vector of stockIDs.
 #' @param backtestPar a \bold{backtestPar} object. If param backtestPar is not missing,then the other params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.  
 #' @param dir a character string "long" or "short". In \code{getPort}, if "short",select from top to bottom, and vice versa.
@@ -47,10 +48,21 @@
 #' tmp <- seq(0,1,by=1/N)
 #' groups <- cbind(tmp[-(N+1)],tmp[-1])
 #' port.list <- apply(groups,1,function(x)getPort(TSFR,,x))
+#' # -- with buffer_in_keep
+#' ts <- getTS(as.Date(c("2016-03-31","2016-04-29")),indexID = "EI000016")
+#' tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
+#' pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
+#' factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorStd = "norm", factorNA = "na")
+#' pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,pick.sectorNe = T,sectorAttr = list(list(factorList),list(2)))
+#' # -- with buffer_rate
+#' pt3 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =F)
+#' pt4 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =F)
+#' pt5 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
+#' pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 getPort <- function(TSF, topN=NA, topQ=NA, 
                     factorNA=c("median","mean","na","min","max","sectmean"),
                     pick.sectorNe=FALSE, sectorAttr=defaultSectorAttr(),
-                    buffer.in=0, buffer.keep=0, init_port=NULL,
+                    force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                     backtestPar,
                     dir=c("long","short")){
   factorNA <- match.arg(factorNA)
@@ -61,12 +73,19 @@ getPort <- function(TSF, topN=NA, topQ=NA,
     factorNA <- getbacktestPar.longshort(backtestPar,"factorNA")
     pick.sectorNe <- getbacktestPar.longshort(backtestPar,"pick.sectorNe")
     sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorAttr")
-    buffer.in <- getbacktestPar.longshort(backtestPar,"buffer.in")
-    buffer.keep <- getbacktestPar.longshort(backtestPar,"buffer.keep")
+    force_in <- getbacktestPar.longshort(backtestPar,"force_in")
+    buffer_keep <- getbacktestPar.longshort(backtestPar,"buffer_keep")
+    buffer_rate <- getbacktestPar.longshort(backtestPar,"buffer_rate")
     init_port <- getbacktestPar.longshort(backtestPar,"init_port")
   }
   check.TSF(TSF)
   TSF <- factor.na(TSF,factorNA)
+  
+  if(TRUE){# remove stocks due to suspending or over limit
+    TSF <- rm_suspend(TSF,nearby = 1L)
+    TSF <- rm_priceLimit(TSF,nearby = 1L,lim=c(-Inf,10))
+  }
+  
   if (any(is.na(topN)) && any(is.na(topQ)) || all(!is.na(topN)) && all(!is.na(topQ))){
     stop("'topN' and 'topQ' should at least have one and only have one!")
   }
@@ -87,49 +106,112 @@ getPort <- function(TSF, topN=NA, topQ=NA,
   if(all(!is.na(topN))){  ## get port by topN
     port <- dplyr::filter(TSF_by, rnk>=min(topN_)/cnt*n() & rnk<=max(topN_)/cnt*n())
   } else { ## get port by topQ
-    port <- slice(TSF_by,max(1,ceiling(min(topQ_)*n())) : floor(max(topQ_)*n()))
+    port <- dplyr::slice(TSF_by,max(1,ceiling(min(topQ_)*n())) : floor(max(topQ_)*n()))
   }
   
-  # ---- buffering
-  if (!(identical(buffer.in,0) && identical(buffer.keep,0))){
+  
+  # ---- buffering --
+  if (force_in>0 | buffer_keep>0 |buffer_rate>0){ 
+    
+    if(length(topN) > 1 |length(topQ)>1){
+      stop("If use buffer, the length of topN and topQ must be 1!")
+    } 
     timeidx <- sort(unique(TSF_by$date))
-    # the initial port
-    if (is.null(init_port)) { 
-      init_port <- port[port$date==timeidx[1],"stockID",drop=TRUE]
+    if (is.null(init_port)) { # the initial port
+      init_port <- port[port$date==timeidx[1],"stockID"][[1]]
     } 
     # looping
     port <- data.frame()
     for (idx in timeidx) {
-      subTSF <- TSF_by[TSF_by$date==idx,]        
       if (idx == timeidx[[1]]){
-        subTSF <- dplyr::mutate(subTSF,old=stockID %in% init_port)  
+        old_port <- init_port  
       } else {
-        subTSF <- dplyr::mutate(subTSF,old=stockID %in% subport$stockID)
+        old_port <- new_port$stockID
       }
+      subTSF <- TSF_by[TSF_by$date==idx,]
+      if(TRUE){# keep old stocks due to suspending or under limit
+        sus <- is_suspend(datelist = idx,stockID = old_port,nearby = 1L,drop = TRUE)
+        underLim <- is_priceLimit(datelist = idx,stockID = old_port,nearby = 1L,lim=c(-10,Inf),drop=TRUE)
+        old_sus_underLim <- old_port[sus|underLim]
+        if(length(old_sus_underLim>0)){
+          subTSF <- dplyr::bind_rows(data.frame(date=as.Date(idx,"1970-01-01"), stockID=old_sus_underLim, rnk=0),
+                                     dplyr::filter(subTSF,!stockID %in% old_sus_underLim))
+          
+          if(pick.sectorNe){
+            subTSF$sector <- NULL
+            subTSF <- getSectorID(subTSF,sectorAttr = sectorAttr)
+            subTSF <- dplyr::group_by(subTSF,date,sector)
+          }
+          
+          subTSF <- dplyr::mutate(subTSF,cnt=nrow(subTSF))
+        }
+      }
+      subTSF <- dplyr::mutate(subTSF,old=stockID %in% old_port)
+      
+      cnt_in_date <- nrow(subTSF)
       if (all(!is.na(topN))){ ## get port by topN
-        if(length(topN) > 1L) stop("If use buffer, the length of topN must be 1!")
-        topN.in <- round(topN*(1-buffer.in))
-        topN.keep <- round(topN*(1+buffer.keep))  
-        # flag: 
-        # 1-coercively incorporated new stocks,
-        # 2-coercively keep old stocks,
-        # 3-others
-        subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk<=topN.in/cnt*n(),1,ifelse(rnk<=topN.keep/cnt*n() & old,2,3)))
-        subTSF <- dplyr::arrange(subTSF,flag,rnk)
-        subTSF <- dplyr::mutate(subTSF,rnk_new=order(order(flag,rnk)))
-        subport <- dplyr::filter(subTSF, rnk_new<=topN/cnt*n())
-      } else if (all(!is.na(topQ))){ ## get port by topQ
-        if(length(topQ) > 1L) stop("If use buffer, the length of topQ must be 1!")  
-        topQ.in <- topQ*(1-buffer.in)
-        topQ.keep <- topQ*(1+buffer.keep)
-        subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk<=topQ.in*n(),1,ifelse(rnk<=topQ.keep*n() & old,2,3)))
-        subTSF <- dplyr::arrange(subTSF,flag,rnk)
-        subTSF <- dplyr::mutate(subTSF,rnk_new=order(order(flag,rnk)))
-        subport <- slice(subTSF,1:(topQ*n()))
+        topQ <- topN/cnt_in_date
+      } else if (all(!is.na(topQ))){ ## get port by topQ  
+        topQ <- topQ
       }
-      port <- rbind(port,subport)
+      
+      if(force_in>0 | buffer_keep>0 ){# ----- buffer_in_keep
+        if(buffer_rate>0){
+          stop("buffer_in_keep and buffer_rate can not work together!")
+        }
+        # flag: 
+        # 0-coercively kept old stocks due to suspending or under price limit
+        # 1-coercively incorporated new stocks due to force_in
+        # 2-coercively kept old stocks due to buffer_keep
+        # 3-others
+        topQ_in <- topQ*force_in
+        topQ_keep <- topQ*(1+buffer_keep)
+        subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk==0,0,
+                                                   ifelse(rnk<=topQ_in*n() & old==FALSE, 1,
+                                                          ifelse(rnk<=topQ_keep*n() & old==TRUE,2,
+                                                                 3))))
+      } else if(buffer_rate > 0){ # ----  buffer_rate
+        # flag: 
+        # 0-coercively kept old stocks due to suspending or under price limit
+        # 1-intersect of (rnk<=topQ*n() & old==TRUE)
+        # 2-coercively kept old stocks due to buffer_rate
+        # 3-others
+        if(!pick.sectorNe){
+          pt_0 <- dplyr::filter(subTSF,rnk==0)$stockID
+          pt_1 <- dplyr::filter(subTSF,rnk<=topQ*n() & old==TRUE & rnk!=0)$stockID
+          pt_2 <- dplyr::filter(subTSF,rnk>topQ*n() & old==TRUE)$stockID
+          pt_2 <- head(pt_2,(topQ*cnt_in_date-length(pt_0)-length(pt_1))*buffer_rate)
+          subTSF <- dplyr::mutate(subTSF,flag=ifelse(rnk==0,0,
+                                                     ifelse(stockID %in% pt_1,1,
+                                                            ifelse(stockID %in% pt_2,2,
+                                                                   3))))
+        } else {
+          sectors <- unique(subTSF$sector)
+          subTSF_ <- data.frame()
+          for (sct in sectors){
+            subsubTSF <- dplyr::filter(subTSF,sector==sct)
+            cnt_in_sct <- nrow(subsubTSF)
+            pt_0 <- dplyr::filter(subsubTSF,rnk==0)$stockID
+            pt_1 <- dplyr::filter(subsubTSF,rnk<=topQ*n() & old==TRUE & rnk!=0)$stockID
+            pt_2 <- dplyr::filter(subsubTSF,rnk>topQ*n() & old==TRUE)$stockID
+            pt_2 <- head(pt_2,(topQ*cnt_in_sct-length(pt_0)-length(pt_1))*buffer_rate)
+            subsubTSF <- dplyr::mutate(subsubTSF,flag=ifelse(rnk==0,0,
+                                                             ifelse(stockID %in% pt_1,1,
+                                                                    ifelse(stockID %in% pt_2,2,
+                                                                           3))))
+            subTSF_ <- rbind(subTSF_, subsubTSF)
+          }
+          subTSF <- dplyr::group_by(subTSF_,date,sector)
+        }
+      }
+      subTSF <- dplyr::arrange(subTSF,flag,rnk)
+      subTSF <- dplyr::mutate(subTSF,rnk_new=order(order(flag,rnk)))
+      new_port <- dplyr::slice(subTSF,1:(topQ*n()))
+      port <- rbind(port,new_port)
     }
-  }
+  } 
+  
+  port <- as.data.frame(port)
   return(port)
 }
 
@@ -169,7 +251,7 @@ addwgt2port <- function (port,
   if (wgtType=="eq") {
     port <- plyr::ddply(port,"date",transform,wgt=1/length(stockID))    
   } else if (wgtType %in% c("fv","fvsqrt")) {    
-    port <- TS.getTech(port,variables="float_cap")
+    port <- getTech(port,variables="float_cap")
     if (wgtType=="fv") {
       port <- plyr::ddply(port,"date",transform,wgt=float_cap/sum(float_cap,na.rm=TRUE))
     } else {
@@ -259,7 +341,7 @@ port.substitute <- function(port,TSF,
         break
       }  
     }
-    if (need.TSF) { # -- the weight is so much that the stocks in the port is not enough to share.Need to import more stocks from the TSF. 
+    if (need.TSF) { # -- the weight is so much that the stocks in the port is not enough to share. Need to import more stocks from the TSF. 
       subTSF <- subset(TSF,date==subT[1,"date"] & sector==subT[1,"sector"],
                        select=c("date","sector","stockID","factorscore"))
       subTSF <- subset(subTSF,!(stockID %in% subT$stockID))
@@ -297,7 +379,7 @@ getPort_throughout <- function (TSF,
                                 topN=NA, topQ=NA, 
                                 factorNA=c("median","mean","na","min","max","sectmean"),
                                 pick.sectorNe=FALSE, 
-                                buffer.in=0, buffer.keep=0, init_port=NULL,
+                                force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                                 # addwgt2port
                                 wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                                 wgt.sectorNe=FALSE, wgtbmk="EI000300",
@@ -313,7 +395,7 @@ getPort_throughout <- function (TSF,
                   topN=topN, topQ=topQ,
                   factorNA=factorNA,
                   pick.sectorNe=pick.sectorNe,
-                  buffer.in=buffer.in, buffer.keep=buffer.keep, init_port=init_port,
+                  force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)
   
   Port <- addwgt2port(Port, 
@@ -388,7 +470,7 @@ port.backtest <- function(port,
     colnames(R) <- colnames(R.df)[-1]
   } else if(rtn_get=="whole"){
     stocks <- colnames(weights) 
-    qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"))
+    qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"),tableName = "QT_DailyQuote")
     qt <- renameCol(qt,"pct_chg","rtn")
     R.df <- reshape2::dcast(qt,date~stockID,value.var="rtn",fill=0)
     R <- xts(R.df[,-1],R.df[,1])
@@ -402,7 +484,7 @@ port.backtest <- function(port,
       stocks <- port[port$date==datelist[ii],"stockID"]
       begT <- trday.nearby(datelist = datelist[ii], by = 1L)
       endT <- as.Date(ifelse(ii==length(datelist), holdingEndT, datelist[ii+1]), "1970-01-01")
-      qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"))
+      qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"),tableName = "QT_DailyQuote2")
       qt <- renameCol(qt, "pct_chg", "rtn")
       if(ii==1L){
         R.df <- qt
@@ -438,7 +520,7 @@ getPB <- function (TSF,
                    topN=NA, topQ=NA, 
                    factorNA=c("median","mean","na","min","max","sectmean"),
                    pick.sectorNe=FALSE, 
-                   buffer.in=0, buffer.keep=0, init_port=NULL,
+                   force_in=0, buffer_keep=0, buffer_rate=0, init_port=NULL,
                    # addwgt2port
                    wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                    wgt.sectorNe=FALSE, wgtbmk="EI000300",
@@ -456,7 +538,7 @@ getPB <- function (TSF,
                   topN=topN, topQ=topQ,
                   factorNA=factorNA,
                   pick.sectorNe=pick.sectorNe,
-                  buffer.in=buffer.in, buffer.keep=buffer.keep, init_port=init_port,
+                  force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)
   
   Port <- addwgt2port(Port, 
@@ -554,6 +636,7 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
                  "Settlement",Settlement(),
                  "Prev_Settlement",Prev_Settlement());
                  ')
+    tsRequire()
     re <- tsRemoteExecute(str)
     re <- plyr::ldply(re,as.data.frame)
     re <- xts::xts(re$Settlement/re$Prev_Settlement-1 ,as.Date(re$date))

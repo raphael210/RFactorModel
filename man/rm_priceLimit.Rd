@@ -4,11 +4,13 @@
 \alias{rm_priceLimit}
 \title{remove price limits}
 \usage{
-rm_priceLimit(TS, nearby = 1L, lim = c(-10, 10),
-  datasrc = defaultDataSRC())
+rm_priceLimit(TS, nearby = 1, lim = c(-10, 10), priceType = c("close",
+  "open"), datasrc = defaultDataSRC())
 }
 \arguments{
 \item{lim}{a vector of length 2.}
+
+\item{priceType}{"close" or "open".}
 }
 \description{
 remove price limits
