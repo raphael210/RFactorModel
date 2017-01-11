@@ -156,9 +156,12 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   TS <- TSFR[,c('date','stockID')]
   # get sector factor
   TSS <- gf.sector(TS,sectorAttr = sectorAttr)
-  TSS <- dplyr::select(TSS,-sector)
-  TSFR <- merge.x(TSFR,TSS,by=c("date","stockID"))
-  
+  nsector <- length(unique(TSS$sector))
+  if(nsector>1){
+    TSS <- dplyr::select(TSS,-sector)
+    TSFR <- merge.x(TSFR,TSS,by=c("date","stockID"))
+  }
+
   # regression
   if(glm_wgt=="sqrtFV"){
     TSw <- getTSF(TS,factorFun="gf_lcfs",factorPar=list(factorID='F000001'),factorStd = 'none',factorNA = "median")
@@ -179,7 +182,12 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   RSquare <- data.frame()
   for(i in 1:nrow(dates)){ 
     tmp.tsfr <- TSFR[TSFR$date==dates$date[i],]
-    fml <- formula(paste("periodrtn ~ ", paste(factorNames,collapse= "+"),"-1",sep=''))
+    if(nsector>1){
+      fml <- formula(paste("periodrtn ~ ", paste(factorNames,collapse= "+"),"-1",sep=''))
+    }else{
+      fml <- formula(paste("periodrtn ~ ", paste(factorNames,collapse= "+"),sep=''))
+    }
+  
     if (regType=="glm"){
       tmp.w <- as.matrix(tmp.tsfr[,"glm_wgt"])
       lmm <- lm(fml,data = tmp.tsfr,weights = tmp.w)
