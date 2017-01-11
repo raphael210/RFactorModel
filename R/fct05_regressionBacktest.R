@@ -358,8 +358,8 @@ table.reg.fRtn <- function(reg_results){
   fRtn <- reg_results$fRtn
   
   tstat <- summarise(group_by(fRtn,fname),avgT=mean(abs(Tstat)),
-                     TPer=sum(abs(Tstat)>2)/length(Tstat))
-  colnames(tstat) <- c("fname","mean(abs(T))","percent abs(T)>2")
+                     TPer=sum(Tstat>2)/length(Tstat))
+  colnames(tstat) <- c("fname","mean(abs(T))","percent T>2")
   tstat$fname <- as.character(tstat$fname)
   
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
