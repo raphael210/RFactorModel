@@ -207,6 +207,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
     # pfpwgt <- rbind(pfpwgt,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,t(tmp.f)))
   }
   rownames(fRtn) <- NULL
+  fRtn <- fRtn[fRtn$fname!='(Intercept)',]
   if(secRtnOut==FALSE){
     fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
   }

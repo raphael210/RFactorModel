@@ -618,6 +618,19 @@ factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"
       TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
     }
     TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
+    
+    #if all of some sector's components is NA
+    if(sum(is.na(TSF$factorscore))>0){
+      TSF <- dplyr::group_by(TSF, date)
+      if(is.na(trim)){
+        #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+        TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+      }else{
+        #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+        TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+      }
+    }
+    TSF <- as.data.frame(TSF)
   } else if(method=="median"){
     #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
     TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())
@@ -626,6 +639,13 @@ factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"
     TSF <- dplyr::group_by(TSF, date, sector)
     TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
     TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
+    
+    #if all of some sector's components is NA
+    if(sum(is.na(TSF$factorscore))>0){
+      TSF <- dplyr::group_by(TSF, date)
+      TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    }
+    TSF <- as.data.frame(TSF)
   } else if(method=="min"){
     TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
   } else if(method=="max"){
