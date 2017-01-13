@@ -9,29 +9,27 @@
 reg.TSFR(TSFR, regType = c("glm", "lm"), glm_wgt = c("sqrtFV", "res"),
   sectorAttr = defaultSectorAttr(), secRtnOut = FALSE)
 
-reg.TS(TS, factorLists, regType = c("glm", "lm"), glm_wgt = c("sqrtFV",
-  "res"), sectorAttr = defaultSectorAttr(), dure = months(1),
-  secRtnOut = FALSE)
+reg.TS(TS, dure = months(1), factorLists, regType = c("glm", "lm"),
+  glm_wgt = c("sqrtFV", "res"), sectorAttr = defaultSectorAttr(),
+  secRtnOut = FALSE, regInd = TRUE)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
 
 \item{regType}{the regress type,the default type is "glm".}
 
-\item{secRtnOut}{whether output sector's return,default value is FALSE.}
+\item{glm_wgt}{glm's weight data, default value is sqrt of floating market value.}
+
+\item{sectorAttr}{sector attribute.}
+
+\item{secRtnOut}{whether output sector's return,default value is \code{FALSE}.}
 
 \item{TS}{a \bold{TS} object.}
 
-\item{factorLists}{a list of factor setting.}
-
-\item{regType}{the regress type,the default type is "glm".}
-
-\item{secRtnOut}{whether output sector's return,default value is FALSE.}
+\item{dure}{see example in \code{\link{getTSR}}.}
 }
 \value{
-reg.TSFR return a list, contains dataframes of frtn, residual and Rsquare
-
-a list, contains a \bold{TSFR} and regression result list.
+return a list, contains dataframes of frtn, residual and Rsquare.
 }
 \description{
 Regression to the TSFR data, calculate factor return, residuals, and R squrare, etc.
@@ -39,7 +37,6 @@ Regression to the TSFR data, calculate factor return, residuals, and R squrare, 
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000985')
-TS <- rmSuspend(TS)
 factorIDs <- c("F000002","F000006","F000008")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 factorLists <- buildFactorLists(
@@ -48,14 +45,12 @@ factorLists <- buildFactorLists(
                   factorDir=1),
   factorStd="norm",factorNA = "median")
 factorLists <- c(tmp,factorLists)
+re <- reg.TS(TS)
+re <- reg.TS(TS,factorLists)
+----------------------------------------------------------
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 TSFR <- getTSR(TSF)
 re <- reg.TSFR(TSFR)
-RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2016-09-30'),'month')
-TS <- getTS(RebDates,'EI000985')
-factorIDs <- c("F000002","F000006","F000008")
-factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-re <- reg.TS(TS,factorLists)
 }
 \author{
 Ruifei.yin

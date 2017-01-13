@@ -24,9 +24,11 @@ MC.chart.regCorr(reg_results)
 }
 \arguments{
 \item{reg_results}{is regression_result}
+
+\item{factet}{whether to plot wealth index of factor's return in one graph, the default value is FALSE.}
 }
 \description{
-regression_result_summary
+summary of regression result, such as chart of rsquare and factor return,etc.
 }
 \seealso{
 \link{reg.TSFR}

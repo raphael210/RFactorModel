@@ -5,12 +5,16 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 
-#' build local database's regression tables
+#' lcdb_regtables
 #' 
+#' build and update local database's regression result tables
+#' @name lcdb_regtables
+#' @rdname lcdb_regtables
 #' @examples 
-#' build.lcdb.RegTables(FactorLists)
+#' lcdb.build.RegTables(FactorLists)
+#' lcdb.update.RegTables(FactorLists)
 #' @export
-build.lcdb.RegTables <- function(FactorLists){
+lcdb.build.RegTables <- function(FactorLists){
   
   con <- db.local()
   endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
@@ -62,12 +66,10 @@ build.lcdb.RegTables <- function(FactorLists){
 }
 
 
-#' update local database's regression tables
+#' @rdname lcdb_regtables
 #' 
-#' @examples 
-#' build.lcdb.RegTables(FactorLists)
 #' @export
-update.lcdb.RegTables <- function(FactorLists){
+lcdb.update.RegTables <- function(FactorLists){
   
   con <- db.local()
   begT <- dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
@@ -102,7 +104,6 @@ update.lcdb.RegTables <- function(FactorLists){
   colnames(res) <- c('date','stockID',paste('res',names(prd_lists),sep = '_'))
   colnames(RSquare) <- c('date',paste("RSquare",names(prd_lists),sep = '_'))
   
-
   dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
   dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
   dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
@@ -124,18 +125,19 @@ update.lcdb.RegTables <- function(FactorLists){
 #' @name regression_result
 #' @rdname regression_result
 #' @aliases reg.TSFR
+#' @param TS a \bold{TS} object.
+#' @param dure see example in \code{\link{getTSR}}.
 #' @param TSFR a \bold{TSFR} object.
 #' @param regType the regress type,the default type is "glm".
-#' @param glm_wgt
-#' @param sectorAttr
-#' @param secRtnOut whether output sector's return,default value is FALSE.
-#' @return reg.TSFR return a list, contains dataframes of frtn, residual and Rsquare
+#' @param glm_wgt glm's weight data, default value is sqrt of floating market value.
+#' @param sectorAttr sector attribute.
+#' @param secRtnOut whether output sector's return,default value is \code{FALSE}.
+#' @return return a list, contains dataframes of frtn, residual and Rsquare.
 #' @export
 #' @author Ruifei.yin
 #' @examples
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
-#' TS <- rmSuspend(TS)
 #' factorIDs <- c("F000002","F000006","F000008")
 #' tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 #' factorLists <- buildFactorLists(
@@ -144,24 +146,29 @@ update.lcdb.RegTables <- function(FactorLists){
 #'                   factorDir=1),
 #'   factorStd="norm",factorNA = "median")
 #' factorLists <- c(tmp,factorLists)
+#' re <- reg.TS(TS)
+#' re <- reg.TS(TS,factorLists)
+#' ----------------------------------------------------------
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' TSFR <- getTSR(TSF)
 #' re <- reg.TSFR(TSFR)
-reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sectorAttr=defaultSectorAttr(),secRtnOut=FALSE){
-  #ptm <- proc.time()
+reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
+                     sectorAttr=defaultSectorAttr(),secRtnOut=FALSE){
   regType <- match.arg(regType)
   glm_wgt <- match.arg(glm_wgt)
-  TSFRold <- TSFR
   
+  TSFRold <- TSFR
   TS <- TSFR[,c('date','stockID')]
+  
   # get sector factor
   TSS <- gf.sector(TS,sectorAttr = sectorAttr)
-  nsector <- length(unique(TSS$sector))
+  secNames <- as.character(unique(TSS$sector))
+  nsector <- length(secNames)
   if(nsector>1){
     TSS <- dplyr::select(TSS,-sector)
     TSFR <- merge.x(TSFR,TSS,by=c("date","stockID"))
   }
-
+  
   # regression
   if(glm_wgt=="sqrtFV"){
     TSw <- getTSF(TS,factorFun="gf_lcfs",factorPar=list(factorID='F000001'),factorStd = 'none',factorNA = "median")
@@ -183,7 +190,8 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
   for(i in 1:nrow(dates)){ 
     tmp.tsfr <- TSFR[TSFR$date==dates$date[i],]
     if(nsector>1){
-      fml <- formula(paste("periodrtn ~ ", paste(factorNames,collapse= "+"),"-1",sep=''))
+      rmSecNames <- secNames[colSums(tmp.tsfr[,secNames])==0 | colSums(tmp.tsfr[,secNames])==nrow(tmp.tsfr)]
+      fml <- formula(paste("periodrtn ~ ", paste(setdiff(factorNames,rmSecNames),collapse= "+"),"-1",sep=''))
     }else{
       fml <- formula(paste("periodrtn ~ ", paste(factorNames,collapse= "+"),sep=''))
     }
@@ -212,43 +220,51 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),sector
     fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
   }
   re <- list(TSFR=TSFRold,fRtn=fRtn,res=res,RSquare=RSquare)
-  
-  # tpassed <- proc.time()-ptm
-  # tpassed <- tpassed[3]
-  # cat("This function running time is ",tpassed/60,"min.\n")
   return(re)
 }
 
 
 #' @rdname regression_result
 #' @aliases reg.TS
-#' @param TS a \bold{TS} object.
-#' @param factorLists a list of factor setting.
-#' @param regType the regress type,the default type is "glm".
-#' @param glm_wgt
-#' @param sectorAttr
-#' @param dure
-#' @param secRtnOut whether output sector's return,default value is FALSE.
-#' @return a list, contains a \bold{TSFR} and regression result list.
 #' @export
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2016-09-30'),'month')
-#' TS <- getTS(RebDates,'EI000985')
-#' factorIDs <- c("F000002","F000006","F000008")
-#' factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-#' re <- reg.TS(TS,factorLists)
-reg.TS <- function(TS,factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
-                   sectorAttr=defaultSectorAttr(),
-                   dure=months(1),secRtnOut=FALSE){
+reg.TS <- function(TS,dure=months(1),factorLists,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
+                   sectorAttr=defaultSectorAttr(),secRtnOut=FALSE,regInd=TRUE){
   regType <- match.arg(regType)
   glm_wgt <- match.arg(glm_wgt)
-  TSF <- getMultiFactor(TS,FactorLists = factorLists)
-  TSFR <- getTSR(TSF,dure=dure)
-  reg <- reg.TSFR(TSFR = TSFR,regType = regType,glm_wgt=glm_wgt,sectorAttr = sectorAttr)
-  re <- list(TSFR=TSFR,fRtn=reg$fRtn,res=reg$res,RSquare=reg$RSquare)
+  if(missing(factorLists)){
+    TSR <- getTSR(TS,dure=dure)
+    reg <- reg.TSFR(TSR,regType = regType,glm_wgt=glm_wgt,sectorAttr = sectorAttr)
+    re <- list(TSFR=TSR,fRtn=reg$fRtn,res=reg$res,RSquare=reg$RSquare)
+  }else{
+    TSF <- getMultiFactor(TS,FactorLists = factorLists)
+    TSFR <- getTSR(TSF,dure=dure)
+    reg <- reg.TSFR(TSFR = TSFR,regType = regType,glm_wgt=glm_wgt,sectorAttr = sectorAttr)
+    re <- list(TSFR=TSFR,fRtn=reg$fRtn,res=reg$res,RSquare=reg$RSquare)
+  }
+ 
   return(re)
 }
 
+
+
+#' factor select
+#' 
+#' @name factor_result
+#' @rdname factor_result
+#' @param TSFR a \bold{TSFR} object.
+#' @export
+reg.alpha.select <- function(TSFR){
+  
+}
+
+
+#' @rdname factor_result
+#' 
+#' @export
+reg.risk.select <- function(TSFR){
+
+
+}
 
 
 #' get factor's VIF 
@@ -325,8 +341,10 @@ factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAtt
 # ---------------------  ~~ Backtesting results --------------
 
 #' regression_result_summary
-#'
+#' 
+#' summary of regression result, such as chart of rsquare and factor return,etc.
 #' @param reg_results is regression_result
+#' @param factet whether to plot wealth index of factor's return in one graph, the default value is FALSE.
 #' @name regression_result_summary
 #' @seealso \link{reg.TSFR}
 NULL
