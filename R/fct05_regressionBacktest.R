@@ -247,91 +247,130 @@ reg.TS <- function(TS,dure=months(1),factorLists,regType=c('glm','lm'),glm_wgt=c
 
 
 
+#' factor.VIF
+#'
+#' get factor's VIF or stock's residual
+#' @author Andrew Dow
+#' @param TSF is a \bold{TSF} object.
+#' @param testf is test factor name.
+#' @param sectorAttr is sector attribute.
+#' @return data frame of VIF or residual.
+#' @examples
+#' VIF <- factor.VIF(TSF)
+#' VIF <- factor.VIF(TSF,testf)
+#' res <- factor.VIF(TSF,testf,retValue='res')
+#' @export
+factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr(),retValue=c('VIF','res')){
+  retValue <- match.arg(retValue)
+  
+  fname <- setdiff(colnames(TSF),c('date','stockID'))
+  secNames <- ''
+  nsector <- 0 
+  if(!is.null(sectorAttr)){
+    TSS <- gf.sector(TSF[,c('date','stockID')],sectorAttr = sectorAttr)
+    # get sector factor
+    secNames <- as.character(unique(TSS$sector))
+    nsector <- length(secNames)
+    if(nsector>1){
+      TSS <- dplyr::select(TSS,-sector)
+      TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
+    }
+  }
+
+  dates <- unique(TSF$date)
+  re <- data.frame()
+  # loop of regression
+  pb <- txtProgressBar(style = 3)
+  for(i in 1:length(dates)){ 
+    tmp.tsf <- TSF[TSF$date==dates[i],]
+    if(missing(testf)) testf <- fname
+    
+    for(j in testf){
+      tmp.fname <- setdiff(fname,j)
+      if(nsector>1){
+        rmSecNames <- secNames[colSums(tmp.tsf[,secNames])==0 | colSums(tmp.tsf[,secNames])==nrow(tmp.tsf)]
+        fml <- formula(paste(j," ~ ", paste(c(tmp.fname,setdiff(secNames,rmSecNames)), collapse= "+"),"-1",sep=''))
+      }else{
+        fml <- formula(paste(j," ~ ", paste(tmp.fname, collapse= "+"),sep=''))
+      }
+      lmm <- lm(fml,data = tmp.tsf)
+      smry <- summary(lmm)
+      
+      if(retValue=='VIF'){
+        re <- rbind(re,data.frame(date=dates[i],factorName=j,VIF=1/(1-smry$r.squared)))
+      }else{
+        re <- rbind(re,data.frame(tmp.tsf[,c('date','stockID')],factorName=j,res=smry$residuals))
+      }
+    }
+    setTxtProgressBar(pb,i/length(dates))
+  }
+  close(pb)
+  
+  return(re)
+}
+
+
+
+
 #' factor select
 #' 
-#' @name factor_result
-#' @rdname factor_result
+#' @name factor_select
+#' @rdname factor_select
 #' @param TSFR a \bold{TSFR} object.
 #' @export
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2010-01-31'),as.Date('2016-09-30'))
+#' TS <- getTS(RebDates,indexID = 'EI000905')
+#' factorIDs <- c("F000006","F000007","F000008","F000012","F000013","F000014",
+#' "F000015","F000016","F000017","F000018")
+#' tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+#' factorLists <- buildFactorLists(
+#'   buildFactorList(factorFun="gf.NP_YOY",
+#'                   factorPar=list(),
+#'                   factorDir=1),
+#'   buildFactorList(factorFun="gf.ln_mkt_cap",
+#'                   factorPar=list(),
+#'                   factorDir=-1),                 
+#'   factorStd="norm",factorNA = "median")
+#' factorLists <- c(tmp,factorLists)
+#' TSF <- getMultiFactor(TS,FactorLists = factorLists)
+#' TSFR <- getTSR(TSF)
+#' re <- reg.risk.select(TSFR)
+#' re <- reg.alpha.select(TSFR)
 reg.alpha.select <- function(TSFR){
   
 }
 
 
-#' @rdname factor_result
+#' @rdname factor_select
 #' 
 #' @export
-reg.risk.select <- function(TSFR){
-
-
-}
-
-
-#' get factor's VIF 
-#'
-#' 
-#' @author Andrew Dow
-#' @param TS is a \bold{TS} object.
-#' @param testfactorList is a factor list for test.
-#' @param factorLists is a set of factors in use.
-#' @param sectorAttr is sector.
-#' @param TSF is \bold{TSF} object.
-#' @return a VIF time series.
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2012-12-31'),as.Date('2016-08-31'),rebFreq = 'month')
-#' TS <- getTS(RebDates,'EI000985')
-#' testfactorList <- buildFactorLists_lcfs('F000002',factorStd="norm",factorNA = "median")
-#' factorIDs <- c("F000002","F000006","F000008")
-#' factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-#' VIF <- factor.VIF(TS,testfactorList,factorLists)
-#' VIF <- factor.VIF(TSF=TSF)
-#' @export
-factor.VIF <- function(TS,testfactorList,factorLists,sectorAttr=defaultSectorAttr(),TSF){
-  if(missing(TSF)){
-    TSS <- gf.sector(TS,sectorAttr = sectorAttr)
-    TSS <- dplyr::select(TSS,-sector)
-    TSF <- getMultiFactor(TS,c(testfactorList,factorLists))
-    TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
+reg.risk.select <- function(TSFR,retType=c('both','alpha','risk')){
+  retType <- match.arg(retType)
+  
+  #sector only
+  secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")])
+  fname <- setdiff(colnames(TSFR),c("date","date_end","stockID","periodrtn"))
+  alphaf <- ''
+  riskf <- ''
+  
+  rsquare <- data.frame()
+  frtn <- data.frame()
+  for(i in fname){
+    tmp.TSF <- TSFR[,c("date","stockID",i)]
+    res <- factor.VIF(tmp.TSF,retValue = 'res')
+    res <- dplyr::select(res,-factorName)
+    colnames(res) <- c("date","stockID",i)
+    tmp.TSFR <- dplyr::left_join(TSFR[,c("date","date_end","stockID","periodrtn")],
+                                 res,by=c("date","stockID"))
+    frs <- reg.TSFR(tmp.TSFR)
+    tmp <- frs$RSquare
+    tmp$fname <- i
+    rsquare <- rbind(rsquare,tmp)
+    frtn <- rbind(frtn,frs$fRtn)
     
-    testfname <- sapply(testfactorList, '[[','factorName')
-    fname <- c(sapply(factorLists, '[[','factorName'),setdiff(colnames(TSS),c('date','stockID','sector')))
-    # loop of regression
-    dates <- unique(TSF$date)
-    VIF <- data.frame()
-    for(i in 1:length(dates)){ 
-      tmp.tsf <- TSF[TSF$date==dates[i],]
-      fml <- formula(paste(testfname," ~ ", paste(fname, collapse= "+"),"-1",sep=''))
-      lmm <- lm(fml,data = tmp.tsf)
-      smry <- summary(lmm)
-      VIF <- rbind(VIF,data.frame(date=dates[i],VIF=1/(1-smry$r.squared)))
-    }
-  }else{
-    TS <- TSF[,c('date','stockID')]
-    TSS <- gf.sector(TS,sectorAttr = sectorAttr)
-    TSS <- dplyr::select(TSS,-sector)
-    fname <- setdiff(colnames(TSF),c('date','stockID'))
-    TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
-    indname <- setdiff(colnames(TSF),c(fname,c('date','stockID')))
-    # loop of regression
-    dates <- unique(TSF$date)
-    VIF <- data.frame()
-    for(i in 1:length(dates)){ 
-      tmp.tsf <- TSF[TSF$date==dates[i],]
-      for(j in fname){
-        tmp <- c(indname,setdiff(fname,j))
-        fml <- formula(paste(j," ~ ", paste(tmp, collapse= "+"),"-1",sep=''))
-        lmm <- lm(fml,data = tmp.tsf)
-        smry <- summary(lmm)
-        VIF <- rbind(VIF,data.frame(date=dates[i],factorName=j,VIF=1/(1-smry$r.squared)))
-      }
-   
-    }
   }
-
-  return(VIF)
 }
-
-
 
 
 
@@ -390,7 +429,7 @@ table.reg.fRtn <- function(reg_results){
   
   TSF <- reg_results$TSFR
   TSF <- dplyr::select(TSF,-date_end,-periodrtn)
-  VIF <- factor.VIF(TSF=TSF)
+  VIF <- factor.VIF(TSF)
   VIF <- summarise(group_by(VIF,factorName),VIF=mean(VIF))
   VIF <- dplyr::rename(VIF,fname=factorName)
   VIF$fname <- as.character(VIF$fname)
@@ -642,61 +681,6 @@ getfRtn <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250
   
   return(re)
 }
-
-
-
-getfRtnNEW <- function(dates,factorNames,dure,rollavg=TRUE,reg_results){
-  
-  TF <- data.frame(date=rep(dates,each=length(factorNames)),
-                   fname=rep(factorNames,length(dates)))
-  tmp.TF <- TF
-  tmp.TF$date_from <- trday.offset(tmp.TF$date,dure*-1)
-  if(dure==lubridate::days(1)){
-    dbname <- 'frtn_d1'
-  }else if(dure==lubridate::weeks(1)){
-    dbname <- 'frtn_w1'
-  }else if(dure==lubridate::weeks(2)){
-    dbname <- 'frtn_w2'
-  }else if(dure==months(1)){
-    dbname <- 'frtn_m1'
-  }
-  
-  
-  if(missing(reg_results)){
-    con <- db.local()
-    if(rollavg==FALSE){
-      qr <- paste("SELECT date,fname,",dbname," 'frtn'
-                  FROM Reg_FactorRtn")
-      re <- dbGetQuery(con,qr)
-      re$date <- intdate2r(re$date)
-      re <- plyr::ddply(re,'fname',summarise,frtn=mean(frtn,trim = 0.025))
-      suppressWarnings(re <- dplyr::left_join(TF,re,by='fname'))
-      
-    }else{
-      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,nwin-1)
-      tmp.TF <- tmp.TF %>% rowwise() %>% 
-        do(data.frame(date_from=getRebDates(.$date_from_from, .$date_from,'day'),
-                      date=rep(.$date,nwin),
-                      fname=rep(.$fname,nwin)))
-      tmp.TF <- transform(tmp.TF,date=rdate2int(date),date_from=rdate2int(date_from))
-      dbWriteTable(con,name="yrf_tmp",value=tmp.TF,row.names = FALSE,overwrite = TRUE)
-      qr <- paste("SELECT y.date,y.fname,",dbname," 'frtn'
-                  FROM yrf_tmp y LEFT JOIN Reg_FactorRtn u
-                  ON y.date_from=u.date and y.fname=u.fname")
-      re <- dbGetQuery(con,qr)
-      re_by <- dplyr::group_by(re,date,fname)
-      re <- summarise(re_by, frtn = mean(frtn,na.rm = T))
-      re$date <- intdate2r(re$date)
-      suppressWarnings(re <- dplyr::left_join(TF,re,by=c('date','fname')))
-    }
-    dbDisconnect(con)
-  }else{
-    
-  }
-  
-  return(re)
-}
-
 
 
 
