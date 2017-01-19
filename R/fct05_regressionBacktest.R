@@ -330,46 +330,67 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr(),retValue=c('VIF'
 #'                   factorDir=1),
 #'   buildFactorList(factorFun="gf.ln_mkt_cap",
 #'                   factorPar=list(),
-#'                   factorDir=-1),                 
+#'                   factorDir=-1),
+#'   buildFactorList(factorFun="gf.G_MLL_Q",
+#'                   factorPar=list(),
+#'                   factorDir=1),
+#'    buildFactorList(factorFun="gf.GG_NP_Q",
+#'                    factorPar=list(filt = 0),
+#'                    factorDir=1),
+#'    buildFactorList(factorFun="gf.GG_OR_Q",
+#'                    factorPar=list(filt = 0),
+#'                    factorDir=1),                
 #'   factorStd="norm",factorNA = "median")
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' TSFR <- getTSR(TSF)
-#' re <- reg.risk.select(TSFR)
-#' re <- reg.alpha.select(TSFR)
-reg.alpha.select <- function(TSFR){
-  
-}
-
-
-#' @rdname factor_select
-#' 
-#' @export
-reg.risk.select <- function(TSFR,retType=c('both','alpha','risk')){
-  retType <- match.arg(retType)
-  
+#' re <- reg.factor.select(TSFR)
+reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
+ 
   #sector only
-  secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")])
-  fname <- setdiff(colnames(TSFR),c("date","date_end","stockID","periodrtn"))
-  alphaf <- ''
-  riskf <- ''
-  
-  rsquare <- data.frame()
-  frtn <- data.frame()
-  for(i in fname){
-    tmp.TSF <- TSFR[,c("date","stockID",i)]
-    res <- factor.VIF(tmp.TSF,retValue = 'res')
-    res <- dplyr::select(res,-factorName)
-    colnames(res) <- c("date","stockID",i)
-    tmp.TSFR <- dplyr::left_join(TSFR[,c("date","date_end","stockID","periodrtn")],
-                                 res,by=c("date","stockID"))
-    frs <- reg.TSFR(tmp.TSFR)
-    tmp <- frs$RSquare
-    tmp$fname <- i
-    rsquare <- rbind(rsquare,tmp)
-    frtn <- rbind(frtn,frs$fRtn)
-    
+  if(!is.null(sectorAttr)){
+    secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")])[[4]]
+    result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = T), 
+                         frtn=NA,fttest=NA,pttest=NA,tag='risk')
+  }else{
+    result <- data.frame()
   }
+
+  fname <- setdiff(colnames(TSFR),c("date","date_end","stockID","periodrtn"))
+  selectf <- NULL
+  
+  while(length(setdiff(fname,selectf))>0){
+    rsquare <- data.frame()
+    frtn <- data.frame()
+    res <- data.frame()
+    for(i in setdiff(fname,selectf)){
+      tmp.TSF <- TSFR[,c("date","stockID",union(selectf,i))]
+      tmp.res <- factor.VIF(tmp.TSF,i,sectorAttr,'res')
+      tmp.TSF[,i] <- tmp.res[,'res']
+      tmp.TSFR <- dplyr::left_join(TSFR[,c("date","date_end","stockID","periodrtn")],
+                                   tmp.TSF,by=c("date","stockID"))
+      frs <- reg.TSFR(tmp.TSFR)
+      tmp <- frs$RSquare
+      tmp$fname <- i
+      res <- rbind(res,tmp.res)
+      rsquare <- rbind(rsquare,tmp)
+      frtn <- rbind(frtn,frs$fRtn)
+    }
+    rsquare <- rsquare %>% 
+      group_by(fname) %>%
+      summarise(rsquare = mean(RSquare, na.rm = TRUE)) %>% 
+      arrange(desc(rsquare)) %>% slice(1)
+    tmp <- frtn[frtn$fname==rsquare$fname,'frtn']
+    testres <- t.test(tmp)
+    rsquare <- transform(rsquare,frtn=mean(tmp),
+                         fttest=testres$statistic,
+                         pttest=testres$p.value,
+                         tag=ifelse(testres$statistic>2,'alpha','risk'))
+    result <-  rbind(result,rsquare)
+    selectf <- c(selectf,rsquare$fname)
+    TSFR[,rsquare$fname] <- res[res$factorName==rsquare$fname,'res']
+  }
+  return(result)
 }
 
 
