@@ -25,7 +25,7 @@ lcdb.build.RegTables <- function(FactorLists){
   for(i in 1:length(dates)){
     cat(paste(min(rdate2int(dates[[i]])),' to ',max(rdate2int(dates[[i]]))),'...\n')
     TS <- getTS(dates[[i]],indexID = 'EI000985')
-    TS <- rmSuspend(TS)
+    TS <- rm_suspend(TS)
     TSF <- getMultiFactor(TS,FactorLists)
     
     prd_lists <- list(d1=lubridate::days(1),
@@ -80,7 +80,7 @@ lcdb.update.RegTables <- function(FactorLists){
   dates <- getRebDates(begT,endT,rebFreq = 'day')
   cat(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...\n')
   TS <- getTS(dates,indexID = 'EI000985')
-  TS <- rmSuspend(TS)
+  TS <- rm_suspend(TS)
   TSF <- getMultiFactor(TS,FactorLists)
   
   prd_lists <- list(d1=lubridate::days(1),
@@ -170,14 +170,16 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   }
   
   # regression
-  if(glm_wgt=="sqrtFV"){
-    TSw <- getTSF(TS,factorFun="gf_lcfs",factorPar=list(factorID='F000001'),factorStd = 'none',factorNA = "median")
-    TSw$factorscore <- sqrt(TSw$factorscore)
-    TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
-    TSFR <- merge(TSFR,TSw,by =c("date","stockID"))
-  } else if(glm_wgt=="res"){
-    
-  }
+  if(regType=='glm'){ #get glm_wgt data
+    if(glm_wgt=="sqrtFV"){
+      TSw <- getTSF(TS,factorFun="gf_lcfs",factorPar=list(factorID='F000001'),factorStd = 'none',factorNA = "median")
+      TSw$factorscore <- sqrt(TSw$factorscore)
+      TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
+      TSFR <- merge(TSFR,TSw,by =c("date","stockID"))
+    } else if(glm_wgt=="res"){
+      
+    }
+  }  
   
   factorNames <- setdiff(names(TSFR),c("stockID","date","date_end","periodrtn","wgt","glm_wgt"))
   
@@ -257,30 +259,25 @@ reg.TS <- function(TS,dure=months(1),factorLists,regType=c('glm','lm'),glm_wgt=c
 #' @return data frame of VIF or residual.
 #' @examples
 #' VIF <- factor.VIF(TSF)
-#' VIF <- factor.VIF(TSF,testf)
-#' res <- factor.VIF(TSF,testf,retValue='res')
+#' VIF <- factor.VIF(TSF,testf)[[1]]
+#' res <- factor.VIF(TSF,testf)[[2]]
 #' @export
-factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr(),retValue=c('VIF','res')){
-  retValue <- match.arg(retValue)
-  
+factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
   fname <- setdiff(colnames(TSF),c('date','stockID'))
-  secNames <- ''
-  nsector <- 0 
-  if(!is.null(sectorAttr)){
-    TSS <- gf.sector(TSF[,c('date','stockID')],sectorAttr = sectorAttr)
-    # get sector factor
-    secNames <- as.character(unique(TSS$sector))
-    nsector <- length(secNames)
-    if(nsector>1){
-      TSS <- dplyr::select(TSS,-sector)
-      TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
-    }
+  
+  # get sector factor
+  TSS <- gf.sector(TSF[,c('date','stockID')],sectorAttr)
+  secNames <- as.character(unique(TSS$sector))
+  nsector <- length(secNames)
+  if(nsector>1){
+    TSS <- dplyr::select(TSS,-sector)
+    TSF <- merge.x(TSF,TSS,by=c("date","stockID"))
   }
-
+  
   dates <- unique(TSF$date)
-  re <- data.frame()
+  VIF <- data.frame()
+  res <- data.frame()
   # loop of regression
-  pb <- txtProgressBar(style = 3)
   for(i in 1:length(dates)){ 
     tmp.tsf <- TSF[TSF$date==dates[i],]
     if(missing(testf)) testf <- fname
@@ -293,20 +290,14 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr(),retValue=c('VIF'
       }else{
         fml <- formula(paste(j," ~ ", paste(tmp.fname, collapse= "+"),sep=''))
       }
-      lmm <- lm(fml,data = tmp.tsf)
-      smry <- summary(lmm)
+      smry <- summary(lm(fml,data = tmp.tsf))
+      VIF <- rbind(VIF,data.frame(date=dates[i],fname=j,vif=1/(1-smry$r.squared)))
+      res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],fname=j,res=smry$residuals))
       
-      if(retValue=='VIF'){
-        re <- rbind(re,data.frame(date=dates[i],factorName=j,VIF=1/(1-smry$r.squared)))
-      }else{
-        re <- rbind(re,data.frame(tmp.tsf[,c('date','stockID')],factorName=j,res=smry$residuals))
-      }
     }
-    setTxtProgressBar(pb,i/length(dates))
   }
-  close(pb)
   
-  return(re)
+  return(list(VIF,res))
 }
 
 
@@ -365,8 +356,13 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
     res <- data.frame()
     for(i in setdiff(fname,selectf)){
       tmp.TSF <- TSFR[,c("date","stockID",union(selectf,i))]
-      tmp.res <- factor.VIF(tmp.TSF,i,sectorAttr,'res')
-      tmp.TSF[,i] <- tmp.res[,'res']
+      if(is.null(sectorAttr) & ncol(tmp.TSF)==3){
+        tmp.res <- data.frame(tmp.TSF[,c('date','stockID')],factorName=i,res=tmp.TSF[,i])
+      }else{
+        tmp.res <- factor.VIF(tmp.TSF,i,sectorAttr,'res')[[2]]
+        tmp.TSF[,i] <- tmp.res[,'res']
+      }
+      
       tmp.TSFR <- dplyr::left_join(TSFR[,c("date","date_end","stockID","periodrtn")],
                                    tmp.TSF,by=c("date","stockID"))
       frs <- reg.TSFR(tmp.TSFR)
@@ -450,9 +446,8 @@ table.reg.fRtn <- function(reg_results){
   
   TSF <- reg_results$TSFR
   TSF <- dplyr::select(TSF,-date_end,-periodrtn)
-  VIF <- factor.VIF(TSF)
-  VIF <- summarise(group_by(VIF,factorName),VIF=mean(VIF))
-  VIF <- dplyr::rename(VIF,fname=factorName)
+  VIF <- factor.VIF(TSF)[[1]]
+  VIF <- summarise(group_by(VIF,fname),vif=mean(vif))
   VIF$fname <- as.character(VIF$fname)
   
   re <- left_join(rtnsum,tstat,by='fname')
@@ -621,7 +616,7 @@ MC.table.fCorr <- function(TSF,Nbin){
     cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
     cordata_by <- dplyr::arrange(cordata_by,tmp,fname,fnamecor)
     cordata_by <- reshape2::dcast(cordata_by,tmp+fname~fnamecor)
-    cordata_by <- split(cordata_by[,-1],unique(cordata_by$tmp))
+    cordata_by <- split(cordata_by[,-1],cordata_by$tmp)
     cordata_by <- plyr::llply(cordata_by,function(df){
       rownames(df) <- df$fname
       df <- as.matrix(df[,-1])
@@ -679,7 +674,7 @@ getfRtn <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250
       suppressWarnings(re <- dplyr::left_join(TF,re,by='fname'))
       
     }else{
-      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,nwin-1)
+      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,-(nwin-1))
       tmp.TF <- tmp.TF %>% rowwise() %>% 
         do(data.frame(date_from=getRebDates(.$date_from_from, .$date_from,'day'),
                       date=rep(.$date,nwin),
@@ -955,7 +950,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     #get one period raw data
     tmp.TSF <- TSF[TSF$date==i,]
     tmp.TS <- tmp.TSF[,c('date','stockID')]
-    tmp.TS <- rmSuspend(tmp.TS)
+    tmp.TS <- rm_suspend(tmp.TS)
     if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
     tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     

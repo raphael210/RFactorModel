@@ -4,8 +4,7 @@
 \alias{factor.VIF}
 \title{factor.VIF}
 \usage{
-factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr(), retValue = c("VIF",
-  "res"))
+factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
 }
 \arguments{
 \item{TSF}{is a \bold{TSF} object.}
@@ -22,8 +21,8 @@ get factor's VIF or stock's residual
 }
 \examples{
 VIF <- factor.VIF(TSF)
-VIF <- factor.VIF(TSF,testf)
-res <- factor.VIF(TSF,testf,retValue='res')
+VIF <- factor.VIF(TSF,testf)[[1]]
+res <- factor.VIF(TSF,testf)[[2]]
 }
 \author{
 Andrew Dow

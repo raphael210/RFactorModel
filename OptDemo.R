@@ -1,7 +1,7 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 # ---------------------  build and update local db -------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-factorIDs <- c("F000002","F000006","F000008","F000012","F000013","F000014","F000015")
+factorIDs <- c("F000006","F000008","F000012","F000013","F000014","F000015")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
