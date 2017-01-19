@@ -937,20 +937,29 @@ biasTest <- function(reg_results,portID){
 #' 
 #' @export
 OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=c('IndSty','Ind','IndStyTE'),
-                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=TRUE){
+                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=TRUE,
+                   optWay=c('ipop','solve.QP','Matlab')){
   target <- match.arg(target)
   constr <- match.arg(constr) 
+  optWay <- match.arg(optWay)
   
   fname <- setdiff(colnames(TSF),c('date','stockID'))
   dates <- unique(TSF$date)
   port <- data.frame()
+  
+  if( optWay == "Matlab"){
+    R.matlab::Matlab$startServer()
+    matlab <- R.matlab::Matlab()
+    open(matlab)
+  }
+  
   for(i in dates){
     cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
     
     #get one period raw data
     tmp.TSF <- TSF[TSF$date==i,]
     tmp.TS <- tmp.TSF[,c('date','stockID')]
-    tmp.TS <- rm_suspend(tmp.TS)
+    tmp.TS <- rmSuspend(tmp.TS)
     if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
     tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     
@@ -1025,27 +1034,64 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     
     if(target=='return-risk'){
       
-      
-      
       Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
       Dmat <- alphamat%*%Fcovmat%*%t(alphamat)
       tmp <- Matrix::nearPD(Dmat)
       Dmat <- tmp$mat
       Dmat <- matrix(Dmat,nrow = nrow(Dmat))
-      
-      Amat <- cbind(riskmat,-1*riskmat)
       nstock <- dim(Dmat)[1]
-      Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
-      bvec <- c(1,totwgt$wgtlb,-1*totwgt$wgtub,rep(0,nstock),rep(-0.01,nstock))
-      system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
       
-      tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
+      if( optWay == "solve.QP"){
+        
+        Amat <- cbind(riskmat,-1*riskmat)
+        Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
+        bvec <- c(1,totwgt$wgtlb,-1*totwgt$wgtub,rep(0,nstock),rep(-0.01,nstock))
+        system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
+        
+      }else if(optWay == "ipop"){
+        
+        f.ipop <- as.matrix(-dvec, ncol = 1)
+        A.ipop <- t(cbind(1,riskmat))
+        b.ipop <- c(1,totwgt$wgtlb)
+        dif.ipop <- totwgt$wgtub - totwgt$wgtlb
+        r.ipop <- c(0, dif.ipop)
+        lb.ipop <- matrix(data = 0, nrow = nstock, ncol = 1)
+        ub.ipop <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
+                                              A = A.ipop, b = b.ipop, r = r.ipop,
+                                              l = lb.ipop, u = ub.ipop,
+                                              maxiter = 3000))
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
+        
+      }else if(optWay == "Matlab"){
+        
+        H.matlab <- Dmat
+        f.matlab <- as.matrix(-dvec, ncol = 1)
+        A.matlab <- t(cbind(-1*riskmat, riskmat))
+        b.matlab <- as.matrix(c(-1*totwgt$wgtlb, totwgt$wgtub), ncol=1)
+        Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
+        beq.matlab <- 1
+        lb.matlab <- matrix(data = 0, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        
+        R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
+                              Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
+        R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
+        R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
+        res.tmp <- R.matlab::getVariable(matlab, "res")
+        res.matlab <- res.tmp$res
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
+      }
+      
       tmp <- tmp[tmp$wgt>0.0005,]
       colnames(tmp) <-c( "date","stockID","wgt")
       tmp <- transform(tmp,wgt=wgt/sum(wgt))
       
     }else{
-      
       
       pspec <- portfolio.spec(assets=colnames(dvec))
       pspec <- add.constraint(portfolio=pspec, type="full_investment")
@@ -1065,15 +1111,15 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
       
     }
     port <- rbind(port,tmp)
-    
   }# for dates end
   
+  if( optWay == "Matlab"){
+    close(matlab)
+  }
   port$date <- as.Date(port$date,origin = '1970-01-01')
   port$stockID <- as.character(port$stockID)
   return(port)
 }
-
-
 
 
 

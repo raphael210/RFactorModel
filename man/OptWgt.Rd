@@ -7,7 +7,7 @@
 OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "return-risk"),
   constr = c("IndSty", "Ind", "IndStyTE"), benchmark = "EI000905",
   indfexp = 0.05, fexp, sectorAttr = defaultSectorAttr(), maxWgt = 0.01,
-  addEvent = TRUE)
+  addEvent = TRUE, optWay = c("ipop", "solve.QP", "Matlab"))
 }
 \arguments{
 \item{alphaf}{is alpha factors' name.}
