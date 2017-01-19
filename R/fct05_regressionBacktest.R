@@ -204,7 +204,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
     }
     smry <- summary(lmm)
     fRtn <- rbind(fRtn,data.frame(date=dates$date[i],fname=rownames(smry$coefficients),frtn=smry$coefficients[,1],Tstat=smry$coefficients[,3]))
-    res <- rbind(res,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,res=smry$residuals))
+    res <- rbind(res,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,res=lmm$residuals))
     RSquare <- rbind(RSquare,data.frame(date=dates$date[i],RSquare=smry$r.squared))
     
     # # pure-factor-port wgt
