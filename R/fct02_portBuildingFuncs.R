@@ -60,12 +60,11 @@
 #' pt5 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 #' pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 getPort <- function(TSF, topN=NA, topQ=NA, 
-                    factorNA=c("median","mean","na","min","max","sectmean"),
+                    factorNA="median",
                     pick.sectorNe=FALSE, sectorAttr=defaultSectorAttr(),
                     force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                     backtestPar,
                     dir=c("long","short")){
-  factorNA <- match.arg(factorNA)
   dir <- match.arg(dir)
   if(!missing(backtestPar)){
     topN <- getbacktestPar.longshort(backtestPar,"topN")
@@ -377,11 +376,11 @@ port.substitute <- function(port,TSF,
 getPort_throughout <- function (TSF,
                                 # getPort
                                 topN=NA, topQ=NA, 
-                                factorNA=c("median","mean","na","min","max","sectmean"),
+                                factorNA="median",
                                 pick.sectorNe=FALSE, 
                                 force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                                 # addwgt2port
-                                wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
+                                wgtType= "eq",
                                 wgt.sectorNe=FALSE, wgtbmk="EI000300",
                                 # port.substitute
                                 wgt.max=NA, 
@@ -518,11 +517,11 @@ port.backtest <- function(port,
 getPB <- function (TSF,
                    # getPort
                    topN=NA, topQ=NA, 
-                   factorNA=c("median","mean","na","min","max","sectmean"),
+                   factorNA="median",
                    pick.sectorNe=FALSE, 
                    force_in=0, buffer_keep=0, buffer_rate=0, init_port=NULL,
                    # addwgt2port
-                   wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
+                   wgtType= "eq",
                    wgt.sectorNe=FALSE, wgtbmk="EI000300",
                    # port.substitute
                    wgt.max=NA, 

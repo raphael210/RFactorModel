@@ -2,32 +2,27 @@
 % Please edit documentation in R/fct05_regressionBacktest.R
 \name{factor.VIF}
 \alias{factor.VIF}
-\title{get factor's VIF}
+\title{factor.VIF}
 \usage{
-factor.VIF(TS, testfactorList, factorLists, sectorAttr = defaultSectorAttr())
+factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
 }
 \arguments{
-\item{TS}{is a \bold{TS} object.}
+\item{TSF}{is a \bold{TSF} object.}
 
-\item{testfactorList}{is a factor list for test.}
+\item{testf}{is test factor name.}
 
-\item{factorLists}{is a set of factors in use.}
-
-\item{sectorAttr}{is sector attribution.}
+\item{sectorAttr}{is sector attribute.}
 }
 \value{
-a VIF time series.
+data frame of VIF or residual.
 }
 \description{
-get factor's VIF
+get factor's VIF or stock's residual
 }
 \examples{
-RebDates <- getRebDates(as.Date('2012-12-31'),as.Date('2016-08-31'),rebFreq = 'month')
-TS <- getTS(RebDates,'EI000985')
-testfactorList <- buildFactorLists_lcfs('F000002',factorStd="norm",factorNA = "median")
-factorIDs <- c("F000003","F000004","F000007","F000008","F000011")
-factorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-VIF <- factor.VIF(TS,testfactorList,factorLists)
+VIF <- factor.VIF(TSF)
+VIF <- factor.VIF(TSF,testf)[[1]]
+res <- factor.VIF(TSF,testf)[[2]]
 }
 \author{
 Andrew Dow

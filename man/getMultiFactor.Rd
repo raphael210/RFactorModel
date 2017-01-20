@@ -13,9 +13,8 @@ getMultiFactor(TS, FactorLists, wgts, factorStd_mult = c("none", "norm",
 
 getRawMultiFactor(TS, FactorLists)
 
-getMultiFactorbyTSFs(TSFs, wgts, factorStd_mult = c("none", "norm",
-  "sectorNe"), factorNA_mult = c("na", "mean", "median", "min", "max",
-  "sectmean"), sectorAttr_mult = defaultSectorAttr())
+getMultiFactorbyTSFs(TSFs, wgts, factorStd_mult = "none",
+  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr())
 
 MultiFactor2CombiFactor(TSF_M, wgts, factorNames = setdiff(colnames(TSF_M),
   usualcols()), keep_single_factors = "TRUE")

@@ -7,9 +7,8 @@
 \usage{
 buildFactorLists(..., factorStd, sectorAttr, factorOutlier, factorNA)
 
-buildFactorLists_lcfs(factorIDs, factorStd = c("none", "norm", "sectorNe"),
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = c("na",
-  "mean", "median", "min", "max", "sectmean"))
+buildFactorLists_lcfs(factorIDs, factorStd = "none",
+  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na")
 }
 \arguments{
 \item{...}{one or more FactorList. See more detail in \code{\link{buildFactorList}}.}

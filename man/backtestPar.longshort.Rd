@@ -6,11 +6,10 @@
 \title{backtestPar.longshort}
 \usage{
 backtestPar.longshort(backtestPar = backtestPar.default(), topN = 50,
-  topQ = NA, factorNA = c("na", "mean", "median", "min", "max", "sectmean"),
-  pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(), force_in = 0,
-  buffer_keep = 0, buffer_rate = 0, init_port = NULL,
-  holdingEndT = Sys.Date(), wgtType = c("eq", "fv", "fvsqrt", "custom",
-  "ffv", "ffvsqrt"), wgt.sectorNe = FALSE, wgt.max = NA, bmk = "EI000300",
+  topQ = NA, factorNA = "median", pick.sectorNe = FALSE,
+  sectorAttr = defaultSectorAttr(), force_in = 0, buffer_keep = 0,
+  buffer_rate = 0, init_port = NULL, holdingEndT = Sys.Date(),
+  wgtType = "eq", wgt.sectorNe = FALSE, wgt.max = NA, bmk = "EI000300",
   hedge.rebFreq = "month", hedge.posi = 1, hitFreq = "month")
 
 setbacktestPar.longshort(backtestPar, topN, topQ, factorNA, pick.sectorNe,

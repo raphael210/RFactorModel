@@ -6,27 +6,51 @@
 \alias{regression_result}
 \title{regression_result}
 \usage{
-reg.TSFR(TSFR, regType = c("lm", "glm"), glm_wgt = c("sqrtFV", "res"),
-  sectorAttr = defaultSectorAttr())
+reg.TSFR(TSFR, regType = c("glm", "lm"), glm_wgt = c("sqrtFV", "res"),
+  sectorAttr = defaultSectorAttr(), secRtnOut = FALSE)
 
-reg.TS(TS, factorLists, regType = c("glm", "lm"), glm_wgt = c("sqrtFV",
-  "res"), sectorAttr = defaultSectorAttr(), dure = months(1))
+reg.TS(TS, dure = months(1), factorLists, regType = c("glm", "lm"),
+  glm_wgt = c("sqrtFV", "res"), sectorAttr = defaultSectorAttr(),
+  secRtnOut = FALSE, regInd = TRUE)
 }
 \arguments{
-\item{TSFR}{a TSFR object.}
+\item{TSFR}{a \bold{TSFR} object.}
 
-\item{regType}{the regress type,the default type is "lm".}
+\item{regType}{the regress type,the default type is "glm".}
+
+\item{glm_wgt}{glm's weight data, default value is sqrt of floating market value.}
+
+\item{sectorAttr}{sector attribute.}
+
+\item{secRtnOut}{whether output sector's return,default value is \code{FALSE}.}
+
+\item{TS}{a \bold{TS} object.}
+
+\item{dure}{see example in \code{\link{getTSR}}.}
 }
 \value{
-reg.TSFR return a list, contains dataframes of frtn, residual, Rsquare, pfp
-
-reg.TS return a list, contains dataframes of TSFR,frtn, residual, Rsquare
+return a list, contains dataframes of frtn, residual and Rsquare.
 }
 \description{
 Regression to the TSFR data, calculate factor return, residuals, and R squrare, etc.
 }
 \examples{
-reg.TSFR(TSFR)
+RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
+TS <- getTS(RebDates,indexID = 'EI000985')
+factorIDs <- c("F000002","F000006","F000008")
+tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+factorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.NP_YOY",
+                  factorPar=list(),
+                  factorDir=1),
+  factorStd="norm",factorNA = "median")
+factorLists <- c(tmp,factorLists)
+re <- reg.TS(TS)
+re <- reg.TS(TS,factorLists)
+----------------------------------------------------------
+TSF <- getMultiFactor(TS,FactorLists = factorLists)
+TSFR <- getTSR(TSF)
+re <- reg.TSFR(TSFR)
 }
 \author{
 Ruifei.yin
