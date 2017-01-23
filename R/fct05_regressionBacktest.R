@@ -10,77 +10,71 @@
 #' build and update local database's regression result tables
 #' @name lcdb_regtables
 #' @rdname lcdb_regtables
-#' @examples 
-#' lcdb.build.RegTables(FactorLists)
-#' lcdb.update.RegTables(FactorLists)
+#' @param begT is begin date
+#' @param endT is end date
+#' @param FactorLists
+#' @examples
+#' begT <- as.Date('2010-01-01')
+#' endT <- as.Date('2012-12-31')
+#' lcdb.build.RegTables(begT,endT,FactorLists)
+#' begT <- as.Date('2012-06-01')
+#' endT <- as.Date('2014-12-31')
+#' lcdb.update.RegTables(begT,endT,FactorLists)
 #' @export
-lcdb.build.RegTables <- function(FactorLists){
-  
+lcdb.build.RegTables <- function(begT,endT,FactorLists){
   con <- db.local()
-  endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
-  endT <- intdate2r(endT)
-  endT <- trday.offset(endT,by = months(-1))
-  dates <- getRebDates(as.Date('2005-01-04'),endT,rebFreq = 'day')
-  dates <- split(dates,cut(dates,'month'))
-  for(i in 1:length(dates)){
-    cat(paste(min(rdate2int(dates[[i]])),' to ',max(rdate2int(dates[[i]]))),'...\n')
-    TS <- getTS(dates[[i]],indexID = 'EI000985')
-    TS <- rm_suspend(TS)
-    TSF <- getMultiFactor(TS,FactorLists)
-    
-    prd_lists <- list(d1=lubridate::days(1),
-                     w1=lubridate::weeks(1),
-                     w2=lubridate::weeks(2),
-                     m1=months(1))
-    for(j in 1:length(prd_lists)){
-      TSFR <- getTSR(TSF,dure = prd_lists[[j]])
-      re <- reg.TSFR(TSFR,regType='glm')
-      if(j==1){
-        fRtn <- re$fRtn
-        res <- re$res
-        RSquare <- re$RSquare
-      }else{
-        fRtn <- dplyr::left_join(fRtn,re$fRtn,by=c('date','fname'))
-        res <- dplyr::left_join(res,re$res,by=c('date','stockID'))
-        RSquare <- dplyr::left_join(RSquare,re$RSquare,by='date')
-      }
-    }
-    colnames(fRtn) <- c('date','fname',paste(c("frtn","Tstat"),rep(names(prd_lists),each = 2),sep = '_'))
-    colnames(res) <- c('date','stockID',paste('res',names(prd_lists),sep = '_'))
-    colnames(RSquare) <- c('date',paste("RSquare",names(prd_lists),sep = '_'))
-    
-    
-    if(i==1){
-      dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=T,append=F,row.names=F)
-      dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=T,append=F,row.names=F)
-      dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=T,append=F,row.names=F)
-    }else{
-      dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-      dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-      dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-    }
-    
-  }
+  if(dbExistsTable(con, "Reg_FactorRtn")) dbRemoveTable(con,'Reg_FactorRtn')
+  if(dbExistsTable(con, "Reg_Residual")) dbRemoveTable(con,'Reg_Residual')
+  if(dbExistsTable(con, "Reg_RSquare")) dbRemoveTable(con,'Reg_RSquare')
+  
+  dbGetQuery(con,"CREATE TABLE Reg_FactorRtn (
+              date int  NOT NULL,
+              fname TEXT NOT NULL,
+              frtn_d1 decimal(10,6) NULL,
+              tstat_d1 decimal(10,4) NULL,
+              frtn_w1 decimal(10,6) NULL,
+              tstat_w1 decimal(10,4) NULL,
+              frtn_w2 decimal(10,6) NULL,
+              tstat_w2 decimal(10,4) NULL,
+              frtn_m1 decimal(10,6) NULL,
+              tstat_m1 decimal(10,4) NULL)")
+  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_FactorRtn ON Reg_FactorRtn(date,fname)")
+  
+  dbGetQuery(con,"CREATE TABLE Reg_Residual (
+              date int  NOT NULL,
+             stockID TEXT NOT NULL,
+             res_d1 decimal(10,8) NULL,
+             res_w1 decimal(10,8) NULL,
+             res_w2 decimal(10,8) NULL,
+             res_m1 decimal(10,8) NULL)")
+  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_Residual ON Reg_Residual(date,stockID)")
+  
+  dbGetQuery(con,"CREATE TABLE Reg_RSquare (
+             date int  NOT NULL,
+             rsquare_d1 decimal(10,4) NULL,
+             rsquare_w1 decimal(10,4) NULL,
+             rsquare_w2 decimal(10,4) NULL,
+             rsquare_m1 decimal(10,4) NULL)")
+  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_RSquare ON Reg_RSquare(date)")
   dbDisconnect(con)
+  
+  if(missing(begT)) begT <- as.Date('2005-01-04')
+  if(missing(endT)){
+    endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
+    endT <- trday.offset(intdate2r(endT),by = months(-1))
+  }
+  dates <- getRebDates(begT,endT,rebFreq = 'day')
+  dates <- split(dates,cut(dates,'month'))
+  plyr::l_ply(dates,lcdb.subfun.regtables,FactorLists,.progress = plyr::progress_text(style=3))
+
   return('Done!')
 }
 
 
-#' @rdname lcdb_regtables
-#' 
-#' @export
-lcdb.update.RegTables <- function(FactorLists){
-  
-  con <- db.local()
-  begT <- dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
-  begT <- intdate2r(begT)
-  endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
-  endT <- intdate2r(endT)
-  endT <- trday.offset(endT,by = months(-1))
-  dates <- getRebDates(begT,endT,rebFreq = 'day')
+lcdb.subfun.regtables <- function(dates,FactorLists){
+
   cat(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...\n')
   TS <- getTS(dates,indexID = 'EI000985')
-  TS <- rm_suspend(TS)
   TSF <- getMultiFactor(TS,FactorLists)
   
   prd_lists <- list(d1=lubridate::days(1),
@@ -100,15 +94,49 @@ lcdb.update.RegTables <- function(FactorLists){
       RSquare <- dplyr::left_join(RSquare,re$RSquare,by='date')
     }
   }
-  colnames(fRtn) <- c('date','fname',paste(c("frtn","Tstat"),rep(names(prd_lists),each = 2),sep = '_'))
+  colnames(fRtn) <- c('date','fname',paste(c("frtn","tstat"),rep(names(prd_lists),each = 2),sep = '_'))
   colnames(res) <- c('date','stockID',paste('res',names(prd_lists),sep = '_'))
-  colnames(RSquare) <- c('date',paste("RSquare",names(prd_lists),sep = '_'))
+  colnames(RSquare) <- c('date',paste("rsquare",names(prd_lists),sep = '_'))
   
+  con <- db.local()
   dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
   dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
   dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-
   dbDisconnect(con)
+}
+
+
+
+#' @rdname lcdb_regtables
+#' 
+#' @export
+lcdb.update.RegTables <- function(begT,endT,FactorLists){
+  con <- db.local()
+  if(missing(begT)){
+    tmp.begT <- dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
+    tmp.begT <- trday.offset(intdate2r(tmp.begT),lubridate::days(1))
+  }
+  if(missing(endT)){
+    endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
+    endT <- trday.offset(intdate2r(endT),by = months(-1))
+  }
+  if(begT>endT) return('Done!')
+  
+  tmp.dates <- dbGetQuery(con,"select min(date) 'mindate',max(date) 'maxdate' from Reg_RSquare")
+  tmp.dates <- transform(tmp.dates,mindate=intdate2r(mindate),maxdate=intdate2r(maxdate))
+  if(begT<= tmp.dates$maxdate & endT>= tmp.dates$mindate){
+    dbGetQuery(con, paste("delete from Reg_FactorRtn WHERE date>=",rdate2int(begT),
+                          " and date<=",rdate2int(endT)))
+    dbGetQuery(con, paste("delete from Reg_RSquare WHERE date>=",rdate2int(begT),
+                          " and date<=",rdate2int(endT)))
+    dbGetQuery(con, paste("delete from Reg_Residual WHERE date>=",rdate2int(begT),
+                          " and date<=",rdate2int(endT)))
+  }
+  dbDisconnect(con)
+  
+  dates <- getRebDates(begT,endT,rebFreq = 'day')
+  dates <- split(dates,cut(dates,'month'))
+  plyr::l_ply(dates,lcdb.subfun.regtables,FactorLists,.progress = plyr::progress_text(style=3))
   return('Done!')
 }
 
@@ -805,7 +833,7 @@ calfCov <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250
       
       
     }else{
-      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,nwin-1)
+      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,-(nwin-1))
       tmp.TF <- tmp.TF %>% rowwise() %>% 
         do(data.frame(date_from=getRebDates(.$date_from_from, .$date_from,'day'),
                       date=rep(.$date,nwin),
@@ -868,7 +896,7 @@ calDelta <- function(TS,dure,datasrc=c('local','regResult'),reg_results,nwin=250
   
   if(datasrc=='local'){
     con <- db.local()
-    dates$date_tmp2 <- trday.nearby(dates$date_tmp1,nwin-1)
+    dates$date_tmp2 <- trday.nearby(dates$date_tmp1,-(nwin-1))
     
     qr <- paste("SELECT date,stockID,",dbname," 'res'
                 FROM Reg_Residual where date>=",rdate2int(min(dates$date_tmp2)),

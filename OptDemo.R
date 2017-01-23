@@ -1,17 +1,20 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 # ---------------------  build and update local db -------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-factorIDs <- c("F000006","F000008","F000012","F000013","F000014","F000015")
+factorIDs <- c("F000006","F000008","F000014","F000016","F000017","F000018")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 FactorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorPar=list(),
+                  factorDir=-1),
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
   factorStd="norm",factorNA = "median")
 FactorLists <- c(tmp,FactorLists)
 
-system.time(build.lcdb.RegTables(FactorLists))
-#system.time(update.lcdb.RegTables(FactorLists))
+system.time(lcdb.build.RegTables(begT=as.Date('2010-01-01'),endT=as.Date('2012-01-01'),FactorLists=FactorLists))
+#system.time(lcdb.update.RegTables(as.Date('2011-06-01'),endT=as.Date('2013-01-01'),FactorLists))
 
 
 

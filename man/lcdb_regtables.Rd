@@ -6,15 +6,24 @@
 \alias{lcdb_regtables}
 \title{lcdb_regtables}
 \usage{
-lcdb.build.RegTables(FactorLists)
+lcdb.build.RegTables(begT, endT, FactorLists)
 
-lcdb.update.RegTables(FactorLists)
+lcdb.update.RegTables(begT, endT, FactorLists)
+}
+\arguments{
+\item{begT}{is begin date}
+
+\item{endT}{is end date}
 }
 \description{
 build and update local database's regression result tables
 }
 \examples{
-lcdb.build.RegTables(FactorLists)
-lcdb.update.RegTables(FactorLists)
+begT <- as.Date('2010-01-01')
+endT <- as.Date('2012-12-31')
+lcdb.build.RegTables(begT,endT,FactorLists)
+begT <- as.Date('2012-06-01')
+endT <- as.Date('2014-12-31')
+lcdb.update.RegTables(begT,endT,FactorLists)
 }
 
