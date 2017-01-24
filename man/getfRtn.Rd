@@ -4,12 +4,10 @@
 \alias{getfRtn}
 \title{getfRtn}
 \usage{
-getfRtn(TF, dure, datasrc = c("local", "regResult"), rollavg = TRUE,
-  nwin = 250, reg_results)
+getfRtn(RebDates, fNames, dure = months(1), rollavg = TRUE,
+  nwin = lubridate::years(-2), reg_results)
 }
 \arguments{
-\item{TF}{a data frame contains date and factorNames}
-
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
 \item{rollavg}{whether to get the rolling average factor return.}
@@ -24,12 +22,7 @@ get factor return data
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-fNames <- c("mkt_cap_","PB_mrq_","pct_chg_per_60_","G_SCF_Q")
-TF <- data.frame(date=rep(RebDates,each=length(fNames)),
-                 fname=rep(fNames,length(RebDates)))
+fNames <- c("ln_mkt_cap_","PB_mrq_","pct_chg_per_60_","IVR_")
 dure <- lubridate::days(1)
-fRtn <- getfRtn(TF,dure)
-dure <- months(1)
-fRtn <- getfRtn(TF,dure)
 }
 

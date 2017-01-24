@@ -13,7 +13,7 @@ FactorLists <- buildFactorLists(
   factorStd="norm",factorNA = "median")
 FactorLists <- c(tmp,FactorLists)
 
-system.time(lcdb.build.RegTables(begT=as.Date('2010-01-01'),endT=as.Date('2012-01-01'),FactorLists=FactorLists))
+system.time(lcdb.build.RegTables(FactorLists=FactorLists))
 #system.time(lcdb.update.RegTables(as.Date('2011-06-01'),endT=as.Date('2013-01-01'),FactorLists))
 
 
@@ -24,8 +24,8 @@ system.time(lcdb.build.RegTables(begT=as.Date('2010-01-01'),endT=as.Date('2012-0
 RebDates <- getRebDates(as.Date('2009-01-31'),as.Date('2016-10-31'))
 TS <- getTS(RebDates,indexID = 'EI000985')
 
-factorIDs <- c("F000006","F000008","F000012","F000013","F000014","F000016","F000017")
-tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
+factorIDs <- c("F000006","F000008","F000014","F000016","F000017","F000018")
+tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean",factorOutlier = 0.01)
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.ln_mkt_cap",
                   factorPar=list(),
@@ -33,7 +33,7 @@ FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
-  factorStd="norm",factorNA = "mean")
+  factorStd="norm",factorNA = "mean",factorOutlier = 0.01)
 FactorLists <- c(tmp,FactorLists)
 TSF <- getMultiFactor(TS,FactorLists = FactorLists)
 
@@ -47,12 +47,9 @@ fexp <- data.frame(fname=fNames,
                    up=c(0.01,100,100,0.01,100,0.01,100,100))
 
 alphaf <- c("PB_mrq_","pct_chg_per_60_","liquidity","IVR","NP_YOY")
-TF <- data.frame(date=rep(RebDates,each=length(alphaf)),
-                  fname=rep(alphaf,length(RebDates)))
-
 
 dure <- months(1)
-system.time(fRtn <- getfRtn(TF,dure,rollavg=F))
+system.time(fRtn <- getfRtn(RebDates,fNames,dure,rollavg=F))
 system.time(fCov <- calfCov(TF,dure,rollavg=F))
 
 fRtn <- fRtn[1:length(alphaf),c('fname','frtn')]
@@ -63,8 +60,6 @@ system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return
 
 system.time(port_ind_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind',addEvent = F))
 system.time(port_indsty_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
-
-
 
 system.time(port_ind <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='Ind'))
 system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))

@@ -4,7 +4,7 @@
 \alias{getResidual}
 \title{getResidual}
 \usage{
-getResidual(TS, dure, datasrc = c("local", "regResult"), reg_results)
+getResidual(TS, dure, reg_results)
 }
 \arguments{
 \item{TS}{a \bold{TS} object.}

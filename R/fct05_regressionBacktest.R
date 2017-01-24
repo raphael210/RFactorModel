@@ -56,13 +56,14 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
              rsquare_w2 decimal(10,4) NULL,
              rsquare_m1 decimal(10,4) NULL)")
   dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_RSquare ON Reg_RSquare(date)")
-  dbDisconnect(con)
+  
   
   if(missing(begT)) begT <- as.Date('2005-01-04')
   if(missing(endT)){
     endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
     endT <- trday.offset(intdate2r(endT),by = months(-1))
   }
+  dbDisconnect(con)
   dates <- getRebDates(begT,endT,rebFreq = 'day')
   dates <- split(dates,cut(dates,'month'))
   plyr::l_ply(dates,lcdb.subfun.regtables,FactorLists,.progress = plyr::progress_text(style=3))
@@ -659,125 +660,84 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' getfRtn
 #' 
 #' get factor return data
-#' @param TF a data frame contains date and factorNames
+#' @param RebDates
+#' @param fNames
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param datasrc
 #' @param reg_results
 #' @param rollavg whether to get the rolling average factor return.
 #' @param nwin rolling windows.
 #' @return a factor return data frame.
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-#' fNames <- c("mkt_cap_","PB_mrq_","pct_chg_per_60_","G_SCF_Q")
-#' TF <- data.frame(date=rep(RebDates,each=length(fNames)),
-#'                  fname=rep(fNames,length(RebDates)))
+#' fNames <- c("ln_mkt_cap_","PB_mrq_","pct_chg_per_60_","IVR_")
 #' dure <- lubridate::days(1)
-#' fRtn <- getfRtn(TF,dure)
-#' dure <- months(1)
-#' fRtn <- getfRtn(TF,dure)
 #' @export
-getfRtn <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250,reg_results){
-  datasrc <- match.arg(datasrc)
-  tmp.TF <- TF
-  tmp.TF$date_from <- trday.offset(tmp.TF$date,dure*-1)
-  if(dure==lubridate::days(1)){
-    dbname <- 'frtn_d1'
-  }else if(dure==lubridate::weeks(1)){
-    dbname <- 'frtn_w1'
-  }else if(dure==lubridate::weeks(2)){
-    dbname <- 'frtn_w2'
-  }else if(dure==months(1)){
-    dbname <- 'frtn_m1'
+getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
+                    nwin=lubridate::years(-2),reg_results){
+  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = F)
+  TF <- dplyr::arrange(TF,date,fname)
+  
+  if(missing(reg_results)){
+    re <- getRawfRtn(dure=dure)
+  }else{
+    re <- getRawfRtn(reg_results=reg_results)
   }
   
+  if(rollavg==FALSE){
+    re <- re %>% group_by(fname) %>% 
+      summarise(frtn = mean(frtn,na.rm = T))
+    re <- dplyr::left_join(TF,re,by='fname')
+    
+  }else{
+    tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
+                         begT=trday.offset(endT,nwin))
+    tmp <- tmp %>% rowwise() %>% 
+      do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
+                    date=.$date,fname=.$fname))
+    re <- dplyr::rename(re,tmpdate=date)
+    re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
+    re <- re %>% group_by(date,fname) %>% 
+      summarise(frtn = mean(frtn,na.rm = T))
+    re <- dplyr::left_join(TF,re,by=c('date','fname'))
+  }
   
-  if(datasrc=='local'){
-    con <- db.local()
-    if(rollavg==FALSE){
-      qr <- paste("SELECT date,fname,",dbname," 'frtn'
-                FROM Reg_FactorRtn")
-      re <- dbGetQuery(con,qr)
-      re$date <- intdate2r(re$date)
-      re <- plyr::ddply(re,'fname',summarise,frtn=mean(frtn,trim = 0.025))
-      suppressWarnings(re <- dplyr::left_join(TF,re,by='fname'))
-      
-    }else{
-      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,-(nwin-1))
-      tmp.TF <- tmp.TF %>% rowwise() %>% 
-        do(data.frame(date_from=getRebDates(.$date_from_from, .$date_from,'day'),
-                      date=rep(.$date,nwin),
-                      fname=rep(.$fname,nwin)))
-      tmp.TF <- transform(tmp.TF,date=rdate2int(date),date_from=rdate2int(date_from))
-      dbWriteTable(con,name="yrf_tmp",value=tmp.TF,row.names = FALSE,overwrite = TRUE)
-      qr <- paste("SELECT y.date,y.fname,",dbname," 'frtn'
-                  FROM yrf_tmp y LEFT JOIN Reg_FactorRtn u
-                  ON y.date_from=u.date and y.fname=u.fname")
-      re <- dbGetQuery(con,qr)
-      re_by <- dplyr::group_by(re,date,fname)
-      re <- summarise(re_by, frtn = mean(frtn,na.rm = T))
-      re$date <- intdate2r(re$date)
-      suppressWarnings(re <- dplyr::left_join(TF,re,by=c('date','fname')))
+  return(re)
+}
+
+
+
+
+
+getRawfRtn <- function(begT,endT,dure,reg_results){
+  if(missing(begT)) begT <- as.Date('1990-01-01')
+  if(missing(endT)) endT <- as.Date('2100-01-01')
+  
+  if(missing(reg_results)){
+    if(dure==lubridate::days(1)){
+      dbname <- 'frtn_d1'
+    }else if(dure==lubridate::weeks(1)){
+      dbname <- 'frtn_w1'
+    }else if(dure==lubridate::weeks(2)){
+      dbname <- 'frtn_w2'
+    }else if(dure==months(1)){
+      dbname <- 'frtn_m1'
     }
-    dbDisconnect(con)
-  }else if(datasrc=='regResult'){
     
-  }
-  
-  return(re)
-}
-
-
-
-#' getResidual
-#' 
-#' get stocks' residual
-#' @param TS a \bold{TS} object.
-#' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param datasrc
-#' @param reg_results
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2012-01-31'),as.Date('2016-08-31'))
-#' TS <- getTS(RebDates)
-#' dure <- lubridate::days(1)
-#' res <- getResidual(TS,dure)
-#' dure <- months(1)
-#' res <- getResidual(TS,dure)
-#' @export
-getResidual <- function(TS,dure,datasrc=c('local','regResult'),reg_results){
-  datasrc <- match.arg(datasrc)
-  TS$date_from <- trday.offset(TS$date,dure*-1)
-  TS <- transform(TS,date=rdate2int(date),date_from=rdate2int(date_from))
-  if(dure==lubridate::days(1)){
-    dbname <- 'res_d1'
-  }else if(dure==lubridate::weeks(1)){
-    dbname <- 'res_w1'
-  }else if(dure==lubridate::weeks(2)){
-    dbname <- 'res_w2'
-  }else if(dure==months(1)){
-    dbname <- 'res_m1'
-  }
-  
-  
-  if(datasrc=='local'){
     con <- db.local()
-    dbWriteTable(con,name="yrf_tmp",value=TS,row.names = FALSE,overwrite = TRUE)
-    qr <- paste("SELECT y.date,y.stockID,",dbname," 'res'
-                FROM yrf_tmp y LEFT JOIN Reg_Residual u
-                ON y.date_from=u.date and y.stockID=u.stockID")
+    qr <- paste("SELECT date,fname,",dbname," 'frtn'
+                FROM Reg_FactorRtn where date>=",rdate2int(begT),
+                " and date<=",rdate2int(endT))
     re <- dbGetQuery(con,qr)
-    re$date <- intdate2r(re$date)
+    re <- transform(re,date=intdate2r(date))
     dbDisconnect(con)
-  }else if(datasrc=='regResult'){
-    
+  }else{
+    re <- reg_results$fRtn
+    re <- dplyr::select(re,-Tstat)
+    re <- dplyr::filter(re,date>=begT,date<=endT)
   }
   
   return(re)
 }
-
-
-
-
-
 
 
 
@@ -787,7 +747,6 @@ getResidual <- function(TS,dure,datasrc=c('local','regResult'),reg_results){
 #' @author Andrew Dow
 #' @param TF a data frame contains date and factorNames
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param datasrc
 #' @param reg_results
 #' @param nwin rolling windows.
 #' @return a data frame fCov.
@@ -799,7 +758,7 @@ getResidual <- function(TS,dure,datasrc=c('local','regResult'),reg_results){
 #' dure <- lubridate::days(1)
 #' fCov <- calfCov(TF,dure)
 #' @export
-calfCov <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250,reg_results){
+calfCov <- function(TF,dure,rollavg=TRUE,nwin=250,reg_results){
   datasrc <- match.arg(datasrc)
   tmp.TF <- TF
   tmp.TF$date_from <- trday.offset(tmp.TF$date,dure*-1)
@@ -855,8 +814,6 @@ calfCov <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250
       
     }
     
-    
-
     dbDisconnect(con)
   }else if(datasrc=='regResult'){
     
@@ -864,6 +821,52 @@ calfCov <- function(TF,dure,datasrc=c('local','regResult'),rollavg=TRUE,nwin=250
   
   return(re)
 }
+
+
+#' getResidual
+#' 
+#' get stocks' residual
+#' @param TS a \bold{TS} object.
+#' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
+#' @param reg_results
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2012-01-31'),as.Date('2016-08-31'))
+#' TS <- getTS(RebDates)
+#' dure <- lubridate::days(1)
+#' res <- getResidual(TS,dure)
+#' dure <- months(1)
+#' res <- getResidual(TS,dure)
+#' @export
+getResidual <- function(TS,dure,reg_results){
+  if(missing(reg_results)){
+    con <- db.local()
+    TS$date_from <- trday.offset(TS$date,dure*-1)
+    TS <- transform(TS,date=rdate2int(date),date_from=rdate2int(date_from))
+    if(dure==lubridate::days(1)){
+      dbname <- 'res_d1'
+    }else if(dure==lubridate::weeks(1)){
+      dbname <- 'res_w1'
+    }else if(dure==lubridate::weeks(2)){
+      dbname <- 'res_w2'
+    }else if(dure==months(1)){
+      dbname <- 'res_m1'
+    }
+    dbWriteTable(con,name="yrf_tmp",value=TS,row.names = FALSE,overwrite = TRUE)
+    qr <- paste("SELECT y.date,y.stockID,",dbname," 'res'
+                FROM yrf_tmp y LEFT JOIN Reg_Residual u
+                ON y.date_from=u.date and y.stockID=u.stockID")
+    re <- dbGetQuery(con,qr)
+    re$date <- intdate2r(re$date)
+    dbDisconnect(con)
+  }else if(datasrc=='regResult'){
+    
+  }
+  
+  return(re)
+}
+
+
+
 
 
 

@@ -4,8 +4,7 @@
 \alias{calfCov}
 \title{calfCov}
 \usage{
-calfCov(TF, dure, datasrc = c("local", "regResult"), rollavg = TRUE,
-  nwin = 250, reg_results)
+calfCov(TF, dure, rollavg = TRUE, nwin = 250, reg_results)
 }
 \arguments{
 \item{TF}{a data frame contains date and factorNames}
