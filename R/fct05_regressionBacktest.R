@@ -250,6 +250,8 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(secRtnOut==FALSE){
     fRtn <- dplyr::filter(fRtn,!stringr::str_detect(fname,'ES'))
   }
+  fRtn$fname <- as.character(fRtn$fname)
+  res$stockID <- as.character(res$stockID)
   re <- list(TSFR=TSFRold,fRtn=fRtn,res=res,RSquare=RSquare)
   return(re)
 }
@@ -691,16 +693,19 @@ getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
   }else{
     tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
                          begT=trday.offset(endT,nwin))
+    tmp$fname <- factor(tmp$fname)
     tmp <- tmp %>% rowwise() %>% 
       do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
                     date=.$date,fname=.$fname))
+    class(tmp) <- c( "tbl_df", "data.frame")
+    tmp$fname <- as.character(tmp$fname)
     re <- dplyr::rename(re,tmpdate=date)
     re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
     re <- re %>% group_by(date,fname) %>% 
       summarise(frtn = mean(frtn,na.rm = T))
     re <- dplyr::left_join(TF,re,by=c('date','fname'))
   }
-  
+  re <- na.omit(re)
   return(re)
 }
 
@@ -758,67 +763,50 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 #' dure <- lubridate::days(1)
 #' fCov <- calfCov(TF,dure)
 #' @export
-calfCov <- function(TF,dure,rollavg=TRUE,nwin=250,reg_results){
-  datasrc <- match.arg(datasrc)
-  tmp.TF <- TF
-  tmp.TF$date_from <- trday.offset(tmp.TF$date,dure*-1)
-  if(dure==lubridate::days(1)){
-    dbname <- 'frtn_d1'
-  }else if(dure==lubridate::weeks(1)){
-    dbname <- 'frtn_w1'
-  }else if(dure==lubridate::weeks(2)){
-    dbname <- 'frtn_w2'
-  }else if(dure==months(1)){
-    dbname <- 'frtn_m1'
+calfCov <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
+                    nwin=lubridate::years(-2),reg_results){
+  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = F)
+  TF <- dplyr::arrange(TF,date,fname)
+  
+  if(missing(reg_results)){
+    re <- getRawfRtn(dure=dure)
+  }else{
+    re <- getRawfRtn(reg_results=reg_results)
   }
   
-  
-  if(datasrc=='local'){
-    con <- db.local()
-    if(rollavg==FALSE){
-      qr <- paste("SELECT date,fname,",dbname," 'frtn'
-                FROM Reg_FactorRtn")
-      re <- dbGetQuery(con,qr)
-      re$date <- intdate2r(re$date)
-      re <- re[re$fname %in% TF$fname,]
-      re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
-      fNames <- as.character(unique(TF$fname))
-      re <- re[,c("date",fNames)]
-      re <- data.frame(fname=fNames,cov(as.matrix(re[,fNames])))
-      
-      
-      suppressWarnings(re <- dplyr::left_join(TF,re,by='fname'))
-      re <- re[,c("date",fNames)]
-      
-      
-    }else{
-      tmp.TF$date_from_from <- trday.nearby(tmp.TF$date_from,-(nwin-1))
-      tmp.TF <- tmp.TF %>% rowwise() %>% 
-        do(data.frame(date_from=getRebDates(.$date_from_from, .$date_from,'day'),
-                      date=rep(.$date,nwin),
-                      fname=rep(.$fname,nwin)))
-      tmp.TF <- transform(tmp.TF,date=rdate2int(date),date_from=rdate2int(date_from))
-      dbWriteTable(con,name="yrf_tmp",value=tmp.TF,row.names = FALSE,overwrite = TRUE)
-      qr <- paste("SELECT y.date_from,y.date,y.fname,",dbname," 'frtn'
-                  FROM yrf_tmp y LEFT JOIN Reg_FactorRtn u
-                  ON y.date_from=u.date and y.fname=u.fname")
-      re <- dbGetQuery(con,qr)
-      re <- transform(re,date_from=intdate2r(date_from),date=intdate2r(date))
-      re <- reshape2::dcast(re,date_from+date~fname,value.var = 'frtn')
-      re <- dplyr::arrange(re,date,date_from)
-      fNames <- as.character(unique(TF$fname))
-      re <- re[,c("date",fNames)]
-      re <- plyr::ddply(re,'date',function(subre){
-        as.data.frame(cov(as.matrix(subre[,fNames])))
-      })
-      
-    }
+
+  if(rollavg==FALSE){
+    re <- re[re$fname %in% TF$fname,]
+    re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
+    tmp <- setdiff(colnames(re),'date')
+    re <- data.frame(fname=tmp,cov(as.matrix(re[,tmp])),stringsAsFactors = F)
+    TF <- subset(TF,fname %in% tmp)
+    re <- dplyr::left_join(TF,re,by='fname')
+    re <- re[,c("date",tmp)]
     
-    dbDisconnect(con)
-  }else if(datasrc=='regResult'){
+  }else{
+    tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
+                         begT=trday.offset(endT,nwin))
+    tmp$fname <- factor(tmp$fname)
+    tmp <- tmp %>% rowwise() %>% 
+      do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
+                    date=.$date,fname=.$fname))
+    class(tmp) <- c( "tbl_df", "data.frame")
+    tmp$fname <- as.character(tmp$fname)
+    re <- dplyr::rename(re,tmpdate=date)
+    re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
+    re <- na.omit(re)
+    re <- reshape2::dcast(re,date+tmpdate~fname,value.var = 'frtn')
+    re <- dplyr::arrange(re,date,tmpdate)
+    tmp <- setdiff(colnames(re),c('date','tmpdate'))
+    re <- plyr::ddply(re,'date',function(subre){
+      as.data.frame(cov(as.matrix(subre[,tmp])))
+    })
+    re <- subset(re,date %in% TF$date) 
+    re <- na.omit(re)
+    # remove too short period to do
     
   }
-  
   return(re)
 }
 
@@ -1123,7 +1111,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
       tmp <- transform(tmp,wgt=wgt/sum(wgt))
       
     }else{
-      
+      require(PortfolioAnalytics)
       pspec <- portfolio.spec(assets=colnames(dvec))
       pspec <- add.constraint(portfolio=pspec, type="full_investment")
       pspec <- add.constraint(portfolio=pspec,type="box",min=0,max=maxWgt)

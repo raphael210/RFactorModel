@@ -21,10 +21,13 @@ system.time(lcdb.build.RegTables(FactorLists=FactorLists))
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 # ---------------------  optimization demo -----------------------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-RebDates <- getRebDates(as.Date('2009-01-31'),as.Date('2016-10-31'))
-TS <- getTS(RebDates,indexID = 'EI000985')
+begT <- as.Date('2009-01-31')
+endT <- Sys.Date()-1
+RebDates <- getRebDates(begT,endT)
+indexID <- 'EI000985'
+TS <- getTS(RebDates,indexID)
 
-factorIDs <- c("F000006","F000008","F000014","F000016","F000017","F000018")
+factorIDs <- c("F000006","F000014","F000015","F000016","F000017")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean",factorOutlier = 0.01)
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.ln_mkt_cap",
@@ -40,20 +43,27 @@ TSF <- getMultiFactor(TS,FactorLists = FactorLists)
 TSFR <- getTSR(TSF)
 reg_results <- reg.TSFR(TSFR)
 
+#show regression result
+MC.chart.fCorr(TSF,Nbin='year')
+chart.reg.rsquare(reg_results)
+table.reg.rsquare(reg_results)
+
+MC.chart.regCorr(reg_results)
+chart.reg.fRtnWealthIndex(reg_results,facet = T)
+table.reg.fRtn(reg_results)
+chart.reg.fRtnBar(reg_results)
+
 #get factor return
 fNames <- sapply(FactorLists, '[[','factorName')
 fexp <- data.frame(fname=fNames,
-                   low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
-                   up=c(0.01,100,100,0.01,100,0.01,100,100))
+                   low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
+                   up=c(1,0.01,100,100,100,2,100))
 
-alphaf <- c("PB_mrq_","pct_chg_per_60_","liquidity","IVR","NP_YOY")
+alphaf <- c("disposition_","beta_","IVR_","ln_mkt_cap_","NP_YOY" )
 
-dure <- months(1)
-system.time(fRtn <- getfRtn(RebDates,fNames,dure,rollavg=F))
-system.time(fCov <- calfCov(TF,dure,rollavg=F))
+system.time(fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results))
+system.time(fCov <- calfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results))
 
-fRtn <- fRtn[1:length(alphaf),c('fname','frtn')]
-fRtn$frtn <- 0.2
 
 system.time(port_ind <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
 system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp))
@@ -61,13 +71,15 @@ system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return
 system.time(port_ind_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind',addEvent = F))
 system.time(port_indsty_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
 
+TSF <- TSF[TSF$date>min(RebDates),]
 system.time(port_ind <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='Ind'))
 system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
 
+newport1 <- port_ind[port_ind$date== max(RebDates),]
+newport2 <- port_indsty[port_indsty$date== max(RebDates),]
 
-
-
-port4 <- port_indsty_NE
+port4 <- port_ind[port_ind$date!= max(RebDates),]
+port4 <- port_indsty[port_indsty$date!= max(RebDates),]
 portrtn4 <- port.backtest(port4,fee.buy = 0.001)
 benchrtn4 <- getrtn.bmk(portrtn4, bmk = "EI000905")
 allrtn4 <- addrtn.hedge(portrtn4,benchrtn4)
