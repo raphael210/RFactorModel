@@ -10,9 +10,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<meta name="author" content="UBSSDIC Quant" />
+<meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-01-26" />
+<meta name="date" content="2017-02-06" />
 
 <title>Multiple factors model using regression</title>
 
@@ -69,213 +69,315 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
-<h4 class="author"><em>UBSSDIC Quant</em></h4>
-<h4 class="date"><em>2017-01-26</em></h4>
+<h4 class="author"><em>UBSSDIC Quant Group</em></h4>
+<h4 class="date"><em>2017-02-06</em></h4>
 
 
 
-<p>Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The <code>html_vignette</code> output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The <code>html_vignette</code> format:</p>
+<p>This vignette aims to help you work with the regression method in multiple factors model. We will seperate the help file in following part:</p>
 <ul>
-<li>Never uses retina figures</li>
-<li>Has a smaller default figure size</li>
-<li>Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style</li>
+<li>local regression tables</li>
+<li>regression result show</li>
+<li>portfolio optimization</li>
+<li>traditional portfolio construction</li>
 </ul>
-<div id="vignette-info" class="section level2">
-<h2>Vignette Info</h2>
-<p>Note the various macros within the <code>vignette</code> section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the <code>title</code> field and the <code>\VignetteIndexEntry</code> to match the title of your vignette.</p>
-</div>
-<div id="styles" class="section level2">
-<h2>Styles</h2>
-<p>The <code>html_vignette</code> template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:</p>
-<pre><code>output: 
-  rmarkdown::html_vignette:
-    css: mystyles.css</code></pre>
-</div>
-<div id="figures" class="section level2">
-<h2>Figures</h2>
-<p>The figure sizes have been customised so that you can easily put two images side-by-side.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">plot</span>(<span class="dv">1</span>:<span class="dv">10</span>)
-<span class="kw">plot</span>(<span class="dv">10</span>:<span class="dv">1</span>)</code></pre></div>
-<p><img src="data:image/png;base64,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" /><img src="data:image/png;base64,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" /></p>
-<p>You can enable figure captions by <code>fig_caption: yes</code> in YAML:</p>
-<pre><code>output:
-  rmarkdown::html_vignette:
-    fig_caption: yes</code></pre>
-<p>Then you can use the chunk option <code>fig.cap = &quot;Your figure caption.&quot;</code> in <strong>knitr</strong>.</p>
-</div>
-<div id="more-examples" class="section level2">
-<h2>More Examples</h2>
-<p>You can write math expressions, e.g. <span class="math inline">\(Y = X\beta + \epsilon\)</span>, footnotes<a href="#fn1" class="footnoteRef" id="fnref1"><sup>1</sup></a>, and tables, e.g. using <code>knitr::kable()</code>.</p>
+<div id="local-regression-tables" class="section level2">
+<h2>local regression tables</h2>
+<p>Local database’s factorlist table is as below.</p>
 <table>
 <thead>
 <tr class="header">
-<th></th>
-<th align="right">mpg</th>
-<th align="right">cyl</th>
-<th align="right">disp</th>
-<th align="right">hp</th>
-<th align="right">drat</th>
-<th align="right">wt</th>
-<th align="right">qsec</th>
-<th align="right">vs</th>
-<th align="right">am</th>
-<th align="right">gear</th>
-<th align="right">carb</th>
+<th align="left">factorID</th>
+<th align="left">factorName</th>
+<th align="left">factorFun</th>
+<th align="left">factorPar</th>
+<th align="right">factorDir</th>
+<th align="left">factorType</th>
+<th align="left">factorDesc</th>
 </tr>
 </thead>
 <tbody>
 <tr class="odd">
-<td>Mazda RX4</td>
-<td align="right">21.0</td>
-<td align="right">6</td>
-<td align="right">160.0</td>
-<td align="right">110</td>
-<td align="right">3.90</td>
-<td align="right">2.620</td>
-<td align="right">16.46</td>
-<td align="right">0</td>
-<td align="right">1</td>
-<td align="right">4</td>
-<td align="right">4</td>
+<td align="left">F000001</td>
+<td align="left">float_cap_</td>
+<td align="left">gf.float_cap</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left">mkt</td>
+<td align="left">流通市值</td>
 </tr>
 <tr class="even">
-<td>Mazda RX4 Wag</td>
-<td align="right">21.0</td>
-<td align="right">6</td>
-<td align="right">160.0</td>
-<td align="right">110</td>
-<td align="right">3.90</td>
-<td align="right">2.875</td>
-<td align="right">17.02</td>
-<td align="right">0</td>
-<td align="right">1</td>
-<td align="right">4</td>
-<td align="right">4</td>
+<td align="left">F000002</td>
+<td align="left">mkt_cap_</td>
+<td align="left">gf.mkt_cap</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left">mkt</td>
+<td align="left">总市值</td>
 </tr>
 <tr class="odd">
-<td>Datsun 710</td>
-<td align="right">22.8</td>
-<td align="right">4</td>
-<td align="right">108.0</td>
-<td align="right">93</td>
-<td align="right">3.85</td>
-<td align="right">2.320</td>
-<td align="right">18.61</td>
+<td align="left">F000003</td>
+<td align="left">F_NP_chg_w13</td>
+<td align="left">gf.F_NP_chg</td>
+<td align="left">span=“w13”</td>
 <td align="right">1</td>
-<td align="right">1</td>
-<td align="right">4</td>
-<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="even">
-<td>Hornet 4 Drive</td>
-<td align="right">21.4</td>
-<td align="right">6</td>
-<td align="right">258.0</td>
-<td align="right">110</td>
-<td align="right">3.08</td>
-<td align="right">3.215</td>
-<td align="right">19.44</td>
+<td align="left">F000004</td>
+<td align="left">F_target_rtn_1_2</td>
+<td align="left">gf.F_target_rtn</td>
+<td align="left">con_type=“1,2”</td>
 <td align="right">1</td>
-<td align="right">0</td>
-<td align="right">3</td>
-<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="odd">
-<td>Hornet Sportabout</td>
-<td align="right">18.7</td>
-<td align="right">8</td>
-<td align="right">360.0</td>
-<td align="right">175</td>
-<td align="right">3.15</td>
-<td align="right">3.440</td>
-<td align="right">17.02</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">3</td>
-<td align="right">2</td>
+<td align="left">F000005</td>
+<td align="left">PE_lyr_</td>
+<td align="left">gf.PE_lyr</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="even">
-<td>Valiant</td>
-<td align="right">18.1</td>
-<td align="right">6</td>
-<td align="right">225.0</td>
-<td align="right">105</td>
-<td align="right">2.76</td>
-<td align="right">3.460</td>
-<td align="right">20.22</td>
-<td align="right">1</td>
-<td align="right">0</td>
-<td align="right">3</td>
-<td align="right">1</td>
+<td align="left">F000006</td>
+<td align="left">PB_mrq_</td>
+<td align="left">gf.PB_mrq</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="odd">
-<td>Duster 360</td>
-<td align="right">14.3</td>
-<td align="right">8</td>
-<td align="right">360.0</td>
-<td align="right">245</td>
-<td align="right">3.21</td>
-<td align="right">3.570</td>
-<td align="right">15.84</td>
-<td align="right">0</td>
-<td align="right">0</td>
-<td align="right">3</td>
-<td align="right">4</td>
+<td align="left">F000007</td>
+<td align="left">PE_ttm_</td>
+<td align="left">gf.PE_ttm</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="even">
-<td>Merc 240D</td>
-<td align="right">24.4</td>
-<td align="right">4</td>
-<td align="right">146.7</td>
-<td align="right">62</td>
-<td align="right">3.69</td>
-<td align="right">3.190</td>
-<td align="right">20.00</td>
-<td align="right">1</td>
-<td align="right">0</td>
-<td align="right">4</td>
-<td align="right">2</td>
+<td align="left">F000008</td>
+<td align="left">pct_chg_per_60_</td>
+<td align="left">gf.pct_chg_per</td>
+<td align="left">N=60</td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="odd">
-<td>Merc 230</td>
-<td align="right">22.8</td>
-<td align="right">4</td>
-<td align="right">140.8</td>
-<td align="right">95</td>
-<td align="right">3.92</td>
-<td align="right">3.150</td>
-<td align="right">22.90</td>
+<td align="left">F000009</td>
+<td align="left">F_rank_chg_60_1_2</td>
+<td align="left">gf.F_rank_chg</td>
+<td align="left">lag=60,con_type=“1,2”</td>
 <td align="right">1</td>
-<td align="right">0</td>
-<td align="right">4</td>
-<td align="right">2</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 <tr class="even">
-<td>Merc 280</td>
-<td align="right">19.2</td>
-<td align="right">6</td>
-<td align="right">167.6</td>
-<td align="right">123</td>
-<td align="right">3.92</td>
-<td align="right">3.440</td>
-<td align="right">18.30</td>
+<td align="left">F000010</td>
+<td align="left">F_PE_1_</td>
+<td align="left">gf.F_PE</td>
+<td align="left">con_type=“1”</td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000011</td>
+<td align="left">F_ROE_1</td>
+<td align="left">gf.F_ROE</td>
+<td align="left">con_type=“1”</td>
 <td align="right">1</td>
-<td align="right">0</td>
-<td align="right">4</td>
-<td align="right">4</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">F000012</td>
+<td align="left">G_SCF_Q</td>
+<td align="left">gf.G_SCF_Q</td>
+<td align="left"></td>
+<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000013</td>
+<td align="left">liquidity_</td>
+<td align="left">gf.liquidity</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">F000014</td>
+<td align="left">volatility_</td>
+<td align="left">gf.volatility</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000015</td>
+<td align="left">disposition_</td>
+<td align="left">gf.disposition</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">F000016</td>
+<td align="left">beta_</td>
+<td align="left">gf.beta</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000017</td>
+<td align="left">IVR_</td>
+<td align="left">gf.IVR</td>
+<td align="left"></td>
+<td align="right">-1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">F000018</td>
+<td align="left">ILLIQ</td>
+<td align="left">gf.ILLIQ</td>
+<td align="left"></td>
+<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
 </tr>
 </tbody>
 </table>
-<p>Also a quote using <code>&gt;</code>:</p>
-<blockquote>
-<p>“He who gives up [code] safety for [code] speed deserves neither.” (<a href="https://twitter.com/hadleywickham/status/504368538874703872">via</a>)</p>
-</blockquote>
+<p>Build and update local database’s regression result tables.</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># get recommended factorlists</span>
+FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recommend</span>(<span class="dt">indexID =</span> <span class="st">'EI000985'</span>)
+
+<span class="co"># build local database's regression tables</span>
+<span class="kw">system.time</span>(<span class="kw">lcdb.build.RegTables</span>(<span class="dt">FactorLists=</span>FactorLists))
+
+<span class="co"># update local database's regression tables</span>
+<span class="kw">system.time</span>(<span class="kw">lcdb.update.RegTables</span>(<span class="dt">FactorLists =</span> FactorLists))</code></pre></div>
 </div>
-<div class="footnotes">
-<hr />
-<ol>
-<li id="fn1"><p>A footnote here.<a href="#fnref1">↩</a></p></li>
-</ol>
+<div id="regression-result-show" class="section level2">
+<h2>regression result show</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># parameter setting</span>
+begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2012-01-31'</span>)
+endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2016-12-31'</span>)
+RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
+indexID &lt;-<span class="st"> 'EI000985'</span>
+
+<span class="co"># get TS,TSF,TSFR</span>
+TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,indexID)
+FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recommend</span>(indexID)
+TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,<span class="dt">FactorLists =</span> FactorLists)
+TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
+
+<span class="co"># get regression result</span>
+reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
+
+## show regression result
+<span class="co"># factor correlation plot</span>
+<span class="kw">MC.chart.fCorr</span>(TSF,<span class="dt">Nbin=</span><span class="st">'year'</span>)
+<span class="co"># regression's rsquare plot</span>
+<span class="kw">chart.reg.rsquare</span>(reg_results)
+<span class="co"># regression's rsquare table</span>
+<span class="kw">table.reg.rsquare</span>(reg_results)
+<span class="co"># correlation plot of factor's return </span>
+<span class="kw">MC.chart.regCorr</span>(reg_results)
+<span class="co"># pure factor's wealth index</span>
+<span class="kw">chart.reg.fRtnWealthIndex</span>(reg_results,<span class="dt">facet =</span> T)
+<span class="co"># barplot of pure factor's return </span>
+<span class="kw">chart.reg.fRtnBar</span>(reg_results)
+<span class="co"># summarise table of pure factor's return </span>
+<span class="kw">table.reg.fRtn</span>(reg_results)</code></pre></div>
+</div>
+<div id="portfolio-optimization" class="section level2">
+<h2>portfolio optimization</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set factor's exposure</span>
+fNames &lt;-<span class="st"> </span><span class="kw">sapply</span>(FactorLists, <span class="st">'[['</span>,<span class="st">'factorName'</span>)
+fexp &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">fname=</span>fNames,
+                   <span class="dt">low=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>),
+                   <span class="dt">up=</span><span class="kw">c</span>(     <span class="dv">1</span>, <span class="fl">0.01</span>,  <span class="dv">100</span>,  <span class="dv">100</span>,  <span class="dv">2</span>,    <span class="dv">100</span>))
+<span class="co"># set alpha factor</span>
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;beta_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
+
+<span class="co"># get factor return</span>
+fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,alphaf,<span class="dt">rollavg =</span> T,<span class="dt">reg_results =</span> reg_results)
+<span class="co"># get factor covariance</span>
+fCov &lt;-<span class="st"> </span><span class="kw">calfCov</span>(RebDates,alphaf,<span class="dt">rollavg=</span>T,<span class="dt">reg_results =</span> reg_results)
+
+<span class="co"># Date Alignment</span>
+tmp.date1 &lt;-<span class="st"> </span><span class="kw">max</span>(<span class="kw">min</span>(fRtn$date),<span class="kw">min</span>(fCov$date))
+tmp.date2 &lt;-<span class="st"> </span><span class="kw">min</span>(<span class="kw">max</span>(fRtn$date),<span class="kw">max</span>(fCov$date))
+fRtn &lt;-<span class="st"> </span><span class="kw">subset</span>(fRtn,date&gt;=tmp.date1,date&lt;=tmp.date2)
+fCov &lt;-<span class="st"> </span><span class="kw">subset</span>(fCov,date&gt;=tmp.date1,date&lt;=tmp.date2)
+TSF &lt;-<span class="st"> </span><span class="kw">subset</span>(TSF,date&gt;=tmp.date1,date&lt;=tmp.date2)
+
+## portfolio demo
+<span class="co"># industry neutral,maximize return</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'Ind'</span>))
+<span class="co"># industry and style neutral,maximize return</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp,<span class="dt">addEvent =</span> F))
+<span class="co"># industry and style neutral,risk return balance</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return-risk'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp))
+
+
+<span class="co"># port backtest and return summary</span>
+portrtn &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+benchrtn &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(portrtn, <span class="dt">bmk =</span> <span class="st">&quot;EI000905&quot;</span>)
+allrtn &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(portrtn,benchrtn)
+<span class="kw">ggplot.WealthIndex</span>(allrtn)
+<span class="kw">rtn.summary</span>(allrtn)
+<span class="kw">rtn.periods</span>(allrtn)</code></pre></div>
+</div>
+<div id="traditional-portfolio-construction" class="section level2">
+<h2>traditional portfolio construction</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#set modelPar</span>
+modelPar &lt;-<span class="st"> </span><span class="kw">modelPar.default</span>()
+modelPar &lt;-<span class="st"> </span><span class="kw">setmodelPar.time</span>(modelPar,begT,endT)
+modelPar &lt;-<span class="st"> </span><span class="kw">setmodelPar.univ</span>(modelPar,<span class="st">'EI000905'</span>)
+
+<span class="co">#get factor wgt</span>
+factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>,<span class="st">&quot;F000017&quot;</span>)
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorStd=</span><span class="st">&quot;norm&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;mean&quot;</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(
+  <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.NP_YOY&quot;</span>,
+                  <span class="dt">factorPar=</span><span class="kw">list</span>(),
+                  <span class="dt">factorDir=</span><span class="dv">1</span>),
+    <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.ln_mkt_cap&quot;</span>,
+                  <span class="dt">factorPar=</span><span class="kw">list</span>(),
+                  <span class="dt">factorDir=</span><span class="dv">1</span>),
+  <span class="dt">factorStd=</span><span class="st">&quot;norm&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;median&quot;</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
+MPs &lt;-<span class="st"> </span><span class="kw">getMPs_FactorLists</span>(FactorLists, modelPar)
+TSFRs &lt;-<span class="st"> </span><span class="kw">Model.TSFRs</span>(MPs)
+wgt &lt;-<span class="st"> </span><span class="kw">MC.wgt.CAPM</span>(TSFRs,<span class="dt">wgtmin =</span> <span class="fl">0.05</span>,<span class="dt">wgtmax =</span> <span class="fl">0.3</span>)
+
+<span class="co">#get port and backtest</span>
+TS &lt;-<span class="st"> </span><span class="kw">Model.TS</span>(modelPar)
+TSF2 &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,<span class="dt">FactorLists =</span> FactorLists,<span class="dt">wgts =</span> wgt)
+port2 &lt;-<span class="st"> </span><span class="kw">getPort</span>(TSF2,<span class="dt">topN =</span> <span class="dv">100</span>,<span class="dt">pick.sectorNe =</span> T)
+port2 &lt;-<span class="st"> </span>port2[,<span class="kw">c</span>(<span class="st">'date'</span>,<span class="st">'stockID'</span>)]
+port2 &lt;-<span class="st"> </span><span class="kw">addwgt2port</span>(port2, <span class="dt">wgt.sectorNe =</span> T, <span class="dt">wgtbmk =</span> <span class="st">&quot;EI000905&quot;</span>)
+re2 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port2,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+benchrtn2 &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(re2, <span class="dt">bmk =</span> <span class="st">&quot;EI000905&quot;</span>)
+allrtn2 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(re2,benchrtn2)
+<span class="kw">ggplot.WealthIndex</span>(allrtn2)
+<span class="kw">rtn.summary</span>(allrtn2)
+<span class="kw">rtn.periods</span>(allrtn2)</code></pre></div>
 </div>
 
 

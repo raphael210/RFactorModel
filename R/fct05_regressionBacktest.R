@@ -333,6 +333,54 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 
 
 
+#' factorlists recommend
+#' 
+#' @param indexID.
+#' @export
+#' @examples 
+#' FactorLists <- reg.factorlists.recommend(indexID='EI000300')
+#' FactorLists <- reg.factorlists.recommend(indexID='EI000905')
+#' FactorLists <- reg.factorlists.recommend(indexID='EI000985')
+#' FactorLists <- reg.factorlists.recommend(indexID='ES33370000')
+reg.factorlists.recommend <- function(indexID){
+  
+  if(indexID=='EI000300'){
+    factorIDs <- c("F000006","F000014","F000015","F000016","F000017")
+    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+    FactorLists <- buildFactorLists(
+      buildFactorList(factorFun="gf.ln_mkt_cap",
+                      factorPar=list(),
+                      factorDir=-1),
+      factorStd="norm",factorNA = "median")
+    FactorLists <- c(tmp,FactorLists)
+  }else if(indexID=='EI000905'){
+    factorIDs <- c("F000006","F000008","F000013","F000014","F000016","F000017")
+    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+    FactorLists <- buildFactorLists(
+      buildFactorList(factorFun="gf.ln_mkt_cap",
+                      factorPar=list(),
+                      factorDir=-1),
+      factorStd="norm",factorNA = "median")
+    FactorLists <- c(tmp,FactorLists)
+  }else{
+    factorIDs <- c("F000006","F000014","F000015","F000016")
+    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median",factorOutlier = 0.01)
+    FactorLists <- buildFactorLists(
+      buildFactorList(factorFun="gf.ln_mkt_cap",
+                      factorPar=list(),
+                      factorDir=-1),
+      buildFactorList(factorFun="gf.NP_YOY",
+                      factorPar=list(),
+                      factorDir=1),
+      factorStd="norm",factorNA = "median",factorOutlier = 0.01)
+    FactorLists <- c(tmp,FactorLists)
+  }
+  return(FactorLists)
+}
+
+
+
+
 
 #' factor select
 #' 

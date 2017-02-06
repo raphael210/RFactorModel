@@ -4,7 +4,7 @@ author: "UBSSDIC Quant Group"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteIndexEntry{Regression Method Demo}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -36,122 +36,125 @@ kable(ftbale)
 ```
 
 
+Build and update local database's regression result tables.
+```{r getlists_buildlocaltables}
+# get recommended factorlists
+FactorLists <- reg.factorlists.recommend(indexID = 'EI000985')
 
-```{r}
-factorIDs <- c("F000006","F000008","F000014","F000016","F000017","F000018")
-tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-FactorLists <- buildFactorLists(
-  buildFactorList(factorFun="gf.ln_mkt_cap",
-                  factorPar=list(),
-                  factorDir=-1),
-  buildFactorList(factorFun="gf.NP_YOY",
-                  factorPar=list(),
-                  factorDir=1),
-  factorStd="norm",factorNA = "median")
-FactorLists <- c(tmp,FactorLists)
-
+# build local database's regression tables
 system.time(lcdb.build.RegTables(FactorLists=FactorLists))
-#system.time(lcdb.update.RegTables(as.Date('2011-06-01'),endT=as.Date('2013-01-01'),FactorLists))
 
-
+# update local database's regression tables
+system.time(lcdb.update.RegTables(FactorLists = FactorLists))
 ```
 
 
 ## regression result show
 
-```{r}
-begT <- as.Date('2009-01-31')
-endT <- Sys.Date()-1
+```{r reg_result}
+# parameter setting
+begT <- as.Date('2012-01-31')
+endT <- as.Date('2016-12-31')
 RebDates <- getRebDates(begT,endT)
 indexID <- 'EI000985'
+
+# get TS,TSF,TSFR
 TS <- getTS(RebDates,indexID)
-
-factorIDs <- c("F000006","F000014","F000015","F000016","F000017")
-tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean",factorOutlier = 0.01)
-FactorLists <- buildFactorLists(
-  buildFactorList(factorFun="gf.ln_mkt_cap",
-                  factorPar=list(),
-                  factorDir=-1),
-  buildFactorList(factorFun="gf.NP_YOY",
-                  factorPar=list(),
-                  factorDir=1),
-  factorStd="norm",factorNA = "mean",factorOutlier = 0.01)
-FactorLists <- c(tmp,FactorLists)
+FactorLists <- reg.factorlists.recommend(indexID)
 TSF <- getMultiFactor(TS,FactorLists = FactorLists)
-
 TSFR <- getTSR(TSF)
+
+# get regression result
 reg_results <- reg.TSFR(TSFR)
 
-#show regression result
+## show regression result
+# factor correlation plot
 MC.chart.fCorr(TSF,Nbin='year')
+# regression's rsquare plot
 chart.reg.rsquare(reg_results)
+# regression's rsquare table
 table.reg.rsquare(reg_results)
-
+# correlation plot of factor's return 
 MC.chart.regCorr(reg_results)
+# pure factor's wealth index
 chart.reg.fRtnWealthIndex(reg_results,facet = T)
-table.reg.fRtn(reg_results)
+# barplot of pure factor's return 
 chart.reg.fRtnBar(reg_results)
+# summarise table of pure factor's return 
+table.reg.fRtn(reg_results)
 ```
 
 
 ## portfolio optimization
 
-```{r}
+```{r portOpt}
+# set factor's exposure
 fNames <- sapply(FactorLists, '[[','factorName')
 fexp <- data.frame(fname=fNames,
-                   low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
-                   up=c(1,0.01,100,100,100,2,100))
+                   low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
+                   up=c(     1, 0.01,  100,  100,  2,    100))
+# set alpha factor
+alphaf <- c("disposition_","beta_","ln_mkt_cap_","NP_YOY" )
 
-alphaf <- c("disposition_","beta_","IVR_","ln_mkt_cap_","NP_YOY" )
+# get factor return
+fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results)
+# get factor covariance
+fCov <- calfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
 
-system.time(fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results))
-system.time(fCov <- calfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results))
+# Date Alignment
+tmp.date1 <- max(min(fRtn$date),min(fCov$date))
+tmp.date2 <- min(max(fRtn$date),max(fCov$date))
+fRtn <- subset(fRtn,date>=tmp.date1,date<=tmp.date2)
+fCov <- subset(fCov,date>=tmp.date1,date<=tmp.date2)
+TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
+
+## portfolio demo
+# industry neutral,maximize return
+system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
+# industry and style neutral,maximize return
+system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
+# industry and style neutral,risk return balance
+system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
 
 
-system.time(port_ind <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
-system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp))
-
-system.time(port_ind_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind',addEvent = F))
-system.time(port_indsty_NE <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
-
-TSF <- TSF[TSF$date>min(RebDates),]
-system.time(port_ind <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='Ind'))
-system.time(port_indsty <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
-
-newport1 <- port_ind[port_ind$date== max(RebDates),]
-newport2 <- port_indsty[port_indsty$date== max(RebDates),]
-
-port4 <- port_ind[port_ind$date!= max(RebDates),]
-port4 <- port_indsty[port_indsty$date!= max(RebDates),]
-portrtn4 <- port.backtest(port4,fee.buy = 0.001)
-benchrtn4 <- getrtn.bmk(portrtn4, bmk = "EI000905")
-allrtn4 <- addrtn.hedge(portrtn4,benchrtn4)
-ggplot.WealthIndex(allrtn4)
-rtn.summary(allrtn4)
-rtn.periods(allrtn4)
-
-allrtn4 <- getrtn.LBH(portrtn4,bmk = "EI000905")
-allrtn2 <- getrtn.LBH(re2,bmk = "EI000905")
-
+# port backtest and return summary
+portrtn <- port.backtest(port_opt,fee.buy = 0.001)
+benchrtn <- getrtn.bmk(portrtn, bmk = "EI000905")
+allrtn <- addrtn.hedge(portrtn,benchrtn)
+ggplot.WealthIndex(allrtn)
+rtn.summary(allrtn)
+rtn.periods(allrtn)
 ```
 
 
 ## traditional portfolio construction
 
 
-```{r}
-RebDates <- getRebDates(as.Date('2010-01-31'),as.Date('2016-10-31'))
-TS <- getTS(RebDates,indexID = 'EI000905')
-factorIDs <- c("F000006","F000008","F000013","F000015")
+```{r ICmethods}
+#set modelPar
+modelPar <- modelPar.default()
+modelPar <- setmodelPar.time(modelPar,begT,endT)
+modelPar <- setmodelPar.univ(modelPar,'EI000905')
+
+#get factor wgt
+factorIDs <- c("F000006","F000008","F000013","F000017")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorPar=list(),
+                  factorDir=1),
   factorStd="norm",factorNA = "median")
 FactorLists <- c(tmp,FactorLists)
-tmp <- length(FactorLists)
-TSF2 <- getMultiFactor(TS,FactorLists = FactorLists,wgts = rep(1/tmp,tmp))
+MPs <- getMPs_FactorLists(FactorLists, modelPar)
+TSFRs <- Model.TSFRs(MPs)
+wgt <- MC.wgt.CAPM(TSFRs,wgtmin = 0.05,wgtmax = 0.3)
+
+#get port and backtest
+TS <- Model.TS(modelPar)
+TSF2 <- getMultiFactor(TS,FactorLists = FactorLists,wgts = wgt)
 port2 <- getPort(TSF2,topN = 100,pick.sectorNe = T)
 port2 <- port2[,c('date','stockID')]
 port2 <- addwgt2port(port2, wgt.sectorNe = T, wgtbmk = "EI000905")
@@ -165,50 +168,3 @@ rtn.periods(allrtn2)
 
 
 
-Vignettes are long form documentation commonly included in packages. Because they are part of the distribution of the package, they need to be as compact as possible. The `html_vignette` output type provides a custom style sheet (and tweaks some options) to ensure that the resulting html is as small as possible. The `html_vignette` format:
-
-- Never uses retina figures
-- Has a smaller default figure size
-- Uses a custom CSS stylesheet instead of the default Twitter Bootstrap style
-
-## Vignette Info
-
-Note the various macros within the `vignette` section of the metadata block above. These are required in order to instruct R how to build the vignette. Note that you should change the `title` field and the `\VignetteIndexEntry` to match the title of your vignette.
-
-## Styles
-
-The `html_vignette` template includes a basic CSS theme. To override this theme you can specify your own CSS in the document metadata as follows:
-
-    output: 
-      rmarkdown::html_vignette:
-        css: mystyles.css
-
-## Figures
-
-The figure sizes have been customised so that you can easily put two images side-by-side. 
-
-```{r, fig.show='hold'}
-plot(1:10)
-plot(10:1)
-```
-
-You can enable figure captions by `fig_caption: yes` in YAML:
-
-    output:
-      rmarkdown::html_vignette:
-        fig_caption: yes
-
-Then you can use the chunk option `fig.cap = "Your figure caption."` in **knitr**.
-
-## More Examples
-
-You can write math expressions, e.g. $Y = X\beta + \epsilon$, footnotes^[A footnote here.], and tables, e.g. using `knitr::kable()`.
-
-```{r, echo=FALSE, results='asis'}
-knitr::kable(head(mtcars, 10))
-```
-
-Also a quote using `>`:
-
-> "He who gives up [code] safety for [code] speed deserves neither."
-([via](https://twitter.com/hadleywickham/status/504368538874703872))
