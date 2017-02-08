@@ -322,6 +322,9 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
 #' # -- get 'raw' factorscore
 #' TSF_raw <- getRawFactor(TS,"gf.pct_chg_per","20")
 getRawFactor <- function (TS,factorFun,factorPar) {
+  if("factorscore" %in% names(TS)){
+    stop("There has existed a 'factorscore' field in the TS object. Please remove or rename it first!")
+  }
   if(missing(factorPar)){
     TSF <- do.call(factorFun,c(list(TS)))
   } else if(is.list(factorPar)){
@@ -336,6 +339,10 @@ getRawFactor <- function (TS,factorFun,factorPar) {
   } else {
     stop("The factorPar must be a list or a character string!")
   }
+  if(!("factorscore" %in% names(TSF))){
+    stop("There must be a 'factorscore' field in the TSF result!")
+  }
+  return(TSF)
 }
 
 
@@ -464,6 +471,11 @@ getRawMultiFactor <- function(TS,FactorLists){
 }
 
 
+getRawMultiFactor_lcfs <- function(){
+  
+}
+
+
 #' @rdname getMultiFactor
 #' @export
 #' @param TSFs a \bold{TSFs} object. see /code{/link{Model.TSFs}}
@@ -505,8 +517,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts,
     TSF <- renameCol(TSF,"factorscore",factorNames[i])
     if(i==1L){
       # re <- TSF[, intersect(c("date","stockID","date_end","periodrtn","sector",factorNames[i]),colnames(TSF))]
-      keep_cols <- is_usualcols(cols = colnames(TSF), usualcols = c(usualcols(),factorNames[i]))
-      re <- TSF[, colnames(TSF)[keep_cols]]      
+      re <- TSF[, c(colnames(TSF)[is_usualcols(colnames(TSF))],factorNames[i])]      
       
     } else {
       re <- merge.x(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))

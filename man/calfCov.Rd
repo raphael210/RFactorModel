@@ -4,15 +4,15 @@
 \alias{calfCov}
 \title{calfCov}
 \usage{
-calfCov(TF, dure, datasrc = c("local", "regResult"), rollavg = TRUE,
-  nwin = 250, reg_results)
+calfCov(RebDates, fNames, dure = months(1), rollavg = TRUE,
+  nwin = lubridate::years(-2), reg_results)
 }
 \arguments{
-\item{TF}{a data frame contains date and factorNames}
-
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
 \item{nwin}{rolling windows.}
+
+\item{TF}{a data frame contains date and factorNames}
 }
 \value{
 a data frame fCov.
