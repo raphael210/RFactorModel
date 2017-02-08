@@ -72,6 +72,7 @@ getRebDates <- function(begT,endT,rebFreq="month",shiftby=0, dates=NULL){
 #' TS3 <- getTS(RebDates,'setdiff(EI000300,ES09440000)')  # CSI300 ex. financial servive sector
 #' TS4 <- getTS(RebDates,stocks=c("EQ000002","EQ000023","EQ600000"))
 getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){  
+  RebDates <- trday.nearest(RebDates)
   if(!is.null(stocks)){
     TS <- expand.grid(date=RebDates,stockID=stocks)
   } else {
@@ -81,7 +82,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){
     TS <- rm_suspend(TS, nearby = 1L)
   }
   if("priceLimit" %in% rm){
-    TS <- rm_priceLimit(TS, nearby = 1L, lim = c(-9.8,9.8))
+    TS <- rm_priceLimit(TS, nearby = 1L, lim = c(-Inf,10))
   }
   return (TS)
 }
@@ -251,9 +252,10 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' TSF2 <- getTSF(TS,"gf.demo","mean=0,sd=1")
 #' TSF2 <- getTSF(TS,"gf.foo","2,3")
 #' TSF2 <- getTSF(TS,"gf.bar","20,\"IF00\"")
-getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
-                   factorStd=c("none","norm","sectorNe"),
-                   factorNA=c("na","mean","median","min","max","sectmean"),
+getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
+                   factorOutlier=3,
+                   factorStd="none",
+                   factorNA="na",
                    sectorAttr=defaultSectorAttr(),
                    FactorList,
                    splitbin=100000L){
@@ -267,8 +269,6 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
     factorStd <- FactorList$factorStd 
     sectorAttr  <- FactorList$sectorAttr
   }
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
   if(! factorDir %in% c(1L,-1L)) stop("unsupported \"factorDir\" argument!")
   cat(paste("Function getTSF: getting the factorscore ....\n"))
   check.TS(TS)
@@ -281,9 +281,9 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
     # ---- deal with the outliers
     TSF <- factor.outlier(TSF,factorOutlier)
     # ---- standardize the factorscore
-    TSF <- factor.std(TSF,factorStd,sectorAttr)
+    TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
     # ---- deal with the missing values
-    TSF <- factor.na(TSF,factorNA)
+    TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
     # ---- re-order
     TSF <- merge.x(TS,TSF,by=c("date","stockID"))
     return(TSF)
@@ -322,6 +322,9 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,factorOutlier=3,
 #' # -- get 'raw' factorscore
 #' TSF_raw <- getRawFactor(TS,"gf.pct_chg_per","20")
 getRawFactor <- function (TS,factorFun,factorPar) {
+  if("factorscore" %in% names(TS)){
+    stop("There has existed a 'factorscore' field in the TS object. Please remove or rename it first!")
+  }
   if(missing(factorPar)){
     TSF <- do.call(factorFun,c(list(TS)))
   } else if(is.list(factorPar)){
@@ -336,6 +339,10 @@ getRawFactor <- function (TS,factorFun,factorPar) {
   } else {
     stop("The factorPar must be a list or a character string!")
   }
+  if(!("factorscore" %in% names(TSF))){
+    stop("There must be a 'factorscore' field in the TSF result!")
+  }
+  return(TSF)
 }
 
 
@@ -407,14 +414,14 @@ getMultiFactor <- function(TS,FactorLists,wgts,
     # ---- deal with the outliers
     TSF <- factor.outlier(TSF,factorOutlier)
     # ---- standardize the factorscore 
-    TSF <- factor.std(TSF,factorStd,sectorAttr)
-    TSF <- factor.std(TSF,factorStd_mult,sectorAttr_mult) 
+    TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
+    TSF <- factor.std(TSF,factorStd_mult,sectorAttr=sectorAttr_mult) 
     if(factorStd=="none" && factorStd_mult=="none"){
       warning(paste("'factorStd' of factor",factorName, "is 'none'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
     }
     # ---- deal with the missing values 
-    TSF <- factor.na(TSF,factorNA)
-    TSF <- factor.na(TSF,factorNA_mult)
+    TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
+    TSF <- factor.na(TSF,factorNA_mult,sectorAttr=sectorAttr_mult)
     if(factorNA=="na" && factorNA_mult=="na" ){
       warning(paste("'factorNA' of factor",factorName, "is 'na'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
     }
@@ -464,6 +471,11 @@ getRawMultiFactor <- function(TS,FactorLists){
 }
 
 
+getRawMultiFactor_lcfs <- function(){
+  
+}
+
+
 #' @rdname getMultiFactor
 #' @export
 #' @param TSFs a \bold{TSFs} object. see /code{/link{Model.TSFs}}
@@ -474,13 +486,10 @@ getRawMultiFactor <- function(TS,FactorLists){
 #' TSFs <- Model.TSFs(MPs)
 #' TSF.multi5 <- getMultiFactorbyTSFs(TSFs,wgts)
 getMultiFactorbyTSFs <- function(TSFs,wgts,
-                                 factorStd_mult=c("none","norm","sectorNe"),
-                                 factorNA_mult=c("na","mean","median","min","max","sectmean"),
+                                 factorStd_mult="none",
+                                 factorNA_mult="na",
                                  sectorAttr_mult=defaultSectorAttr()){
-  
-  factorStd_mult <- match.arg(factorStd_mult)
-  factorNA_mult <- match.arg(factorNA_mult)
-  
+
   # ---- get all the single-factor-scores
   nrows <- sapply(TSFs,NROW)
   if(!all(nrows[1]==nrows)){
@@ -493,7 +502,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts,
     TSF <- TSFs[[i]]
     if(TRUE){ # -- factorStd & factorNA
       TSF <- factor.std(TSF,factorStd_mult, sectorAttr = sectorAttr_mult)
-      TSF <- factor.na(TSF,factorNA_mult)
+      TSF <- factor.na(TSF,factorNA_mult, sectorAttr = sectorAttr_mult)
       if(!is.null(attr(TSF,"MP"))) {
         factorStd <- attr(TSF,"MP")$factor$factorStd
         if(factorStd=="none" && factorStd_mult=="none" ){
@@ -508,8 +517,7 @@ getMultiFactorbyTSFs <- function(TSFs,wgts,
     TSF <- renameCol(TSF,"factorscore",factorNames[i])
     if(i==1L){
       # re <- TSF[, intersect(c("date","stockID","date_end","periodrtn","sector",factorNames[i]),colnames(TSF))]
-      keep_cols <- is_usualcols(cols = colnames(TSF), usualcols = c(usualcols(),factorNames[i]))
-      re <- TSF[, colnames(TSF)[keep_cols]]      
+      re <- TSF[, c(colnames(TSF)[is_usualcols(colnames(TSF))],factorNames[i])]      
       
     } else {
       re <- merge.x(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))
@@ -593,103 +601,50 @@ factor.outlier <- function (TSF, factorOutlier) {
 factor.std <- function (TSF,factorStd=c("none","norm","sectorNe"),sectorAttr) {
   factorStd <- match.arg(factorStd)
   if(factorStd == "norm"){ 
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=scale(factorscore))      
+    TSF <- plyr::ddply(TSF,"date",transform,factorscore=as.numeric(scale(factorscore)))     
   } else if (factorStd == "sectorNe"){
     TSF <- getSectorID(TSF,sectorAttr=sectorAttr)  
     TSF <- data.table::data.table(TSF,key=c("date","sector"))
-    TSF <- TSF[,factorscore:=scale(factorscore), by = c("date","sector")]
+    TSF <- TSF[,factorscore:=as.numeric(scale(factorscore)), by = c("date","sector")]
     TSF <- as.data.frame(TSF)
   }
   return(TSF)
 }
 # ---- deal with the missing values of factorscore
-factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean"), trim = 0.05) {
+
+factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean","sectmedian"), sectorAttr, trim = 0) {
   method <- match.arg(method)
+  if(method %in% c("sectmean","sectmedian")){
+    TSF <- getSectorID(TSF, sectorAttr = sectorAttr)
+    TSF <- dplyr::group_by(TSF, date, sector)
+  } else {
+    TSF <- dplyr::group_by(TSF, date)
+  }
+  
   if(method=="mean"){
-    TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())
-    TSS <- TSS[,c('date','stockID','sector')]
-    TSF <- merge.x(TSF,TSS,by=c('date','stockID'))
-    TSF <- dplyr::group_by(TSF, date, sector)
-    if(is.na(trim)){
-      #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
-      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
-    }else{
-      #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-    }
-    TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
-    
-    #if all of some sector's components is NA
-    if(sum(is.na(TSF$factorscore))>0){
-      TSF <- dplyr::group_by(TSF, date)
-      if(is.na(trim)){
-        #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
-        TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
-      }else{
-        #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-        TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-      }
-    }
-    TSF <- as.data.frame(TSF)
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
   } else if(method=="median"){
-    #TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
-    TSS <- gf.sector(TSF[,c('date','stockID')],defaultSectorAttr())
-    TSS <- TSS[,c('date','stockID','sector')]
-    TSF <- merge.x(TSF,TSS,by=c('date','stockID'))
-    TSF <- dplyr::group_by(TSF, date, sector)
-    TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
-    TSF <- as.data.frame(TSF[,c('date','stockID','factorscore')])
-    
-    #if all of some sector's components is NA
-    if(sum(is.na(TSF$factorscore))>0){
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+  } else if(method=="min"){
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
+  } else if(method=="max"){
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
+  } else if(method=="sectmean"){
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
+    if(any(is.na(TSF$factorscore))){ #if all of some sector's components is NA
+      TSF <- dplyr::group_by(TSF, date)
+      TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+    }
+  } else if(method=="sectmedian"){
+    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
+    if(any(is.na(TSF$factorscore))){ #if all of some sector's components is NA
       TSF <- dplyr::group_by(TSF, date)
       TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
     }
-    TSF <- as.data.frame(TSF)
-  } else if(method=="min"){
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
-  } else if(method=="max"){
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
-  } else if(method=="sectmean"){
-    TSF <- gf.ezsec(TSF)
-    TSF <- dplyr::group_by(TSF, date, secID)
-    if(is.na(trim)){
-      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
-    }else{
-      TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-    }
-    TSF <- as.data.frame(TSF)
   }
+  
+  TSF <- as.data.frame(TSF)
   return(TSF)
-}
-# ---- get simple sector categories
-gf.ezsec <- function(ts){
-  ts.tmp <- subset(ts, select = c("date","stockID"))
-  ts.tmp <- gf.sector(ts.tmp, sectorAttr = defaultSectorAttr())
-  seclist <- list()
-  # BigCycle
-  seclist[[1]]<- c("ES33110000","ES33210000","ES33220000","ES33230000","ES33240000")
-  #FinRealEstate
-  seclist[[2]]<- c("ES33480000","ES33490000","ES33430000")
-  #TMT
-  seclist[[3]]<- c("ES33710000","ES33720000","ES33730000","ES33270000")
-  #Comsump
-  seclist[[4]]<- c("ES33280000","ES33330000","ES33340000","ES33350000","ES33460000","ES33370000","ES33450000")
-  #Manufac
-  seclist[[5]]<- c("ES33360000","ES33630000","ES33640000","ES33610000","ES33620000","ES33650000")
-  #Others
-  seclist[[6]]<- c("ES33420000","ES33410000","ES33510000")
-  for(ii in 1:length(seclist)){
-    V2 <- paste("ES",ii,sep = "")
-    seclist[[ii]] <- as.data.frame(seclist[[ii]])
-    seclist[[ii]] <- cbind(seclist[[ii]], V2)
-    names(seclist[[ii]]) <- c("sector","secID")
-  }
-  secdf <- data.table::rbindlist(seclist)
-  re <- merge(ts.tmp, secdf, by = c("sector"))
-  re2 <- subset(re, select = c("date","stockID","secID"))
-  re3 <- merge(ts,re2,by=c("date","stockID"))
-  return(re3)
 }
 
 
@@ -708,27 +663,18 @@ gf.ezsec <- function(ts){
 #' @export
 rm_suspend <- function(TS,nearby=1L,
                        datasrc=defaultDataSRC()){
-  check.TS(TS)
-  if(datasrc=='ts'){
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_ <- TS.getTech_ts(TS_, funchar="istradeday4()",varname="trading")
-      TS <- TS[TS_$trading == 1, ]
-    }
-  } else {
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      istradingday <- trday.is(TS=TS_, drop = TRUE)
-      TS <- TS[istradingday,]
-    }
-  }
-  
+  TS_ <- is_suspend(TS=TS,nearby=nearby,datasrc = datasrc)
+  TS <- TS[!TS_$sus,]
   return(TS)
 }
 
+
+
 #' remove price limits
 #' 
+#' @param nearby
 #' @param lim a vector of length 2.
+#' @param priceType "close" or "open".
 #' @examples
 #' RebDates <- getRebDates(as.Date('2013-03-17'),as.Date('2016-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000985')
@@ -736,32 +682,20 @@ rm_suspend <- function(TS,nearby=1L,
 #' re1 <- rm_priceLimit(TS,nearby=-1:1)
 #' re2 <- rm_priceLimit(TS,lim=c(-Inf,10)) # remove limit-up
 #' @export
-rm_priceLimit <- function(TS,nearby=1L,lim=c(-10, 10),
+rm_priceLimit <- function(TS,nearby=1,lim=c(-10, 10),priceType=c("close","open"),
                           datasrc=defaultDataSRC()){
-  check.TS(TS)
-  if(datasrc=='ts'){
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_1 <- TS.getTech_ts(TS_, funchar="StockPrevClose3()",varname="pre_close")
-      TS_2 <- TS.getTech_ts(TS_, funchar="close()",varname="close")
-      in_lim <- TS_2$close > round(TS_1$pre_close*(1+lim[1]/100),2) & TS_2$close < round(TS_1$pre_close*(1+lim[2]/100),2)
-      TS <- TS[in_lim, ]
-    }
-  } else {
-    for (by in nearby){
-      TS_ <- data.frame(date=trday.nearby(TS$date,by), stockID=TS$stockID)
-      TS_ <- TS.getTech(TS_,variables=c("pre_close","close") ,datasrc = datasrc)
-      in_lim <- TS_$close > round(TS_$pre_close*(1+lim[1]/100),2) & TS_$close < round(TS_$pre_close*(1+lim[2]/100),2)
-      TS <- TS[in_lim, ]
-    }
-  }
-  
+  TS_ <- is_priceLimit(TS=TS,nearby = nearby,lim = lim, datasrc = datasrc)
+  TS <- TS[!TS_$overlim,]
   return(TS)
 }
 
+
+#' @export
 rm_blacklist <- function(TS){
-  
+  TS_ <- is_blacklist(TS=TS)
+  TS <- TS[!TS_$is_blacklist,]
 }
+
 rm_whitelist <- function(TS){
   
 }

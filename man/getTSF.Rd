@@ -6,8 +6,7 @@
 \title{getTSF}
 \usage{
 getTSF(TS, factorFun, factorPar = list(), factorDir = 1,
-  factorOutlier = 3, factorStd = c("none", "norm", "sectorNe"),
-  factorNA = c("na", "mean", "median", "min", "max", "sectmean"),
+  factorOutlier = 3, factorStd = "none", factorNA = "na",
   sectorAttr = defaultSectorAttr(), FactorList, splitbin = 100000L)
 
 getRawFactor(TS, factorFun, factorPar)

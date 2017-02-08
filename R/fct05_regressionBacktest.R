@@ -210,7 +210,8 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
     }
   }  
   
-  factorNames <- setdiff(names(TSFR),c("stockID","date","date_end","periodrtn","wgt","glm_wgt"))
+  # factorNames <- setdiff(names(TSFR),c("stockID","date","date_end","periodrtn","wgt","glm_wgt"))
+  factorNames <- guess_factorNames(TSFR,no_factorname="glm_wgt")
   
   # loop of regression
   TSFR <- na.omit(TSFR)  # omit the NAs 
@@ -294,7 +295,8 @@ reg.TS <- function(TS,dure=months(1),factorLists,regType=c('glm','lm'),glm_wgt=c
 #' res <- factor.VIF(TSF,testf)[[2]]
 #' @export
 factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
-  fname <- setdiff(colnames(TSF),c('date','stockID'))
+  # fname <- setdiff(colnames(TSF),c('date','stockID'))
+  fname <- guess_factorNames(TSF)
   
   # get sector factor
   TSS <- gf.sector(TSF[,c('date','stockID')],sectorAttr)
@@ -426,7 +428,8 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
     result <- data.frame()
   }
 
-  fname <- setdiff(colnames(TSFR),c("date","date_end","stockID","periodrtn"))
+  # fname <- setdiff(colnames(TSFR),c("date","date_end","stockID","periodrtn"))
+  fname <- guess_factorNames(TSFR)
   selectf <- NULL
   
   while(length(setdiff(fname,selectf))>0){
@@ -453,7 +456,7 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
     }
     rsquare <- rsquare %>% 
       group_by(fname) %>%
-      summarise(rsquare = mean(RSquare, na.rm = TRUE)) %>% 
+      dplyr::summarise(rsquare = mean(RSquare, na.rm = TRUE)) %>% 
       arrange(desc(rsquare)) %>% slice(1)
     tmp <- frtn[frtn$fname==rsquare$fname,'frtn']
     testres <- t.test(tmp)
@@ -510,7 +513,7 @@ table.reg.fRtn <- function(reg_results){
   # annrtn,annvol,sharpe,hitRatio,avg_T_sig
   fRtn <- reg_results$fRtn
   
-  tstat <- summarise(group_by(fRtn,fname),avgT=mean(abs(Tstat)),
+  tstat <- dplyr::summarise(group_by(fRtn,fname),avgT=mean(abs(Tstat)),
                      TPer=sum(Tstat>2)/length(Tstat))
   colnames(tstat) <- c("fname","mean(abs(T))","percent T>2")
   tstat$fname <- as.character(tstat$fname)
@@ -526,11 +529,11 @@ table.reg.fRtn <- function(reg_results){
   TSF <- reg_results$TSFR
   TSF <- dplyr::select(TSF,-date_end,-periodrtn)
   VIF <- factor.VIF(TSF)[[1]]
-  VIF <- summarise(group_by(VIF,fname),vif=mean(vif))
+  VIF <- dplyr::summarise(group_by(VIF,fname),vif=mean(vif))
   VIF$fname <- as.character(VIF$fname)
   
-  re <- left_join(rtnsum,tstat,by='fname')
-  re <- left_join(re,VIF,by='fname')
+  re <- dplyr::left_join(rtnsum,tstat,by='fname')
+  re <- dplyr::left_join(re,VIF,by='fname')
   return(re)
 }
 
@@ -613,11 +616,12 @@ MC.chart.regCorr <- function(reg_results){
 #' @export
 MC.chart.fCorr <- function(TSF,Nbin){
   
-  fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
+  # fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
+  fnames <- guess_factorNames(TSF)
   TSF_by <- dplyr::group_by(TSF[,c('date',fnames)],date)
   
-  cordata <- TSF_by %>% do(cormat = cor(.[,fnames],method='spearman'))
-  cordata <- cordata %>% do(data.frame(date=.$date,fname=fnames,.$cormat))
+  cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
+  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
                         variable.name='fnamecor',factorsAsStrings=F)
   cordata <- transform(cordata,fname=as.character(fname),
@@ -672,11 +676,12 @@ MC.chart.fCorr <- function(TSF,Nbin){
 #' @export
 MC.table.fCorr <- function(TSF,Nbin){
   
-  fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
+  # fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
+  fnames <- guess_factorNames(TSF)
   TSF_by <- dplyr::group_by(TSF[,c('date',fnames)],date)
   
-  cordata <- TSF_by %>% do(cormat = cor(.[,fnames],method='spearman'))
-  cordata <- cordata %>% do(data.frame(date=.$date,fname=fnames,.$cormat))
+  cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
+  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
                             variable.name='fnamecor',factorsAsStrings=F)
   cordata <- transform(cordata,fname=as.character(fname),
@@ -1010,7 +1015,8 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
   constr <- match.arg(constr) 
   optWay <- match.arg(optWay)
   
-  fname <- setdiff(colnames(TSF),c('date','stockID'))
+  # fname <- setdiff(colnames(TSF),c('date','stockID'))
+  fnames <- guess_factorNames(TSF)
   dates <- unique(TSF$date)
   port <- data.frame()
   
@@ -1206,7 +1212,9 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
 #' 
 #' @export
 exposure.TSWF <- function(TSWF) {
-  factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
+  # factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
+  factorNames <- guess_factorNames(TSWF)
+  
   TSWF <- dplyr::select(TSWF,one_of(c("stockID","date","wgt",factorNames)))
   TSWF <- na.omit(TSWF)  # omit the NA value
   dates <- unique(TSWF$date)
@@ -1228,7 +1236,7 @@ exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
   TSF <- getMultiFactor(TS,factorLists)
   TSWF <- merge.x(port,TSF,by=c('date','stockID'))
   TSWF <- na.omit(TSWF)
-  if(sectorAttr!=NULL){
+  if(!is.null(sectorAttr)){
     TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
   }
   
