@@ -9,7 +9,7 @@ factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
 \arguments{
 \item{TSF}{is a \bold{TSF} object.}
 
-\item{testf}{is test factor name.}
+\item{testf}{is test factor name, can be missing.}
 
 \item{sectorAttr}{is sector attribute.}
 }

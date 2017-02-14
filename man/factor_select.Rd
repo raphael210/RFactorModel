@@ -14,7 +14,7 @@ reg.factor.select(TSFR, sectorAttr = defaultSectorAttr())
 factor select
 }
 \examples{
-RebDates <- getRebDates(as.Date('2010-01-31'),as.Date('2016-09-30'))
+RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000905')
 factorIDs <- c("F000006","F000007","F000008","F000012","F000013","F000014",
 "F000015","F000016","F000017","F000018")
@@ -39,6 +39,6 @@ factorLists <- buildFactorLists(
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 TSFR <- getTSR(TSF)
-re <- reg.factor.select(TSFR)
+re <- reg.factor.select(TSFR,sectorAttr=NULL)
 }
 
