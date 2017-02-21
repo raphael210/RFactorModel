@@ -9,9 +9,9 @@
 reg.TSFR(TSFR, regType = c("glm", "lm"), glm_wgt = c("sqrtFV", "res"),
   sectorAttr = defaultSectorAttr(), secRtnOut = FALSE)
 
-reg.TS(TS, dure = months(1), factorLists, regType = c("glm", "lm"),
+reg.TS(TS, FactorLists, dure = months(1), regType = c("glm", "lm"),
   glm_wgt = c("sqrtFV", "res"), sectorAttr = defaultSectorAttr(),
-  secRtnOut = FALSE, regInd = TRUE)
+  secRtnOut = FALSE)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
@@ -39,16 +39,16 @@ RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000985')
 factorIDs <- c("F000002","F000006","F000008")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-factorLists <- buildFactorLists(
+FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
   factorStd="norm",factorNA = "median")
-factorLists <- c(tmp,factorLists)
+FactorLists <- c(tmp,FactorLists)
 re <- reg.TS(TS)
-re <- reg.TS(TS,factorLists)
+re <- reg.TS(TS,FactorLists)
 ----------------------------------------------------------
-TSF <- getMultiFactor(TS,FactorLists = factorLists)
+TSF <- getMultiFactor(TS,FactorLists)
 TSFR <- getTSR(TSF)
 re <- reg.TSFR(TSFR)
 }

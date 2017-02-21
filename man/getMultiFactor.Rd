@@ -11,7 +11,7 @@ getMultiFactor(TS, FactorLists, wgts, factorStd_mult = c("none", "norm",
   "sectorNe"), factorNA_mult = c("na", "mean", "median", "min", "max",
   "sectmean"), sectorAttr_mult = defaultSectorAttr())
 
-getRawMultiFactor(TS, FactorLists)
+getRawMultiFactor(TS, FactorLists, name_suffix = FALSE)
 
 getMultiFactorbyTSFs(TSFs, wgts, factorStd_mult = "none",
   factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr())
@@ -22,7 +22,7 @@ MultiFactor2CombiFactor(TSF_M, wgts, factorNames = setdiff(colnames(TSF_M),
 \arguments{
 \item{FactorLists}{a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).}
 
-\item{wgts}{a numeric vector with the same length of FactorLists and sum of 1(if not, the wgts will be rescaled to sum 1). If missing, then only return all the single-factor-scores, without the combined-factor-score.}
+\item{wgts}{a numeric vector with the same length of FactorLists(if the sum of wgts not equals to 1, the wgts will be rescaled to sum 1). If 'eq', \code{wgts <- rep(1/length(FactorLists),length(FactorLists))} ;If missing, then only return all the single-factor-scores, without the combined-factor-score.}
 
 \item{TSFs}{a \bold{TSFs} object. see /code{/link{Model.TSFs}}}
 
