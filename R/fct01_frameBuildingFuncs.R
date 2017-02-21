@@ -351,7 +351,7 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' get multiple single-factor-scores and the combined-factor-score.#' 
 #' @param TS
 #' @param FactorLists a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).
-#' @param wgts a numeric vector with the same length of FactorLists and sum of 1(if not, the wgts will be rescaled to sum 1). If missing, then only return all the single-factor-scores, without the combined-factor-score.
+#' @param wgts a numeric vector with the same length of FactorLists(if the sum of wgts not equals to 1, the wgts will be rescaled to sum 1). If 'eq', \code{wgts <- rep(1/length(FactorLists),length(FactorLists))} ;If missing, then only return all the single-factor-scores, without the combined-factor-score.
 #' @param factorStd_mult
 #' @param factorNA_mult
 #' @return  \code{getMultiFactor} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
@@ -446,7 +446,7 @@ getMultiFactor <- function(TS,FactorLists,wgts,
 
 #' @rdname getMultiFactor
 #' @export
-getRawMultiFactor <- function(TS,FactorLists){
+getRawMultiFactor <- function(TS,FactorLists,name_suffix=FALSE){
   for(i in 1:length(FactorLists)){
     factorFun <- FactorLists[[i]]$factorFun
     factorPar <- FactorLists[[i]]$factorPar
@@ -460,6 +460,9 @@ getRawMultiFactor <- function(TS,FactorLists){
     # ---- get the raw factorscore
     TSF <- getRawFactor(TS,factorFun,factorPar) 
     # ---- merge
+    if(name_suffix){
+      factorName <- paste(factorName,"R",sep="_")
+    }
     TSF <- renameCol(TSF,"factorscore",factorName)
     if(i==1L){
       re <- merge.x(TS,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
@@ -543,20 +546,21 @@ MultiFactor2CombiFactor <- function(TSF_M,
                                     keep_single_factors="TRUE"){
   # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
   TSF_mat <- TSF_M[,factorNames,drop=FALSE]
-  if(!missing(wgts)){
-    if(ncol(TSF_mat) != length(wgts)) {
-      stop("The numbers of factors and wgts are not equal!")
-    }
-    if(!isTRUE(all.equal(sum(wgts),1,tolerance=0.001))){
-      warning("The sum of wgts is not 1. The wgts will be rescaled! ")
-      wgts <- wgts/sum(wgts)
-    }  
-    sumScore <- as.matrix(TSF_mat) %*% wgts
-    if(keep_single_factors){
-      re <- cbind(TSF_M,factorscore=sumScore)
-    } else {
-      re <- cbind(dplyr::select(TSF_M,-one_of(factorNames)),factorscore=sumScore)
-    }
+  if(wgts=='eq'){
+    wgts <- rep(1/length(factorNames),length(factorNames))
+  }
+  if(ncol(TSF_mat) != length(wgts)) {
+    stop("The numbers of factors and wgts are not equal!")
+  }
+  if(!isTRUE(all.equal(sum(wgts),1,tolerance=0.001))){
+    warning("The sum of wgts is not 1. The wgts will be rescaled! ")
+    wgts <- wgts/sum(wgts)
+  }  
+  sumScore <- as.matrix(TSF_mat) %*% wgts
+  if(keep_single_factors){
+    re <- cbind(TSF_M,factorscore=sumScore)
+  } else {
+    re <- cbind(dplyr::select(TSF_M,-one_of(factorNames)),factorscore=sumScore)
   }
   return(re)
 }
