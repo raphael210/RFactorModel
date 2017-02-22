@@ -391,67 +391,6 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 #' TSFR <- getTSR(TSF)
 #' re <- reg.factor.select(TSFR,sectorAttr=NULL)
 reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
- 
-  #sector only
-  if(!is.null(sectorAttr)){
-    secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")],sectorAttr = sectorAttr)[[4]]
-    result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = T), 
-                         frtn=NA,fttest=NA,pttest=NA,tag='risk')
-  }else{
-    result <- data.frame()
-  }
-
-  fname <- guess_factorNames(TSFR)
-  selectf <- NULL
-  
-  while(length(setdiff(fname,selectf))>0){
-    rsquare <- data.frame()
-    frtn <- data.frame()
-    res <- data.frame()
-    for(i in setdiff(fname,selectf)){
-      cat("fname:",fname,'\n selectf:',selectf,'\n')
-      tmp.TSF <- TSFR[,c("date","stockID",union(selectf,i))]
-      if(is.null(sectorAttr) & ncol(tmp.TSF)==3){
-        tmp.res <- data.frame(tmp.TSF[,c('date','stockID')],fname=i,res=tmp.TSF[,i])
-      }else{
-        if(ncol(tmp.TSF)==3){
-          tmp.res <- factor.VIF(tmp.TSF,sectorAttr = sectorAttr)[[2]]
-          tmp.TSF[,i] <- tmp.res[,'res']
-        }else{
-          tmp.res <- factor.VIF(tmp.TSF,i,sectorAttr)[[2]]
-          tmp.TSF[,i] <- tmp.res[,'res']
-        }
-
-      }
-      
-      tmp.TSFR <- dplyr::left_join(TSFR[,c("date","date_end","stockID","periodrtn")],
-                                   tmp.TSF,by=c("date","stockID"))
-      frs <- reg.TSFR(tmp.TSFR,sectorAttr = sectorAttr)
-      tmp <- frs$RSquare
-      tmp$fname <- i
-      res <- rbind(res,tmp.res)
-      rsquare <- rbind(rsquare,tmp)
-      frtn <- rbind(frtn,frs$fRtn)
-    }
-    rsquare <- rsquare %>% 
-      group_by(fname) %>%
-      dplyr::summarise(rsquare = mean(RSquare, na.rm = TRUE)) %>% 
-      arrange(desc(rsquare)) %>% slice(1)
-    tmp <- frtn[frtn$fname==rsquare$fname,'frtn']
-    testres <- t.test(tmp)
-    rsquare <- transform(rsquare,frtn=mean(tmp),
-                         fttest=testres$statistic,
-                         pttest=testres$p.value,
-                         tag=ifelse(testres$statistic>2,'alpha','risk'))
-    result <-  rbind(result,rsquare)
-    selectf <- c(selectf,rsquare$fname)
-    TSFR[,rsquare$fname] <- res[res$fname==rsquare$fname,'res']
-  }
-  return(result)
-}
-
-
-reg.factor.selectNEW <- function(TSFR,sectorAttr=defaultSectorAttr()){
   #sector only
   if(!is.null(sectorAttr)){
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")],sectorAttr = sectorAttr)[[4]]
@@ -1104,7 +1043,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
   optWay <- match.arg(optWay)
   
   # fname <- setdiff(colnames(TSF),c('date','stockID'))
-  fnames <- guess_factorNames(TSF)
+  fname <- guess_factorNames(TSF)
   dates <- unique(TSF$date)
   port <- data.frame()
   
@@ -1135,8 +1074,14 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     }
     
     rownames(tmp.fRtn) <- tmp.fRtn$fname
-    tmp.fCov <- fCov[fCov$date==i,-1]
-    rownames(tmp.fCov) <- colnames(tmp.fCov)
+    
+    if('date' %in% colnames(tmp.fCov) ){
+      tmp.fCov <- fCov[fCov$date==i,-1]
+      rownames(tmp.fCov) <- colnames(tmp.fCov)
+    }else{
+      tmp.fCov <- fCov
+    }
+    
     
     #get benchmark stock component weight and sector info. 
     benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
