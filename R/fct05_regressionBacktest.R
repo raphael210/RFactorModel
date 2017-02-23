@@ -100,9 +100,9 @@ lcdb.subfun.regtables <- function(dates,FactorLists){
   colnames(RSquare) <- c('date',paste("rsquare",names(prd_lists),sep = '_'))
   
   con <- db.local()
-  dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-  dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
-  dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=F,append=T,row.names=F)
+  dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
+  dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
+  dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
   dbDisconnect(con)
 }
 
@@ -241,12 +241,12 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
     }
     smry <- summary(lmm)
     fRtn <- rbind(fRtn,data.frame(date=dates$date[i],fname=rownames(smry$coefficients),
-                                  frtn=smry$coefficients[,1],Tstat=smry$coefficients[,3]),
-                  stringsAsFactors=F)
-    res <- rbind(res,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,res=lmm$residuals),
-                 stringsAsFactors=F)
-    RSquare <- rbind(RSquare,data.frame(date=dates$date[i],RSquare=smry$r.squared),
-                     stringsAsFactors=F)
+                                  frtn=smry$coefficients[,1],Tstat=smry$coefficients[,3],
+                                  stringsAsFactors=FALSE))
+    res <- rbind(res,data.frame(date=dates$date[i],stockID=tmp.tsfr$stockID,res=lmm$residuals,
+                                stringsAsFactors=FALSE))
+    RSquare <- rbind(RSquare,data.frame(date=dates$date[i],RSquare=smry$r.squared,
+                                        stringsAsFactors=FALSE))
     
     # # pure-factor-port wgt
     # tmp.x <- as.matrix(tmp.tsfr[,c(factorNames)])
@@ -394,7 +394,7 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
   #sector only
   if(!is.null(sectorAttr)){
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")],sectorAttr = sectorAttr)[[4]]
-    result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = T), 
+    result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = TRUE), 
                          frtn=NA,fttest=NA,pttest=NA,tag='risk')
   }else{
     result <- data.frame()
@@ -650,7 +650,7 @@ MC.chart.fCorr <- function(TSF,Nbin){
   cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
   cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
-                        variable.name='fnamecor',factorsAsStrings=F)
+                        variable.name='fnamecor',factorsAsStrings=FALSE)
   cordata <- transform(cordata,fname=as.character(fname),
                        fnamecor=as.character(fnamecor))
   
@@ -710,7 +710,7 @@ MC.table.fCorr <- function(TSF,Nbin){
   cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
   cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
-                            variable.name='fnamecor',factorsAsStrings=F)
+                            variable.name='fnamecor',factorsAsStrings=FALSE)
   cordata <- transform(cordata,fname=as.character(fname),
                        fnamecor=as.character(fnamecor))
   
@@ -756,7 +756,7 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' @export
 getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
                     nwin=lubridate::years(-2),reg_results){
-  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = F)
+  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = FALSE)
   TF <- dplyr::arrange(TF,date,fname)
   
   if(missing(reg_results)){
@@ -767,14 +767,14 @@ getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
   
   if(rollavg==FALSE){
     re <- re %>% group_by(fname) %>% 
-      summarise(frtn = mean(frtn,na.rm = T))
+      summarise(frtn = mean(frtn,na.rm = TRUE))
     re <- dplyr::left_join(TF,re,by='fname')
     
   }else{
     tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
                          begT=trday.offset(endT,nwin))
     tmp$fname <- factor(tmp$fname)
-    tmp <- tmp %>% rowwise() %>% 
+    tmp <- tmp %>% dplyr::rowwise() %>% 
       do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
                     date=.$date,fname=.$fname))
     class(tmp) <- c( "tbl_df", "data.frame")
@@ -782,7 +782,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
     re <- dplyr::rename(re,tmpdate=date)
     re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
     re <- re %>% group_by(date,fname) %>% 
-      summarise(frtn = mean(frtn,na.rm = T))
+      summarise(frtn = mean(frtn,na.rm = TRUE))
     re <- dplyr::left_join(TF,re,by=c('date','fname'))
   }
   re <- na.omit(re)
@@ -845,7 +845,7 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 #' @export
 calfCov <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
                     nwin=lubridate::years(-2),reg_results){
-  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = F)
+  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = FALSE)
   TF <- dplyr::arrange(TF,date,fname)
   
   if(missing(reg_results)){
@@ -859,7 +859,7 @@ calfCov <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
     re <- re[re$fname %in% TF$fname,]
     re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
     tmp <- setdiff(colnames(re),'date')
-    re <- data.frame(fname=tmp,cov(as.matrix(re[,tmp])),stringsAsFactors = F)
+    re <- data.frame(fname=tmp,cov(as.matrix(re[,tmp])),stringsAsFactors = FALSE)
     TF <- subset(TF,fname %in% tmp)
     re <- dplyr::left_join(TF,re,by='fname')
     re <- re[,c("date",tmp)]
@@ -868,7 +868,7 @@ calfCov <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
     tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
                          begT=trday.offset(endT,nwin))
     tmp$fname <- factor(tmp$fname)
-    tmp <- tmp %>% rowwise() %>% 
+    tmp <- tmp %>% dplyr::rowwise() %>% 
       do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
                     date=.$date,fname=.$fname))
     class(tmp) <- c( "tbl_df", "data.frame")
@@ -1036,7 +1036,7 @@ biasTest <- function(reg_results,portID){
 #' 
 #' @export
 OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=c('IndSty','Ind','IndStyTE'),
-                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=TRUE,
+                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=FALSE,
                    optWay=c('ipop','solve.QP','Matlab')){
   target <- match.arg(target)
   constr <- match.arg(constr) 
@@ -1059,7 +1059,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     #get one period raw data
     tmp.TSF <- TSF[TSF$date==i,]
     tmp.TS <- tmp.TSF[,c('date','stockID')]
-    tmp.TS <- rmSuspend(tmp.TS)
+    tmp.TS <- rm_suspend(tmp.TS)
     if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
     tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     
@@ -1072,16 +1072,14 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     }else{
       tmp.fRtn <- fRtn
     }
-    
     rownames(tmp.fRtn) <- tmp.fRtn$fname
     
-    if('date' %in% colnames(tmp.fCov) ){
+    if('date' %in% colnames(fCov) ){
       tmp.fCov <- fCov[fCov$date==i,-1]
-      rownames(tmp.fCov) <- colnames(tmp.fCov)
     }else{
       tmp.fCov <- fCov
     }
-    
+    rownames(tmp.fCov) <- colnames(tmp.fCov)
     
     #get benchmark stock component weight and sector info. 
     benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
@@ -1306,7 +1304,7 @@ getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   TS <- getTS(dates,indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
   TSR <- getTSR(TS)
   TSFR <- getMultiFactor(TSR,factorLists)
-  regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = T)
+  regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = TRUE)
   frtn <- regdata$fRtn[,c("date","fname","frtn")]
   frtn <- reshape2::dcast(frtn,date~fname,value.var = 'frtn')
   frtn <- dplyr::arrange(frtn,date)
@@ -1465,7 +1463,7 @@ getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   TS <- getTS(dates,indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
   TSR <- getTSR(TS)
   TSFR <- getMultiFactor(TSR,factorLists)
-  regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = F)
+  regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = FALSE)
   frtn <- regdata$fRtn[,c("date","fname","frtn")]
   frtn <- reshape2::dcast(frtn,date~fname,value.var = 'frtn')
   frtn <- dplyr::arrange(frtn,date)
