@@ -1226,6 +1226,222 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
 }
 
 
+defaultWgtSetting <- function(secIn=FALSE,stockIn=FALSE){
+  result <- data.frame(ID=c('wgt'),
+                       min=c(0),
+                       max=c(0.01))
+  if(secIn){
+    tmp <- data.frame(ID=c('ES33480000'),
+                          min=c(0),
+                          max=c(0.05))
+    result <- rbind(result,tmp)
+  }
+  
+  if(stockIn){
+    tmp <- data.frame(ID=c('EQ601318'),
+                      min=c(0),
+                      max=c(0.1))
+    result <- rbind(result,tmp)
+  }
+  return(result)
+}
+
+
+
+OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=c('IndSty','Ind','IndStyTE'),
+                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=FALSE,
+                   optWay=c('ipop','solve.QP','Matlab')){
+  target <- match.arg(target)
+  constr <- match.arg(constr) 
+  optWay <- match.arg(optWay)
+  
+  # fname <- setdiff(colnames(TSF),c('date','stockID'))
+  fname <- guess_factorNames(TSF)
+  dates <- unique(TSF$date)
+  port <- data.frame()
+  
+  if( optWay == "Matlab"){
+    R.matlab::Matlab$startServer()
+    matlab <- R.matlab::Matlab()
+    open(matlab)
+  }
+  
+  for(i in dates){
+    cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
+    
+    #get one period raw data
+    tmp.TSF <- TSF[TSF$date==i,]
+    tmp.TS <- tmp.TSF[,c('date','stockID')]
+    tmp.TS <- rm_suspend(tmp.TS)
+    if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
+    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
+    
+    
+    tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
+    tmp <- dplyr::select(tmp,-sector)
+    tmp.TSF <- merge.x(tmp.TSF,tmp)
+    if('date' %in% colnames(fRtn) ){
+      tmp.fRtn <- fRtn[fRtn$date==i,-1]
+    }else{
+      tmp.fRtn <- fRtn
+    }
+    rownames(tmp.fRtn) <- tmp.fRtn$fname
+    
+    if('date' %in% colnames(fCov) ){
+      tmp.fCov <- fCov[fCov$date==i,-1]
+    }else{
+      tmp.fCov <- fCov
+    }
+    rownames(tmp.fCov) <- colnames(tmp.fCov)
+    
+    #get benchmark stock component weight and sector info. 
+    benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
+    tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr)
+    tmp <- tmp[,c('date','stockID','sector')]
+    benchmarkdata <- merge(benchmarkdata,tmp,by=c('date','stockID'))
+    totwgt <- plyr::ddply(benchmarkdata,'sector',plyr::summarise,secwgt=sum(wgt))
+    totwgt$wgtlb <- totwgt$secwgt*(1-indfexp)
+    totwgt$wgtub <- totwgt$secwgt*(1+indfexp)
+    rownames(totwgt) <- totwgt$sector
+    
+    #deal with missing industry
+    indfname <- colnames(tmp.TSF)[stringr::str_detect(colnames(tmp.TSF),'ES')]
+    missind <- setdiff(indfname,totwgt$sector)
+    if(length(missind)>0){
+      for(j in 1:length(missind)){
+        tmp.TSF <- tmp.TSF[tmp.TSF[,missind[j]]==0,]
+        tmp.TSF <- tmp.TSF[,!colnames(tmp.TSF) %in% missind[j]]
+      }
+      indfname <- setdiff(indfname,missind)
+    }
+    totwgt <- totwgt[indfname,]
+    
+    # get risk matrix
+    if(constr=='Ind'){
+      #prepare matrix data
+      riskmat <- as.matrix(tmp.TSF[,indfname])
+      rownames(riskmat) <- tmp.TSF$stockID
+      
+    }else if(constr=='IndSty'){
+      #get benchmark risk factor value
+      benchmarkdata <- merge(benchmarkdata,TSF[,c('date','stockID',fname)],by=c('date','stockID'))
+      benchmarkdata[is.na(benchmarkdata)] <- 0
+      fwgt <- t(as.matrix(benchmarkdata$wgt)) %*% as.matrix(benchmarkdata[,fname])
+      fwgt <- data.frame(sector=colnames(fwgt),secwgt=c(fwgt))
+      colnames(fexp) <- c('sector','wgtlb','wgtub')
+      fwgt <- merge(fwgt,fexp,by='sector')
+      fwgt$wgtlb <- fwgt$secwgt+fwgt$wgtlb
+      fwgt$wgtub <- fwgt$secwgt+fwgt$wgtub
+      totwgt <- rbind(totwgt,fwgt)
+      rownames(totwgt) <- totwgt$sector
+      
+      #prepare risk matrix data
+      riskmat <- as.matrix(tmp.TSF[,c(indfname,fname)])
+      rownames(riskmat) <- tmp.TSF$stockID
+      totwgt <- totwgt[colnames(riskmat),]
+      
+    }
+    
+    
+    #get alpha matrix
+    alphamat <- as.matrix(tmp.TSF[,alphaf])
+    rownames(alphamat) <- tmp.TSF$stockID
+    dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
+    
+    
+    if(target=='return-risk'){
+      
+      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
+      Dmat <- alphamat%*%Fcovmat%*%t(alphamat)
+      tmp <- Matrix::nearPD(Dmat)
+      Dmat <- tmp$mat
+      Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      nstock <- dim(Dmat)[1]
+      
+      if( optWay == "solve.QP"){
+        
+        Amat <- cbind(riskmat,-1*riskmat)
+        Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
+        bvec <- c(1,totwgt$wgtlb,-1*totwgt$wgtub,rep(0,nstock),rep(-0.01,nstock))
+        system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
+        
+      }else if(optWay == "ipop"){
+        
+        f.ipop <- as.matrix(-dvec, ncol = 1)
+        A.ipop <- t(cbind(1,riskmat))
+        b.ipop <- c(1,totwgt$wgtlb)
+        dif.ipop <- totwgt$wgtub - totwgt$wgtlb
+        r.ipop <- c(0, dif.ipop)
+        lb.ipop <- matrix(data = 0, nrow = nstock, ncol = 1)
+        ub.ipop <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
+                                              A = A.ipop, b = b.ipop, r = r.ipop,
+                                              l = lb.ipop, u = ub.ipop,
+                                              maxiter = 3000))
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
+        
+      }else if(optWay == "Matlab"){
+        
+        H.matlab <- Dmat
+        f.matlab <- as.matrix(-dvec, ncol = 1)
+        A.matlab <- t(cbind(-1*riskmat, riskmat))
+        b.matlab <- as.matrix(c(-1*totwgt$wgtlb, totwgt$wgtub), ncol=1)
+        Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
+        beq.matlab <- 1
+        lb.matlab <- matrix(data = 0, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        
+        R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
+                              Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
+        R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
+        R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
+        res.tmp <- R.matlab::getVariable(matlab, "res")
+        res.matlab <- res.tmp$res
+        
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
+      }
+      
+      tmp <- tmp[tmp$wgt>0.0005,]
+      colnames(tmp) <-c( "date","stockID","wgt")
+      tmp <- transform(tmp,wgt=wgt/sum(wgt))
+      
+    }else{
+      require(PortfolioAnalytics)
+      pspec <- portfolio.spec(assets=colnames(dvec))
+      pspec <- add.constraint(portfolio=pspec, type="full_investment")
+      pspec <- add.constraint(portfolio=pspec,type="box",min=0,max=maxWgt)
+      
+      pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
+                              B=riskmat,lower=totwgt$wgtlb, upper=totwgt$wgtub)
+      pspec <- add.objective(portfolio=pspec,type='return',name='mean')
+      dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
+      opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
+                                       optimize_method="ROI",
+                                       trace=TRUE)
+      
+      tmp <- data.frame(date=i,stockID=names(opt_maxret$weights),wgt=opt_maxret$weights)
+      tmp <- tmp[tmp$wgt>0.0005,]
+      tmp$wgt <- tmp$wgt/sum(tmp$wgt)
+      
+    }
+    port <- rbind(port,tmp)
+  }# for dates end
+  
+  if( optWay == "Matlab"){
+    close(matlab)
+  }
+  port$date <- as.Date(port$date,origin = '1970-01-01')
+  port$stockID <- as.character(port$stockID)
+  return(port)
+}
+
+
+
+
+
 
 
 
