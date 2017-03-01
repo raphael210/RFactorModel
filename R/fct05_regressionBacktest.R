@@ -389,8 +389,10 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' TSFR <- getTSR(TSF)
+#' re <- reg.factor.select(TSFR)
 #' re <- reg.factor.select(TSFR,sectorAttr=NULL)
-reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
+#' re <- reg.factor.select(TSFR,forder=sample(1:(ncol(TSFR)-4),ncol(TSFR)-4))
+reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
   if(!is.null(sectorAttr)){
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")],sectorAttr = sectorAttr)[[4]]
@@ -401,12 +403,22 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
   }
   
   fname <- guess_factorNames(TSFR)
+  if(!missing(forder)){
+    fname <- fname[forder]
+  }
+  
   selectf <- NULL
   while(length(setdiff(fname,selectf))>0){
     rsquare <- data.frame()
     frtn <- data.frame()
     res <- data.frame()
-    for(i in setdiff(fname,selectf)){
+    if(missing(forder)){
+      fnameset <- setdiff(fname,selectf)
+    }else{
+      fnameset <- setdiff(fname,selectf)[1]
+    }
+    
+    for(i in fnameset){
       tmp.TSF <- TSFR[,c("date","stockID",union(selectf,i))]
       if(is.null(sectorAttr) & ncol(tmp.TSF)==3){
         tmp.res <- data.frame(tmp.TSF[,c('date','stockID')],fname=i,res=tmp.TSF[,i])
@@ -417,7 +429,7 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
           tmp.res <- factor.VIF(tmp.TSF,i,sectorAttr)[[2]]
         }
         tmp.TSF[,i] <- dplyr::left_join(tmp.TSF[,c("date","stockID")],
-                         tmp.res[,c("date","stockID","res")],by=c("date","stockID"))[,3]
+                                        tmp.res[,c("date","stockID","res")],by=c("date","stockID"))[,3]
       }
       
       tmp.TSFR <- dplyr::left_join(tmp.TSF,TSFR[,c("date","date_end","stockID","periodrtn")],
@@ -429,8 +441,8 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
       frtn <- rbind(frtn,frs$fRtn)
     }
     rsquare <- rsquare %>% group_by(fname) %>%
-                dplyr::summarise(rsquare = mean(RSquare,trim = 0.025,na.rm = TRUE)) %>% 
-                arrange(desc(rsquare)) %>% slice(1)
+      dplyr::summarise(rsquare = mean(RSquare,trim = 0.025,na.rm = TRUE)) %>% 
+      arrange(desc(rsquare)) %>% slice(1)
     tmp.selectf <- as.character(rsquare$fname)
     tmp.frtn <- frtn[frtn$fname==tmp.selectf,'frtn']
     testres <- t.test(tmp.frtn)
@@ -443,13 +455,16 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr()){
     
     res <- res[res$fname==tmp.selectf,c('date','stockID','res')]
     TSFR[,tmp.selectf] <- dplyr::left_join(TSFR[,c("date","stockID")],
-                                    res,by=c("date","stockID"))[,3]
+                                           res,by=c("date","stockID"))[,3]
   }
+  
+  
   rownames(result) <- NULL
   tmp <- as.character(result[result$fname!='sector','fname'])
   TSFR <- TSFR[,c("date","date_end","stockID",tmp,"periodrtn" )]
   return(list(result=result,TSFR=TSFR))
 }
+
 
 
 
@@ -1029,7 +1044,7 @@ biasTest <- function(reg_results,portID){
 #' @param Fcov is the covariance matrix.
 #' @param constr is optimization constraint,\bold{IndSty} means industry and style neutral,
 #' \bold{IndStyTE} means besides industry and style neutral,tracking error also required.
-#' @param benchmark is the benckmark for optimization.
+#' @param bmk is the benckmark for optimization,can be NULL.
 #' @return a \bold{port} object.
 #' @examples 
 #' 
@@ -1226,7 +1241,17 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
 }
 
 
-defaultWgtSetting <- function(secIn=FALSE,stockIn=FALSE){
+
+
+#' WgtSetDemo
+#' 
+#' weight setting demo in optimization function
+#' @examples 
+#' wgt <- wgtSetDemo()
+#' wgt <- wgtSetDemo(secIn = T)
+#' wgt <- wgtSetDemo(stockIn = T)
+#' @export
+wgtSetDemo <- function(secIn=FALSE,stockIn=FALSE){
   result <- data.frame(ID=c('wgt'),
                        min=c(0),
                        max=c(0.01))
@@ -1247,25 +1272,154 @@ defaultWgtSetting <- function(secIn=FALSE,stockIn=FALSE){
 }
 
 
+#' factorExpDemo
+#' 
+#' factor exposure setting demo in optimization function
+#' @examples 
+#' fexp <- factorExpDemo()
+#' fexp <- factorExpDemo(secIn = T)
+#' @export
+factorExpDemo <- function(secIn=FALSE){
+  result <- data.frame(fname=c("disposition_","beta_","ln_mkt_cap_","NP_YOY"),
+                       min=c(-0.01,-0.01,-0.01,-0.01),
+                       max=c(100,0.01,2,100))
+  if(secIn){
+    tmp <- data.frame(fname=c('ES33480000'),
+                      min=c(0.15),
+                      max=c(0.25))
+    result <- rbind(result,tmp)
+  }
+  return(result)
+}
 
-OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=c('IndSty','Ind','IndStyTE'),
-                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=FALSE,
-                   optWay=c('ipop','solve.QP','Matlab')){
+
+# getbmkfExp
+# 
+# inner function, get benchmark's factor exposure
+# bmkdata <- getbmkfExp(TSF,bmk,sectorAttr)
+getbmkfExp <- function(TSF,bmk,sectorAttr){
+  bmkdata <- getIndexCompWgt(bmk,unique(TSF$date))
+  bmkdata <- dplyr::left_join(bmkdata,TSF,by=c('date','stockID'))
+  if(!is.null(sectorAttr)){
+    tmp <- gf.sector(bmkdata[,c('date','stockID')],sectorAttr)
+    tmp <- dplyr::select(tmp,-sector)
+    bmkdata <- dplyr::left_join(bmkdata,tmp,by=c('date','stockID'))
+  }
+  bmkdata[is.na(bmkdata)] <- 0
+  fnames <- setdiff(colnames(bmkdata),c("date","stockID","wgt"))
+  
+  result <- data.frame()
+  for(i in unique(bmkdata$date)){
+    tmp <- subset(bmkdata,date==i)
+    tmp <- t(as.matrix(tmp$wgt)) %*% as.matrix(tmp[,fnames])
+    tmp <- data.frame(date=i,fname=colnames(tmp),fexp=t(unname(tmp)))
+    result <- rbind(result,tmp)
+  }
+  result$date <- as.Date(result$date,origin='1970-01-01')
+  tmp <- dplyr::filter(result,substr(fname,1,2)=='ES',fexp==0)
+  result <- dplyr::setdiff(result,tmp)
+  return(result)
+}
+
+
+# getfExpLimit
+# 
+# inner function, get benchmark's factor exposure
+# totwgt <- getfExpLimit(factorExp,bmkdata)
+getfExpLimit <- function(factorExp,bmkdata){
+  if(nrow(bmkdata)==0){
+    result <- factorExp
+  }else{
+    factorExp$fname <- as.character(factorExp$fname)
+    bmkdata$fname <- as.character(bmkdata$fname)
+    
+    sec_in_exp <- factorExp[substr(factorExp$fname,1,2)=='ES','fname']
+    sec_in_bmk <- unique(bmkdata[substr(bmkdata$fname,1,2)=='ES','fname'])
+    
+    tmp.result1 <- subset(bmkdata,fname %in% factorExp$fname)
+    tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
+    tmp.result1 <- transform(tmp.result1,min=fexp+min,
+                             max=fexp+max)
+    tmp.result2 <- subset(bmkdata,fname %in% sec_in_bmk)
+    tmp.result2 <- transform(tmp.result2,min=fexp*0.95,
+                             max=fexp*1.05)
+    result <- rbind(tmp.result1,tmp.result2)
+    result <- result[,c("date","fname","min","max")]
+    result <- dplyr::arrange(result,date)
+    
+    if(length(sec_in_exp)>=1){
+      if(length(setdiff(sec_in_exp,sec_in_bmk))==0){
+        result <- subset(bmkdata,fname %in% factorExp$fname)
+        result <- dplyr::left_join(result,factorExp,by='fname')
+        result <- transform(result,min=ifelse(result$fname %in% sec_in_bmk,min,fexp+min),
+                            max=ifelse(result$fname %in% sec_in_bmk,max,fexp+max))
+        result <- result[,c("date","fname","min","max")]
+      }
+    }
+  }
+  return(result)
+}
+
+
+
+# getStockWgtLimit
+# 
+# inner function, get stock's weight limit in optimization function.
+# wgtLimit <- getStockWgtLimit(TS,wgtSet,sectorAttr)
+getStockWgtLimit <- function(TS,wgtSet,sectorAttr){
+  result <- transform(TS,min=wgtSet[wgtSet$ID=='wgt','min'],
+                  max=wgtSet[wgtSet$ID=='wgt','max'])
+  wgtSet$ID <- as.character(wgtSet$ID)
+  if(any(substr(wgtSet$ID,1,2)=='EQ')){
+    tmp <- result[result$stockID %in% wgtSet$ID,c('date','stockID')]
+    tmp <- dplyr::left_join(tmp,wgtSet,by=c('stockID'='ID'))
+    result <- result[!(result$stockID %in% wgtSet$ID),]
+    result <- rbind(result,tmp)
+  }
+  if(any(substr(wgtSet$ID,1,2)=='ES')){
+    TSS <- gf.sector(TS,sectorAttr)
+    TSS <- TSS[,c('date','stockID','sector')]
+    result <- dplyr::left_join(result,TSS,by=c('date','stockID'))
+    
+    tmp <- result[result$sector %in% wgtSet$ID,c('date','stockID','sector')]
+    tmp <- dplyr::left_join(tmp,wgtSet,by=c('sector'='ID'))
+    tmp <- tmp[,c("date","stockID","min","max")]
+    result <- result[!(result$sector %in% wgtSet$ID),c('date','stockID','min','max')]
+    result <- rbind(result,tmp)
+  }
+  
+  return(result)
+}
+
+
+
+
+
+OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
+                      target=c('return','balance'),
+                      constr=c('IndSty','Ind','IndStyTE'),
+                      bmk='EI000905',sectorAttr=defaultSectorAttr(),
+                      factorExp=factorExpDemo(),wgtSet=wgtSetDemo(),
+                      addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
   target <- match.arg(target)
-  constr <- match.arg(constr) 
+  constr <- match.arg(constr)
   optWay <- match.arg(optWay)
   
-  # fname <- setdiff(colnames(TSF),c('date','stockID'))
-  fname <- guess_factorNames(TSF)
-  dates <- unique(TSF$date)
-  port <- data.frame()
-  
-  if( optWay == "Matlab"){
+  if(optWay == "Matlab"){
     R.matlab::Matlab$startServer()
     matlab <- R.matlab::Matlab()
     open(matlab)
   }
   
+  bmkdata <- data.frame()
+  if(!is.null(bmk)){
+    bmkdata <- getbmkfExp(TSF,bmk,sectorAttr)
+  }
+  fexplimit <- getfExpLimit(factorExp,bmkdata)
+  
+  fnames <- guess_factorNames(TSF)
+  dates <- unique(TSF$date)
+  port <- data.frame()
   for(i in dates){
     cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
     
@@ -1273,126 +1427,91 @@ OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),cons
     tmp.TSF <- TSF[TSF$date==i,]
     tmp.TS <- tmp.TSF[,c('date','stockID')]
     tmp.TS <- rm_suspend(tmp.TS)
-    if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
+    if(addEvent==TRUE){
+      tmp.TS <- rmNegativeEvents(tmp.TS)
+    }
     tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     
+    #add sector factor
+    if(!is.null(sectorAttr)){
+      tmp <- gf.sector(tmp.TS,sectorAttr)
+      indfname <- unique(tmp$sector)
+      tmp <- dplyr::select(tmp,-sector)
+      tmp.TSF <- merge.x(tmp.TSF,tmp)
+    }
+
     
-    tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
-    tmp <- dplyr::select(tmp,-sector)
-    tmp.TSF <- merge.x(tmp.TSF,tmp)
-    if('date' %in% colnames(fRtn) ){
+    if('date' %in% colnames(fRtn)){
       tmp.fRtn <- fRtn[fRtn$date==i,-1]
     }else{
       tmp.fRtn <- fRtn
     }
     rownames(tmp.fRtn) <- tmp.fRtn$fname
     
-    if('date' %in% colnames(fCov) ){
+    if('date' %in% colnames(fCov)){
       tmp.fCov <- fCov[fCov$date==i,-1]
     }else{
       tmp.fCov <- fCov
     }
     rownames(tmp.fCov) <- colnames(tmp.fCov)
     
-    #get benchmark stock component weight and sector info. 
-    benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
-    tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr)
-    tmp <- tmp[,c('date','stockID','sector')]
-    benchmarkdata <- merge(benchmarkdata,tmp,by=c('date','stockID'))
-    totwgt <- plyr::ddply(benchmarkdata,'sector',plyr::summarise,secwgt=sum(wgt))
-    totwgt$wgtlb <- totwgt$secwgt*(1-indfexp)
-    totwgt$wgtub <- totwgt$secwgt*(1+indfexp)
-    rownames(totwgt) <- totwgt$sector
-    
-    #deal with missing industry
-    indfname <- colnames(tmp.TSF)[stringr::str_detect(colnames(tmp.TSF),'ES')]
-    missind <- setdiff(indfname,totwgt$sector)
-    if(length(missind)>0){
-      for(j in 1:length(missind)){
-        tmp.TSF <- tmp.TSF[tmp.TSF[,missind[j]]==0,]
-        tmp.TSF <- tmp.TSF[,!colnames(tmp.TSF) %in% missind[j]]
-      }
-      indfname <- setdiff(indfname,missind)
+    if('date' %in% colnames(fexplimit)){
+      totwgt <- fexplimit[fexplimit$date==i,-1]
+    }else{
+      totwgt <- fexplimit
     }
-    totwgt <- totwgt[indfname,]
+    rownames(totwgt) <- totwgt$fname
+    
     
     # get risk matrix
-    if(constr=='Ind'){
-      #prepare matrix data
-      riskmat <- as.matrix(tmp.TSF[,indfname])
-      rownames(riskmat) <- tmp.TSF$stockID
-      
-    }else if(constr=='IndSty'){
-      #get benchmark risk factor value
-      benchmarkdata <- merge(benchmarkdata,TSF[,c('date','stockID',fname)],by=c('date','stockID'))
-      benchmarkdata[is.na(benchmarkdata)] <- 0
-      fwgt <- t(as.matrix(benchmarkdata$wgt)) %*% as.matrix(benchmarkdata[,fname])
-      fwgt <- data.frame(sector=colnames(fwgt),secwgt=c(fwgt))
-      colnames(fexp) <- c('sector','wgtlb','wgtub')
-      fwgt <- merge(fwgt,fexp,by='sector')
-      fwgt$wgtlb <- fwgt$secwgt+fwgt$wgtlb
-      fwgt$wgtub <- fwgt$secwgt+fwgt$wgtub
-      totwgt <- rbind(totwgt,fwgt)
-      rownames(totwgt) <- totwgt$sector
-      
-      #prepare risk matrix data
-      riskmat <- as.matrix(tmp.TSF[,c(indfname,fname)])
-      rownames(riskmat) <- tmp.TSF$stockID
-      totwgt <- totwgt[colnames(riskmat),]
-      
-    }
-    
-    
+    riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
+    rownames(riskmat) <- tmp.TSF$stockID
+
     #get alpha matrix
-    alphamat <- as.matrix(tmp.TSF[,alphaf])
+    alphamat <- as.matrix(tmp.TSF[,alphaf])*100
     rownames(alphamat) <- tmp.TSF$stockID
     dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
+    if(addEvent){
+      # add event return
+    }
+    wgtLimit <- getStockWgtLimit(tmp.TS,wgtSet,sectorAttr)
     
-    
-    if(target=='return-risk'){
+    if(target=='balance'){
       
-      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
-      Dmat <- alphamat%*%Fcovmat%*%t(alphamat)
-      tmp <- Matrix::nearPD(Dmat)
-      Dmat <- tmp$mat
-      Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])*10000
+      Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
       nstock <- dim(Dmat)[1]
       
       if( optWay == "solve.QP"){
-        
         Amat <- cbind(riskmat,-1*riskmat)
         Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
-        bvec <- c(1,totwgt$wgtlb,-1*totwgt$wgtub,rep(0,nstock),rep(-0.01,nstock))
+        bvec <- c(1,totwgt$min,-1*totwgt$max,wgtLimit$min,-1*wgtLimit$max)
         system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
-        
         tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
         
       }else if(optWay == "ipop"){
-        
         f.ipop <- as.matrix(-dvec, ncol = 1)
         A.ipop <- t(cbind(1,riskmat))
-        b.ipop <- c(1,totwgt$wgtlb)
-        dif.ipop <- totwgt$wgtub - totwgt$wgtlb
+        b.ipop <- c(1,totwgt$min)
+        dif.ipop <- totwgt$max - totwgt$min
         r.ipop <- c(0, dif.ipop)
-        lb.ipop <- matrix(data = 0, nrow = nstock, ncol = 1)
-        ub.ipop <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        lb.ipop <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
+        ub.ipop <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
         system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
                                               A = A.ipop, b = b.ipop, r = r.ipop,
                                               l = lb.ipop, u = ub.ipop,
                                               maxiter = 3000))
-        
         tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
         
       }else if(optWay == "Matlab"){
-        
         H.matlab <- Dmat
         f.matlab <- as.matrix(-dvec, ncol = 1)
         A.matlab <- t(cbind(-1*riskmat, riskmat))
-        b.matlab <- as.matrix(c(-1*totwgt$wgtlb, totwgt$wgtub), ncol=1)
+        b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
         Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
         beq.matlab <- 1
-        lb.matlab <- matrix(data = 0, nrow = nstock, ncol = 1)
-        ub.matlab <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        lb.matlab <- matrix(data = totwgt$min, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = totwgt$max, nrow = nstock, ncol = 1)
         
         R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
                               Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
@@ -1412,10 +1531,10 @@ OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),cons
       require(PortfolioAnalytics)
       pspec <- portfolio.spec(assets=colnames(dvec))
       pspec <- add.constraint(portfolio=pspec, type="full_investment")
-      pspec <- add.constraint(portfolio=pspec,type="box",min=0,max=maxWgt)
+      pspec <- add.constraint(portfolio=pspec,type="box",min=wgtLimit$min,max=wgtLimit$max)
       
       pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
-                              B=riskmat,lower=totwgt$wgtlb, upper=totwgt$wgtub)
+                              B=riskmat,lower=totwgt$min, upper=totwgt$max)
       pspec <- add.objective(portfolio=pspec,type='return',name='mean')
       dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
       opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
@@ -1430,16 +1549,13 @@ OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),cons
     port <- rbind(port,tmp)
   }# for dates end
   
-  if( optWay == "Matlab"){
+  if(optWay == "Matlab"){
     close(matlab)
   }
   port$date <- as.Date(port$date,origin = '1970-01-01')
   port$stockID <- as.character(port$stockID)
   return(port)
 }
-
-
-
 
 
 

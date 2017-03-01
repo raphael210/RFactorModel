@@ -15,9 +15,9 @@ OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "return-risk"),
 \item{constr}{is optimization constraint,\bold{IndSty} means industry and style neutral,
 \bold{IndStyTE} means besides industry and style neutral,tracking error also required.}
 
-\item{benchmark}{is the benckmark for optimization.}
-
 \item{Fcov}{is the covariance matrix.}
+
+\item{bmk}{is the benckmark for optimization,can be NULL.}
 }
 \value{
 a \bold{port} object.
