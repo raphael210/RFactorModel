@@ -1243,54 +1243,84 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
 
 
 
-#' WgtSetDemo
+#' buildWgtSet
 #' 
-#' weight setting demo in optimization function
+#' build weight setting in optimization function
 #' @examples 
-#' wgt <- wgtSetDemo()
-#' wgt <- wgtSetDemo(secIn = T)
-#' wgt <- wgtSetDemo(stockIn = T)
+#' wgt <- buildWgtSet()
+#' wgt <- buildWgtSet(wgt=c(0,0.01),EQ601318=c(0.05,0.05))
 #' @export
-wgtSetDemo <- function(secIn=FALSE,stockIn=FALSE){
-  result <- data.frame(ID=c('wgt'),
-                       min=c(0),
-                       max=c(0.01))
-  if(secIn){
-    tmp <- data.frame(ID=c('ES33480000'),
-                          min=c(0),
-                          max=c(0.05))
+buildWgtSet <- function(wgt=c(0,0.01),...){
+  if(is.null(wgt)){
+    result <- data.frame()
+  }else{
+    result <- data.frame(ID=c('wgt'),
+                         min=wgt[1],
+                         max=wgt[2])
+  }
+
+  tmp <- list(...)
+  if(length(tmp)>0){
+    tmp <- plyr::ldply(tmp)
+    colnames(tmp) <- colnames(result)
     result <- rbind(result,tmp)
   }
-  
-  if(stockIn){
-    tmp <- data.frame(ID=c('EQ601318'),
-                      min=c(0),
-                      max=c(0.1))
+  if(any(result$max<=result$min)){
+    warning('wgtmax less than wgtmin',call. = FALSE)
+  }
+  return(result)
+}
+
+#' buildFactorExp
+#' 
+#' build factor exposure setting in optimization function
+#' @examples 
+#' fexp <- buildFactorExp()
+#' fexp <- buildFactorExp(disposition_=c(-0.01,1),beta_ = c(-0.01, 1))
+#' fexp <- buildFactorExp(sectorall=c(-0.05,0.05),disposition_=c(-0.01,1),ES33480000=c(0.15,0.25))
+#' @export
+buildFactorExp <- function(sectorall=c(-0.05,0.05),...){
+  if(is.null(sectorall)){
+    result <- data.frame()
+  }else{
+    result <- data.frame(fname="sectorall",
+                         min=sectorall[1],
+                         max=sectorall[2])
+  }
+
+  tmp <- list(...)
+  if(length(tmp)>0){
+    tmp <- plyr::ldply(tmp)
+    colnames(tmp) <- colnames(result)
     result <- rbind(result,tmp)
+  }
+  if(any(result$max<=result$min)){
+    warning('max less than min',call. = FALSE)
   }
   return(result)
 }
 
 
-#' factorExpDemo
+#' buildBoxConstr
 #' 
-#' factor exposure setting demo in optimization function
+#' build box constraint in optimization function
 #' @examples 
-#' fexp <- factorExpDemo()
-#' fexp <- factorExpDemo(secIn = T)
+#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85))
+#' boxConstr <- buildBoxConstr(EI000300=c(0.75,0.85))
 #' @export
-factorExpDemo <- function(secIn=FALSE){
-  result <- data.frame(fname=c("disposition_","beta_","ln_mkt_cap_","NP_YOY"),
-                       min=c(-0.01,-0.01,-0.01,-0.01),
-                       max=c(100,0.01,2,100))
-  if(secIn){
-    tmp <- data.frame(fname=c('ES33480000'),
-                      min=c(0.15),
-                      max=c(0.25))
-    result <- rbind(result,tmp)
+buildBoxConstr <- function(...){
+  tmp <- list(...)
+  if(length(tmp)>0){
+    tmp <- plyr::ldply(tmp)
+    colnames(tmp) <- c('indexID','min','max')
   }
-  return(result)
+  if(any(tmp$max<=tmp$min)){
+    warning('max less than min',call. = FALSE)
+  }
+  return(tmp)
 }
+
+
 
 
 # getbmkfExp
@@ -1397,9 +1427,8 @@ getStockWgtLimit <- function(TS,wgtSet,sectorAttr){
 
 OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
                       target=c('return','balance'),
-                      constr=c('IndSty','Ind','IndStyTE'),
                       bmk='EI000905',sectorAttr=defaultSectorAttr(),
-                      factorExp=factorExpDemo(),wgtSet=wgtSetDemo(),
+                      factorExp=buildFactorExp(),wgtSet=buildWgtSet(),boxConstr,
                       addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
   target <- match.arg(target)
   constr <- match.arg(constr)

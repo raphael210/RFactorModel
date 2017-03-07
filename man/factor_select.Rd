@@ -5,7 +5,7 @@
 \alias{reg.factor.select}
 \title{factor select}
 \usage{
-reg.factor.select(TSFR, sectorAttr = defaultSectorAttr())
+reg.factor.select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
@@ -39,6 +39,8 @@ factorLists <- buildFactorLists(
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 TSFR <- getTSR(TSF)
+re <- reg.factor.select(TSFR)
 re <- reg.factor.select(TSFR,sectorAttr=NULL)
+re <- reg.factor.select(TSFR,forder=sample(1:(ncol(TSFR)-4),ncol(TSFR)-4))
 }
 
