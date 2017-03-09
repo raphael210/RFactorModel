@@ -11,6 +11,6 @@ build box constraint in optimization function
 }
 \examples{
 boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85))
-boxConstr <- buildBoxConstr(EI000300=c(0.75,0.85))
+boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85),EI000300=c(0.15,0.35))
 }
 

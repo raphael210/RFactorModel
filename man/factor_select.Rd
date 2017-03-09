@@ -41,6 +41,7 @@ TSF <- getMultiFactor(TS,FactorLists = factorLists)
 TSFR <- getTSR(TSF)
 re <- reg.factor.select(TSFR)
 re <- reg.factor.select(TSFR,sectorAttr=NULL)
-re <- reg.factor.select(TSFR,forder=sample(1:(ncol(TSFR)-4),ncol(TSFR)-4))
+nstock <- length(factorLists)
+re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock)
 }
 

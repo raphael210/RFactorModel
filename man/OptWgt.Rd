@@ -10,10 +10,9 @@ OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "return-risk"),
   addEvent = FALSE, optWay = c("ipop", "solve.QP", "Matlab"))
 }
 \arguments{
-\item{alphaf}{is alpha factors' name.}
+\item{TSF}{}
 
-\item{constr}{is optimization constraint,\bold{IndSty} means industry and style neutral,
-\bold{IndStyTE} means besides industry and style neutral,tracking error also required.}
+\item{alphaf}{is alpha factors' name, can be missing.}
 
 \item{Fcov}{is the covariance matrix.}
 

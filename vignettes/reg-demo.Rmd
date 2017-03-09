@@ -89,17 +89,19 @@ table.reg.fRtn(reg_results)
 
 ```{r portOpt}
 # set factor's exposure
-fNames <- sapply(FactorLists, '[[','factorName')
-fexp <- data.frame(fname=fNames,
-                   low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
-                   up=c(     1, 0.01,  100,  100,  2,    100))
+fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
+                       volatility_ = c(-0.01, 0.01),
+                       disposition_=c(-0.01,100),
+                       beta_=c(-0.01, 0.01),
+                       ln_mkt_cap_=c(-0.01,100),
+                       NP_YOY=c(-0.01,100))
 # set alpha factor
 alphaf <- c("disposition_","beta_","ln_mkt_cap_","NP_YOY" )
 
 # get factor return
-fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results)
+fRtn <- getfRtn(RebDates,alphaf,rollavg = F,reg_results = reg_results)
 # get factor covariance
-fCov <- calfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
+fCov <- calfCov(RebDates,alphaf,rollavg=F,reg_results = reg_results)
 
 # Date Alignment
 tmp.date1 <- max(min(fRtn$date),min(fCov$date))
