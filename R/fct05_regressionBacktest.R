@@ -1043,158 +1043,138 @@ biasTest <- function(reg_results,portID){
 #' @author Andrew Dow
 #' @param TSF 
 #' @param alphaf is alpha factors' name, can be missing.
+#' @param fRtn
 #' @param Fcov is the covariance matrix.
-#' @param bmk is the benckmark for optimization,can be NULL.
+#' @param bmk is the benckmark for optimization,can be missing.
 #' @return a \bold{port} object.
 #' @examples 
 #' 
 #' 
 #' @export
-OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=c('IndSty','Ind','IndStyTE'),
-                   benchmark='EI000905',indfexp=0.05,fexp,sectorAttr=defaultSectorAttr(),maxWgt=0.01,addEvent=FALSE,
-                   optWay=c('ipop','solve.QP','Matlab')){
+OptWgt <- function(TSF,alphaf,fRtn,fCov,
+                      target=c('return','balance'),
+                      bmk,sectorAttr=defaultSectorAttr(),
+                      factorExp=buildFactorExp(),wgtSet=buildWgtSet(),boxConstr,
+                      addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
   target <- match.arg(target)
-  constr <- match.arg(constr) 
   optWay <- match.arg(optWay)
   
-  # fname <- setdiff(colnames(TSF),c('date','stockID'))
-  fname <- guess_factorNames(TSF)
-  dates <- unique(TSF$date)
-  port <- data.frame()
-  
-  if( optWay == "Matlab"){
+  if(optWay == "Matlab"){
     R.matlab::Matlab$startServer()
     matlab <- R.matlab::Matlab()
     open(matlab)
   }
   
+  fnames <- guess_factorNames(TSF)
+  if(missing(alphaf)){
+    alphaf <- fnames
+  }
+  dates <- unique(TSF$date)
+  port <- data.frame()
   for(i in dates){
     cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
     
     #get one period raw data
     tmp.TSF <- TSF[TSF$date==i,]
-    tmp.TS <- tmp.TSF[,c('date','stockID')]
-    tmp.TS <- rm_suspend(tmp.TS)
-    if(addEvent==TRUE) tmp.TS <- rmNegativeEvents(tmp.TS)
-    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
+    #add sector factor
+    if(!is.null(sectorAttr)){
+      tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
+      tmp <- dplyr::select(tmp,-sector)
+      tmp.TSF <- dplyr::left_join(tmp.TSF,tmp,by=c('date','stockID'))
+    }
     
-    
-    tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
-    tmp <- dplyr::select(tmp,-sector)
-    tmp.TSF <- merge.x(tmp.TSF,tmp)
-    if('date' %in% colnames(fRtn) ){
+    #get factor return and factor covariance
+    if('date' %in% colnames(fRtn)){
       tmp.fRtn <- fRtn[fRtn$date==i,-1]
     }else{
       tmp.fRtn <- fRtn
     }
     rownames(tmp.fRtn) <- tmp.fRtn$fname
     
-    if('date' %in% colnames(fCov) ){
+    if('date' %in% colnames(fCov)){
       tmp.fCov <- fCov[fCov$date==i,-1]
     }else{
       tmp.fCov <- fCov
     }
     rownames(tmp.fCov) <- colnames(tmp.fCov)
     
-    #get benchmark stock component weight and sector info. 
-    benchmarkdata <- getIndexCompWgt(indexID = benchmark,i)
-    tmp <- gf.sector(benchmarkdata[,c('date','stockID')],sectorAttr = sectorAttr)
-    tmp <- tmp[,c('date','stockID','sector')]
-    benchmarkdata <- merge(benchmarkdata,tmp,by=c('date','stockID'))
-    totwgt <- plyr::ddply(benchmarkdata,'sector',plyr::summarise,secwgt=sum(wgt))
-    totwgt$wgtlb <- totwgt$secwgt*(1-indfexp)
-    totwgt$wgtub <- totwgt$secwgt*(1+indfexp)
-    rownames(totwgt) <- totwgt$sector
-    
-    #deal with missing industry
-    indfname <- colnames(tmp.TSF)[stringr::str_detect(colnames(tmp.TSF),'ES')]
-    missind <- setdiff(indfname,totwgt$sector)
-    if(length(missind)>0){
-      for(j in 1:length(missind)){
-        tmp.TSF <- tmp.TSF[tmp.TSF[,missind[j]]==0,]
-        tmp.TSF <- tmp.TSF[,!colnames(tmp.TSF) %in% missind[j]]
-      }
-      indfname <- setdiff(indfname,missind)
+    #remove unqualified TS
+    tmp.TS <- rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
+    if(addEvent==TRUE){
+      tmp.TS <- rmNegativeEvents(tmp.TS)
     }
-    totwgt <- totwgt[indfname,]
+    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
+    
+    
+    #get factor exposure up down limit
+    if(missing(bmk)){
+      totwgt <- getfExpLimit(factorExp,TSF=tmp.TSF)
+    }else{
+      bmkdata <- getbmkfExp(tmp.TSF,bmk)
+      totwgt <- getfExpLimit(factorExp,bmk=bmkdata)
+    }
+    totwgt <- totwgt[,-1]
+    rownames(totwgt) <- totwgt$fname
+    
     
     # get risk matrix
-    if(constr=='Ind'){
-      #prepare matrix data
-      riskmat <- as.matrix(tmp.TSF[,indfname])
-      rownames(riskmat) <- tmp.TSF$stockID
-      
-    }else if(constr=='IndSty'){
-      #get benchmark risk factor value
-      benchmarkdata <- merge(benchmarkdata,TSF[,c('date','stockID',fname)],by=c('date','stockID'))
-      benchmarkdata[is.na(benchmarkdata)] <- 0
-      fwgt <- t(as.matrix(benchmarkdata$wgt)) %*% as.matrix(benchmarkdata[,fname])
-      fwgt <- data.frame(sector=colnames(fwgt),secwgt=c(fwgt))
-      colnames(fexp) <- c('sector','wgtlb','wgtub')
-      fwgt <- merge(fwgt,fexp,by='sector')
-      fwgt$wgtlb <- fwgt$secwgt+fwgt$wgtlb
-      fwgt$wgtub <- fwgt$secwgt+fwgt$wgtub
-      totwgt <- rbind(totwgt,fwgt)
-      rownames(totwgt) <- totwgt$sector
-      
-      #prepare risk matrix data
-      riskmat <- as.matrix(tmp.TSF[,c(indfname,fname)])
-      rownames(riskmat) <- tmp.TSF$stockID
-      totwgt <- totwgt[colnames(riskmat),]
-      
+    if(!missing(boxConstr)){
+      tmpdata <- getnewTSFtotwgt(tmp.TSF,totwgt,boxConstr)
+      tmp.TSF <- tmpdata$TSF
+      totwgt <- tmpdata$totwgt
     }
     
+    riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
+    rownames(riskmat) <- tmp.TSF$stockID
     
     #get alpha matrix
     alphamat <- as.matrix(tmp.TSF[,alphaf])
     rownames(alphamat) <- tmp.TSF$stockID
     dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
+    if(addEvent){
+      # add event return
+    }
+    wgtLimit <- getStockWgtLimit(tmp.TS,wgtSet,sectorAttr)
     
-    
-    if(target=='return-risk'){
+    if(target=='balance'){
       
       Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
-      Dmat <- alphamat%*%Fcovmat%*%t(alphamat)
+      Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
       tmp <- Matrix::nearPD(Dmat)
       Dmat <- tmp$mat
       Dmat <- matrix(Dmat,nrow = nrow(Dmat))
       nstock <- dim(Dmat)[1]
       
-      if( optWay == "solve.QP"){
-        
+      if(optWay == "solve.QP"){
         Amat <- cbind(riskmat,-1*riskmat)
         Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
-        bvec <- c(1,totwgt$wgtlb,-1*totwgt$wgtub,rep(0,nstock),rep(-0.01,nstock))
+        bvec <- c(1,totwgt$min,-1*totwgt$max,wgtLimit$min,-1*wgtLimit$max)
         system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
-        
         tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
         
       }else if(optWay == "ipop"){
-        
         f.ipop <- as.matrix(-dvec, ncol = 1)
         A.ipop <- t(cbind(1,riskmat))
-        b.ipop <- c(1,totwgt$wgtlb)
-        dif.ipop <- totwgt$wgtub - totwgt$wgtlb
+        b.ipop <- c(1,totwgt$min)
+        dif.ipop <- totwgt$max - totwgt$min
         r.ipop <- c(0, dif.ipop)
-        lb.ipop <- matrix(data = 0, nrow = nstock, ncol = 1)
-        ub.ipop <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        lb.ipop <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
+        ub.ipop <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
         system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
                                               A = A.ipop, b = b.ipop, r = r.ipop,
                                               l = lb.ipop, u = ub.ipop,
                                               maxiter = 3000))
-        
         tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
         
       }else if(optWay == "Matlab"){
-        
         H.matlab <- Dmat
         f.matlab <- as.matrix(-dvec, ncol = 1)
         A.matlab <- t(cbind(-1*riskmat, riskmat))
-        b.matlab <- as.matrix(c(-1*totwgt$wgtlb, totwgt$wgtub), ncol=1)
+        b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
         Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
         beq.matlab <- 1
-        lb.matlab <- matrix(data = 0, nrow = nstock, ncol = 1)
-        ub.matlab <- matrix(data = 0.01, nrow = nstock, ncol = 1)
+        lb.matlab <- matrix(data = totwgt$min, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = totwgt$max, nrow = nstock, ncol = 1)
         
         R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
                               Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
@@ -1214,10 +1194,10 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
       require(PortfolioAnalytics)
       pspec <- portfolio.spec(assets=colnames(dvec))
       pspec <- add.constraint(portfolio=pspec, type="full_investment")
-      pspec <- add.constraint(portfolio=pspec,type="box",min=0,max=maxWgt)
+      pspec <- add.constraint(portfolio=pspec,type="box",min=wgtLimit$min,max=wgtLimit$max)
       
       pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
-                              B=riskmat,lower=totwgt$wgtlb, upper=totwgt$wgtub)
+                              B=riskmat,lower=totwgt$min, upper=totwgt$max)
       pspec <- add.objective(portfolio=pspec,type='return',name='mean')
       dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
       opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
@@ -1232,13 +1212,15 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,target=c('return','return-risk'),constr=
     port <- rbind(port,tmp)
   }# for dates end
   
-  if( optWay == "Matlab"){
+  if(optWay == "Matlab"){
     close(matlab)
   }
   port$date <- as.Date(port$date,origin = '1970-01-01')
   port$stockID <- as.character(port$stockID)
   return(port)
 }
+
+
 
 
 
@@ -1493,177 +1475,6 @@ getnewTSFtotwgt <- function(TSF,totwgt,boxConstr){
   return(list(TSF=TSF,totwgt=totwgt))
 }
 
-
-OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
-                      target=c('return','balance'),
-                      bmk,sectorAttr=defaultSectorAttr(),
-                      factorExp=buildFactorExp(),wgtSet=buildWgtSet(),boxConstr,
-                      addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
-  target <- match.arg(target)
-  optWay <- match.arg(optWay)
-  
-  if(optWay == "Matlab"){
-    R.matlab::Matlab$startServer()
-    matlab <- R.matlab::Matlab()
-    open(matlab)
-  }
-  
-  fnames <- guess_factorNames(TSF)
-  if(missing(alphaf)){
-    alphaf <- fnames
-  }
-  dates <- unique(TSF$date)
-  port <- data.frame()
-  for(i in dates){
-    cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
-    
-    #get one period raw data
-    tmp.TSF <- TSF[TSF$date==i,]
-    #add sector factor
-    if(!is.null(sectorAttr)){
-      tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
-      indfname <- unique(tmp$sector)
-      tmp <- dplyr::select(tmp,-sector)
-      tmp.TSF <- dplyr::left_join(tmp.TSF,tmp,by=c('date','stockID'))
-    }
-    
-    #get factor exposure up down limit
-    if(missing(bmk)){
-      fexplimit <- getfExpLimit(factorExp,TSF=tmp.TSF)
-    }else{
-      bmkdata <- getbmkfExp(tmp.TSF,bmk)
-      fexplimit <- getfExpLimit(factorExp,bmk=bmkdata)
-    }
-    
-    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
-    if(addEvent==TRUE){
-      tmp.TS <- rmNegativeEvents(tmp.TS)
-    }
-    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
-    
-
-
-    
-    if('date' %in% colnames(fRtn)){
-      tmp.fRtn <- fRtn[fRtn$date==i,-1]
-    }else{
-      tmp.fRtn <- fRtn
-    }
-    rownames(tmp.fRtn) <- tmp.fRtn$fname
-    
-    if('date' %in% colnames(fCov)){
-      tmp.fCov <- fCov[fCov$date==i,-1]
-    }else{
-      tmp.fCov <- fCov
-    }
-    rownames(tmp.fCov) <- colnames(tmp.fCov)
-    
-    
-    totwgt <- fexplimit[,-1]
-    rownames(totwgt) <- totwgt$fname
-    
-    
-    # get risk matrix
-    if(!missing(boxConstr)){
-      tmpdata <- getnewTSFtotwgt(tmp.TSF,totwgt,boxConstr)
-      tmp.TSF <- tmpdata$TSF
-      totwgt <- tmpdata$totwgt
-    }
-    
-    riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
-    rownames(riskmat) <- tmp.TSF$stockID
-    
-
-    
-    #get alpha matrix
-    alphamat <- as.matrix(tmp.TSF[,alphaf])*100
-    rownames(alphamat) <- tmp.TSF$stockID
-    dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
-    if(addEvent){
-      # add event return
-    }
-    wgtLimit <- getStockWgtLimit(tmp.TS,wgtSet,sectorAttr)
-    
-    if(target=='balance'){
-      
-      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])*10000
-      Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      nstock <- dim(Dmat)[1]
-      
-      if(optWay == "solve.QP"){
-        Amat <- cbind(riskmat,-1*riskmat)
-        Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
-        bvec <- c(1,totwgt$min,-1*totwgt$max,wgtLimit$min,-1*wgtLimit$max)
-        system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
-        
-      }else if(optWay == "ipop"){
-        f.ipop <- as.matrix(-dvec, ncol = 1)
-        A.ipop <- t(cbind(1,riskmat))
-        b.ipop <- c(1,totwgt$min)
-        dif.ipop <- totwgt$max - totwgt$min
-        r.ipop <- c(0, dif.ipop)
-        lb.ipop <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
-        ub.ipop <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
-        system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
-                                              A = A.ipop, b = b.ipop, r = r.ipop,
-                                              l = lb.ipop, u = ub.ipop,
-                                              maxiter = 3000))
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
-        
-      }else if(optWay == "Matlab"){
-        H.matlab <- Dmat
-        f.matlab <- as.matrix(-dvec, ncol = 1)
-        A.matlab <- t(cbind(-1*riskmat, riskmat))
-        b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
-        Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
-        beq.matlab <- 1
-        lb.matlab <- matrix(data = totwgt$min, nrow = nstock, ncol = 1)
-        ub.matlab <- matrix(data = totwgt$max, nrow = nstock, ncol = 1)
-        
-        R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
-                              Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
-        R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
-        R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
-        res.tmp <- R.matlab::getVariable(matlab, "res")
-        res.matlab <- res.tmp$res
-        
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
-      }
-      
-      tmp <- tmp[tmp$wgt>0.0005,]
-      colnames(tmp) <-c( "date","stockID","wgt")
-      tmp <- transform(tmp,wgt=wgt/sum(wgt))
-      
-    }else{
-      require(PortfolioAnalytics)
-      pspec <- portfolio.spec(assets=colnames(dvec))
-      pspec <- add.constraint(portfolio=pspec, type="full_investment")
-      pspec <- add.constraint(portfolio=pspec,type="box",min=wgtLimit$min,max=wgtLimit$max)
-      
-      pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
-                              B=riskmat,lower=totwgt$min, upper=totwgt$max)
-      pspec <- add.objective(portfolio=pspec,type='return',name='mean')
-      dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
-      opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
-                                       optimize_method="ROI",
-                                       trace=TRUE)
-      
-      tmp <- data.frame(date=i,stockID=names(opt_maxret$weights),wgt=opt_maxret$weights)
-      tmp <- tmp[tmp$wgt>0.0005,]
-      tmp$wgt <- tmp$wgt/sum(tmp$wgt)
-      
-    }
-    port <- rbind(port,tmp)
-  }# for dates end
-  
-  if(optWay == "Matlab"){
-    close(matlab)
-  }
-  port$date <- as.Date(port$date,origin = '1970-01-01')
-  port$stockID <- as.character(port$stockID)
-  return(port)
-}
 
 
 

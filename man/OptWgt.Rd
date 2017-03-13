@@ -4,19 +4,19 @@
 \alias{OptWgt}
 \title{OptWgt}
 \usage{
-OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "return-risk"),
-  constr = c("IndSty", "Ind", "IndStyTE"), benchmark = "EI000905",
-  indfexp = 0.05, fexp, sectorAttr = defaultSectorAttr(), maxWgt = 0.01,
-  addEvent = FALSE, optWay = c("ipop", "solve.QP", "Matlab"))
+OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "balance"), bmk,
+  sectorAttr = defaultSectorAttr(), factorExp = buildFactorExp(),
+  wgtSet = buildWgtSet(), boxConstr, addEvent = FALSE, optWay = c("ipop",
+  "solve.QP", "Matlab"))
 }
 \arguments{
 \item{TSF}{}
 
 \item{alphaf}{is alpha factors' name, can be missing.}
 
-\item{Fcov}{is the covariance matrix.}
+\item{bmk}{is the benckmark for optimization,can be missing.}
 
-\item{bmk}{is the benckmark for optimization,can be NULL.}
+\item{Fcov}{is the covariance matrix.}
 }
 \value{
 a \bold{port} object.
