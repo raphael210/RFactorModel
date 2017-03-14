@@ -23,8 +23,8 @@ kable(ftbale)
 
 ## ----reg_result----------------------------------------------------------
 #  # parameter setting
-#  begT <- as.Date('2012-01-31')
-#  endT <- as.Date('2016-12-31')
+#  begT <- as.Date('2013-01-31')
+#  endT <- as.Date('2017-01-31')
 #  RebDates <- getRebDates(begT,endT)
 #  indexID <- 'EI000985'
 #  
@@ -54,15 +54,8 @@ kable(ftbale)
 #  table.reg.fRtn(reg_results)
 
 ## ----portOpt-------------------------------------------------------------
-#  # set factor's exposure
-#  fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
-#                         volatility_ = c(-0.01, 0.01),
-#                         disposition_=c(-0.01,100),
-#                         beta_=c(-0.01, 0.01),
-#                         ln_mkt_cap_=c(-0.01,100),
-#                         NP_YOY=c(-0.01,100))
 #  # set alpha factor
-#  alphaf <- c("disposition_","beta_","ln_mkt_cap_","NP_YOY" )
+#  alphaf <- c("disposition_","PB_mrq_","ln_mkt_cap_","NP_YOY" )
 #  
 #  # get factor return
 #  fRtn <- getfRtn(RebDates,alphaf,rollavg = F,reg_results = reg_results)
@@ -77,12 +70,27 @@ kable(ftbale)
 #  TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
 #  
 #  ## portfolio demo
-#  # industry neutral,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
-#  # industry and style neutral,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
-#  # industry and style neutral,risk return balance
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
+#  # set factor's exposure
+#  fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
+#                          volatility_ = c(-0.01, 0.01),
+#                          disposition_=c(-0.01,100),
+#                          beta_=c(-0.01, 0.01),
+#                          ln_mkt_cap_=c(-0.01,100),
+#                          NP_YOY=c(-0.01,100))
+#  # simplest way:no benchmark,maximize return
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'return',factorExp = fexp))
+#  
+#  
+#  #build weight setting
+#  wgtSet <- buildWgtSet(ES33480000=c(0,0.05),ES33490000=c(0,0.03))
+#  
+#  #build box constrain
+#  boxConstr <- buildBoxConstr(EI000905=c(0.7,0.8))
+#  # with benchmark,maximize return, box constrain
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'return',bmk = 'EI000985',factorExp = fexp,wgtSet = wgtSet))
+#  
+#  # with benchmark,risk return balance
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000905',factorExp = fexp,boxConstr = boxConstr))
 #  
 #  
 #  # port backtest and return summary

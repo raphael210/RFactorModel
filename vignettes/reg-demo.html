@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-03-09" />
+<meta name="date" content="2017-03-14" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-03-09</em></h4>
+<h4 class="date"><em>2017-03-14</em></h4>
 
 
 
@@ -274,8 +274,8 @@ FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recom
 <div id="regression-result-show" class="section level2">
 <h2>regression result show</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># parameter setting</span>
-begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2012-01-31'</span>)
-endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2016-12-31'</span>)
+begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2013-01-31'</span>)
+endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2017-01-31'</span>)
 RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
 indexID &lt;-<span class="st"> 'EI000985'</span>
 
@@ -306,15 +306,8 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 </div>
 <div id="portfolio-optimization" class="section level2">
 <h2>portfolio optimization</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set factor's exposure</span>
-fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span class="dt">PB_mrq_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                       <span class="dt">volatility_ =</span> <span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
-                       <span class="dt">disposition_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                       <span class="dt">beta_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
-                       <span class="dt">ln_mkt_cap_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                       <span class="dt">NP_YOY=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>))
-<span class="co"># set alpha factor</span>
-alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;beta_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set alpha factor</span>
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
 
 <span class="co"># get factor return</span>
 fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,alphaf,<span class="dt">rollavg =</span> F,<span class="dt">reg_results =</span> reg_results)
@@ -329,12 +322,27 @@ fCov &lt;-<span class="st"> </span><span class="kw">subset</span>(fCov,date&gt;=
 TSF &lt;-<span class="st"> </span><span class="kw">subset</span>(TSF,date&gt;=tmp.date1,date&lt;=tmp.date2)
 
 ## portfolio demo
-<span class="co"># industry neutral,maximize return</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'Ind'</span>))
-<span class="co"># industry and style neutral,maximize return</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp,<span class="dt">addEvent =</span> F))
-<span class="co"># industry and style neutral,risk return balance</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return-risk'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp))
+<span class="co"># set factor's exposure</span>
+fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span class="dt">PB_mrq_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
+                        <span class="dt">volatility_ =</span> <span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
+                        <span class="dt">disposition_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
+                        <span class="dt">beta_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
+                        <span class="dt">ln_mkt_cap_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
+                        <span class="dt">NP_YOY=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>))
+<span class="co"># simplest way:no benchmark,maximize return</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">factorExp =</span> fexp))
+
+
+<span class="co">#build weight setting</span>
+wgtSet &lt;-<span class="st"> </span><span class="kw">buildWgtSet</span>(<span class="dt">ES33480000=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.05</span>),<span class="dt">ES33490000=</span><span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.03</span>))
+
+<span class="co">#build box constrain</span>
+boxConstr &lt;-<span class="st"> </span><span class="kw">buildBoxConstr</span>(<span class="dt">EI000905=</span><span class="kw">c</span>(<span class="fl">0.7</span>,<span class="fl">0.8</span>))
+<span class="co"># with benchmark,maximize return, box constrain</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">bmk =</span> <span class="st">'EI000985'</span>,<span class="dt">factorExp =</span> fexp,<span class="dt">wgtSet =</span> wgtSet))
+
+<span class="co"># with benchmark,risk return balance</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'balance'</span>,<span class="dt">bmk =</span> <span class="st">'EI000905'</span>,<span class="dt">factorExp =</span> fexp,<span class="dt">boxConstr =</span> boxConstr))
 
 
 <span class="co"># port backtest and return summary</span>

@@ -571,14 +571,16 @@ table.reg.fRtn <- function(reg_results){
   
   TSF <- reg_results$TSFR
   TSF <- dplyr::select(TSF,-date_end,-periodrtn)
-  VIF <- factor.VIF(TSF)[[1]]
+  VIF <- factor.VIF(TSF,sectorAttr = NULL)[[1]]
   VIF <- dplyr::summarise(group_by(VIF,fname),vif=mean(vif))
   VIF$fname <- as.character(VIF$fname)
   
   re <- dplyr::left_join(rtnsum,tstat,by='fname')
   re <- dplyr::left_join(re,VIF,by='fname')
+  re <- dplyr::arrange(re,dplyr::desc(Sharpe))
   return(re)
 }
+
 
 
 #' @rdname regression_result_summary
@@ -1099,9 +1101,10 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
     rownames(tmp.fCov) <- colnames(tmp.fCov)
     
     #remove unqualified TS
-    tmp.TS <- rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
+    #tmp.TS <- quantbox::rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
+    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
     if(addEvent==TRUE){
-      tmp.TS <- rmNegativeEvents(tmp.TS)
+      tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
     }
     tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     
