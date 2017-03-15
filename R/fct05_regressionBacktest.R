@@ -1100,13 +1100,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
     }
     rownames(tmp.fCov) <- colnames(tmp.fCov)
     
-    #remove unqualified TS
-    #tmp.TS <- quantbox::rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
-    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
-    if(addEvent==TRUE){
-      tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
-    }
-    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
+
     
     
     #get factor exposure up down limit
@@ -1120,12 +1114,21 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
     rownames(totwgt) <- totwgt$fname
     
     
+    
     # get risk matrix
     if(!missing(boxConstr)){
       tmpdata <- getnewTSFtotwgt(tmp.TSF,totwgt,boxConstr)
       tmp.TSF <- tmpdata$TSF
       totwgt <- tmpdata$totwgt
     }
+    
+    #remove unqualified TS
+    tmp.TS <- quantbox::rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
+    #tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
+    if(addEvent==TRUE){
+      tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
+    }
+    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
     
     riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
     rownames(riskmat) <- tmp.TSF$stockID
