@@ -1123,8 +1123,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
     }
     
     #remove unqualified TS
-    tmp.TS <- quantbox::rmSuspend(tmp.TSF[,c('date','stockID')],datasrc = 'ts')
-    #tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
+    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
     if(addEvent==TRUE){
       tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
     }
