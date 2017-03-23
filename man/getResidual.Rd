@@ -22,4 +22,3 @@ res <- getResidual(TS,dure)
 dure <- months(1)
 res <- getResidual(TS,dure)
 }
-

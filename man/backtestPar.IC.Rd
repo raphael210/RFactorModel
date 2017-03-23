@@ -21,9 +21,6 @@ a \bold{backtestPar} object
 \description{
 set the IC related parametres of the backtesting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{seri.IC}}
 
@@ -32,4 +29,6 @@ Other backtestPar setting functions: \code{\link{backtestPar.Ngroup}},
   \code{\link{backtestPar.fee}},
   \code{\link{backtestPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

@@ -12,13 +12,12 @@ a \bold{plotPar} object with default parametres
 \description{
 set the plotting with default parametres
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.MC}}, \code{\link{plotPar.Ngroup}},
   \code{\link{plotPar.TSFRScatter}},
   \code{\link{plotPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

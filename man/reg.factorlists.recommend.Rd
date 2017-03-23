@@ -15,4 +15,3 @@ FactorLists <- reg.factorlists.recommend(indexID='EI000905')
 FactorLists <- reg.factorlists.recommend(indexID='EI000985')
 FactorLists <- reg.factorlists.recommend(indexID='ES33370000')
 }
-

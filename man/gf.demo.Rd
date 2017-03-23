@@ -18,4 +18,3 @@ You can get different result by adjusting the param \code{rho}.
 \author{
 Ruifei.Yin
 }
-

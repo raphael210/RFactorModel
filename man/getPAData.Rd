@@ -18,4 +18,3 @@ riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",facto
 PA_tables <- getPAData(port,c(alphaLists,riskLists))
 PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
 }
-

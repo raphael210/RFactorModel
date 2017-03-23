@@ -23,7 +23,3 @@ calculate residual's Delta
 \examples{
 delta <- calDelta(TS,dure)
 }
-\author{
-Andrew Dow
-}
-

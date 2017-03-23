@@ -35,11 +35,10 @@ If param backtestPar is not missing,then the related params will be extracted fr
 \examples{
 re <- getrtn.LBH(PB.L,"EI000300")
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other LSH-frame building functions: \code{\link{addrtn.hedge}},
   \code{\link{getrtn.LSH}}, \code{\link{getrtn.bmk}}
 }
-
+\author{
+Ruifei.Yin
+}

@@ -31,4 +31,3 @@ optimize portfolio weight.
 \author{
 Andrew Dow
 }
-

@@ -2,12 +2,12 @@
 % Please edit documentation in R/fct02_portBuildingFuncs.R
 \name{PortfolioBacktest}
 \alias{PortfolioBacktest}
-\alias{addwgt2port}
-\alias{getPB}
 \alias{getPort}
+\alias{addwgt2port}
+\alias{port.substitute}
 \alias{getPort_throughout}
 \alias{port.backtest}
-\alias{port.substitute}
+\alias{getPB}
 \title{portfolio building and backtesting}
 \usage{
 getPort(TSF, topN = NA, topQ = NA, factorNA = c("median", "mean", "na",
@@ -150,10 +150,9 @@ fee <- attr(PB,"fee")
 # -- get PB object from TSF directly
 PB <- getPB(TSF, topN=20, dir="long")
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link[QUtility]{Return.backtesting}}
 }
-
+\author{
+Ruifei.Yin
+}

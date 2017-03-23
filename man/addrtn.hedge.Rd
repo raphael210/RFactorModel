@@ -42,11 +42,10 @@ wgt.idx <- unique(as.Date(cut(zoo::index(rtn.long),"month")))
 wgt <- xts(matrix(rep(c(0.7,-0.7),each=length(wgt.idx)),length(wgt.idx),2),wgt.idx)
 re3 <- addrtn.hedge(rtn.long,rtn.short,weight=wgt) # the same as re2
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other LSH-frame building functions: \code{\link{getrtn.LBH}},
   \code{\link{getrtn.LSH}}, \code{\link{getrtn.bmk}}
 }
-
+\author{
+Ruifei.Yin
+}

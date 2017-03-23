@@ -9,4 +9,3 @@ chart.RA.attr(RA_tables)
 \description{
 chart.RA.attr
 }
-

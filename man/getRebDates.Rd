@@ -29,11 +29,10 @@ getRebDates(as.Date('2010-01-01'),as.Date('2012-06-30'),'allspan')
 getRebDates(as.Date('2010-01-01'),as.Date('2012-06-30'),'100 year')
 getRebDates(dates=as.Date(c("2003-04-09","2003-07-06","2003-09-12")))
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other frame building functions: \code{\link{getTSF}},
   \code{\link{getTSR}}, \code{\link{getTS}}
 }
-
+\author{
+Ruifei.Yin
+}

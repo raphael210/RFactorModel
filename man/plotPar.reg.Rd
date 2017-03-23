@@ -9,4 +9,3 @@ plotPar.reg(plotPar = plotPar.default())
 \description{
 plotPar.reg
 }
-

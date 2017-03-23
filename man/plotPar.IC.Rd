@@ -23,9 +23,6 @@ a \bold{plotPar} object
 \description{
 set the IC related parametres of the ploting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{chart.IC}}
 
@@ -35,4 +32,6 @@ Other plotPar setting functions: \code{\link{plotPar.MC}},
   \code{\link{plotPar.default}},
   \code{\link{plotPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

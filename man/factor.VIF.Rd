@@ -14,7 +14,7 @@ factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
 \item{sectorAttr}{is sector attribute.}
 }
 \value{
-data frame of VIF or residual.
+data frame of VIF and residual.
 }
 \description{
 get factor's VIF or stock's residual
@@ -27,4 +27,3 @@ res <- factor.VIF(TSF,testf)[[2]]
 \author{
 Andrew Dow
 }
-

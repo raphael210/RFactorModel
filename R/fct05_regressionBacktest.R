@@ -297,7 +297,7 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 #' @param TSF is a \bold{TSF} object.
 #' @param testf is test factor name, can be missing.
 #' @param sectorAttr is sector attribute.
-#' @return data frame of VIF or residual.
+#' @return data frame of VIF and residual.
 #' @examples
 #' VIF <- factor.VIF(TSF)
 #' VIF <- factor.VIF(TSF,testf)[[1]]
@@ -392,7 +392,7 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 #' re <- reg.factor.select(TSFR)
 #' re <- reg.factor.select(TSFR,sectorAttr=NULL)
 #' nstock <- length(factorLists)
-#' re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock)
+#' re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock))
 reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
   if(!is.null(sectorAttr)){
@@ -757,38 +757,57 @@ MC.table.fCorr <- function(TSF,Nbin){
 
 
 
-#' getfRtn
+#' factor return and covariance
 #' 
-#' get factor return data
+#' calculate factor return and factor covariance.
+#' @name f_rtn_cov
 #' @param RebDates
 #' @param fNames
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param reg_results
-#' @param rollavg whether to get the rolling average factor return.
+#' @param type 
 #' @param nwin rolling windows.
+#' @param reg_results
 #' @return a factor return data frame.
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-#' fNames <- c("ln_mkt_cap_","PB_mrq_","pct_chg_per_60_","IVR_")
-#' dure <- lubridate::days(1)
+#' fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
+#' fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
+#' fCov <- calfCov(RebDates,fNames,reg_results=reg_results)
 #' @export
-getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
+getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','forcast'),
                     nwin=lubridate::years(-2),reg_results){
-  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = FALSE)
-  TF <- dplyr::arrange(TF,date,fname)
-  
+  type <- match.arg(type)
+
   if(missing(reg_results)){
     re <- getRawfRtn(dure=dure)
   }else{
     re <- getRawfRtn(reg_results=reg_results)
   }
   
-  if(rollavg==FALSE){
-    re <- re %>% group_by(fname) %>% 
+  if(missing(fNames)){
+    fNames <- unique(re$fname)
+  }
+  tmp <- setdiff(fNames,unique(re$fname))
+  if(length(tmp)>0){
+    warning(paste('missing factor:',paste(tmp,collapse=',')),call. = FALSE)
+  }
+  
+  re <- subset(re,fname %in% fNames)
+  
+  
+  if(type=='mean'){
+    result <- re %>% group_by(fname) %>% 
       summarise(frtn = mean(frtn,na.rm = TRUE))
-    re <- dplyr::left_join(TF,re,by='fname')
+
+  }else if(type=='rollmean'){
+    tmp.begT <- trday.offset(min(RebDates),dure*-1)
+    tmp.date <- trday.offset(min(re$date),nwin*-1)
+    if(tmp.begT<tmp.date){
+      warning('Data too short for training period!',call. = FALSE)
+    }
     
-  }else{
+    TF <- expand.grid(date=RebDates,fname=intersect(fNames,unique(re$fname)),stringsAsFactors = FALSE)
+    TF <- dplyr::arrange(TF,date,fname)
     tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
                          begT=trday.offset(endT,nwin))
     tmp$fname <- factor(tmp$fname)
@@ -801,16 +820,50 @@ getfRtn <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
     re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
     re <- re %>% group_by(date,fname) %>% 
       summarise(frtn = mean(frtn,na.rm = TRUE))
-    re <- dplyr::left_join(TF,re,by=c('date','fname'))
+    result <- dplyr::left_join(TF,re,by=c('date','fname'))
+    result <- na.omit(result)
+  }else if(type=='forcast'){
+    require(prophet)
+    re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
+    period <- xts::periodicity(re$date)[[7]]
+    result <- data.frame()
+    
+    for(j in 2:ncol(re)){
+      df <- re[,c(1,j)]
+      colnames(df) <- c('ds','y')
+      for(i in RebDates){
+        i <- as.Date(i,origin='1970-01-01')
+        tmp.begT <- trday.offset(i,dure*-1)
+        tmp.date <- trday.offset(min(df$ds),nwin*-1)
+        if(tmp.begT<tmp.date){
+          warning('Data too short for training period!',call. = FALSE)
+          next
+        }
+        tmp.df <- subset(df,ds<=tmp.begT)
+        
+        m <- prophet::prophet(tmp.df,n.changepoints = 0,weekly.seasonality = FALSE)
+        tmp.date <- getRebDates(tmp.begT,i,rebFreq = period)
+        future <- data.frame(ds=unique(c(tmp.df$ds,tmp.date)))
+        forecast <- predict(m, future)
+        #plot(m, forecast)
+        #prophet_plot_components(m, forecast)
+        tmp.result <- data.frame(date=i,
+                                 fname=colnames(re)[j],
+                                 frtn=forecast[forecast$ds==i,'yhat'])
+        result <- rbind(result,tmp.result)
+      }
+
+    }
+    result <- transform(result,fname=as.character(fname))
+    result <- dplyr::arrange(frtn,date,fname)
   }
-  re <- na.omit(re)
-  return(re)
+  return(result)
 }
 
 
 
 
-
+# inner function
 getRawfRtn <- function(begT,endT,dure,reg_results){
   if(missing(begT)) begT <- as.Date('1990-01-01')
   if(missing(endT)) endT <- as.Date('2100-01-01')
@@ -844,69 +897,77 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 
 
 
-#' calfCov
-#'
-#' calculate factor return covariance
-#' @author Andrew Dow
-#' @param TF a data frame contains date and factorNames
-#' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param reg_results
-#' @param nwin rolling windows.
-#' @return a data frame fCov.
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-#' fNames <- c("mkt_cap_","PB_mrq_","pct_chg_per_60_","G_SCF_Q")
-#' TF <- data.frame(date=rep(RebDates,each=length(fNames)),
-#'                  fname=rep(fNames,length(RebDates)))
-#' dure <- lubridate::days(1)
-#' fCov <- calfCov(TF,dure)
+
+#' @rdname f_rtn_cov
+#' 
 #' @export
-calfCov <- function(RebDates,fNames,dure=months(1),rollavg=TRUE,
-                    nwin=lubridate::years(-2),reg_results){
-  TF <- expand.grid(date=RebDates,fname=fNames,stringsAsFactors = FALSE)
-  TF <- dplyr::arrange(TF,date,fname)
+calfCov <- function(RebDates,fNames,dure=months(1),
+                    covtype=c('robust','simple','roll-simple','roll-robust'),
+                    nwin,reg_results){
+  covtype <- match.arg(covtype)
   
   if(missing(reg_results)){
     re <- getRawfRtn(dure=dure)
   }else{
     re <- getRawfRtn(reg_results=reg_results)
   }
-  
-
-  if(rollavg==FALSE){
-    re <- re[re$fname %in% TF$fname,]
-    re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
-    tmp <- setdiff(colnames(re),'date')
-    re <- data.frame(fname=tmp,cov(as.matrix(re[,tmp])),stringsAsFactors = FALSE)
-    TF <- subset(TF,fname %in% tmp)
-    re <- dplyr::left_join(TF,re,by='fname')
-    re <- re[,c("date",tmp)]
-    
-  }else{
-    tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
-                         begT=trday.offset(endT,nwin))
-    tmp$fname <- factor(tmp$fname)
-    tmp <- tmp %>% dplyr::rowwise() %>% 
-      do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
-                    date=.$date,fname=.$fname))
-    class(tmp) <- c( "tbl_df", "data.frame")
-    tmp$fname <- as.character(tmp$fname)
-    re <- dplyr::rename(re,tmpdate=date)
-    re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
-    re <- na.omit(re)
-    re <- reshape2::dcast(re,date+tmpdate~fname,value.var = 'frtn')
-    re <- dplyr::arrange(re,date,tmpdate)
-    tmp <- setdiff(colnames(re),c('date','tmpdate'))
-    re <- plyr::ddply(re,'date',function(subre){
-      as.data.frame(cov(as.matrix(subre[,tmp])))
-    })
-    re <- subset(re,date %in% TF$date) 
-    re <- na.omit(re)
-    # remove too short period to do
-    
+  if(missing(fNames)){
+    fNames <- unique(re$fname)
   }
-  return(re)
+  tmp <- setdiff(fNames,unique(re$fname))
+  if(length(tmp)>0){
+    warning(paste('missing factor:',paste(tmp,collapse=',')),call. = FALSE)
+  }
+  
+  re <- subset(re,fname %in% fNames)
+  re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
+
+  if(covtype %in% c('robust','simple')){
+    re <- xts::xts(re[,-1],order.by = re[,1])
+    if(covtype=='simple'){
+      result <- data.frame(cov(re))
+    }else if(covtype=='robust'){
+      result <- data.frame(robust::covRob(re)$cov)
+    }
+    
+    
+  }else if(covtype %in% c('roll-simple','roll-robust')){
+    result <- data.frame()
+    for(i in RebDates){
+      i <- as.Date(i,origin='1970-01-01')
+      tmp.endT <- trday.offset(i,dure*-1)
+      if(missing(nwin)){
+        tmp.begT <- as.Date('1900-01-01')
+      }else{
+        tmp.begT <- trday.offset(tmp.endT,nwin)
+      }
+      tmp.re <- subset(re,date<tmp.endT & date>=tmp.begT)
+      tmp.re <- xts::xts(tmp.re[,-1],order.by = tmp.re[,1])
+      
+      if(covtype=='roll-simple'){
+        if(nrow(tmp.re)<ncol(tmp.re)){
+          warning('Data too short for training period!',call. = FALSE)
+          next
+        }
+        result <- rbind(result,data.frame(date=i,cov(tmp.re)))
+      }else if(covtype=='roll-robust'){
+        if(nrow(tmp.re)<2*ncol(tmp.re)){
+          warning('Data too short for training period!',call. = FALSE)
+          next
+        }
+        tmp <- try(robust::covRob(tmp.re)$cov, silent=T) 
+        if(is(tmp,"try-error")) {
+          tmp <- cov(tmp.re)
+        } 
+        result <- rbind(result,data.frame(date=i,tmp))
+      }
+    }
+    rownames(result) <- NULL
+  }
+  return(result)
 }
+
+
 
 
 #' getResidual
@@ -959,7 +1020,6 @@ getResidual <- function(TS,dure,reg_results){
 #' calDelta
 #'
 #' calculate residual's Delta
-#' @author Andrew Dow
 #' @param reg_results is a factor return dataframe.
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
 #' @param nwin is rolling window.
@@ -1145,9 +1205,10 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
       
       Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
       Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      tmp <- Matrix::nearPD(Dmat)
-      Dmat <- tmp$mat
-      Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      Dmat <- (Dmat+t(Dmat))/2
+      # tmp <- Matrix::nearPD(Dmat)
+      # Dmat <- tmp$mat
+      # Dmat <- matrix(Dmat,nrow = nrow(Dmat))
       nstock <- dim(Dmat)[1]
       
       if(optWay == "solve.QP"){
@@ -1178,8 +1239,8 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
         b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
         Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
         beq.matlab <- 1
-        lb.matlab <- matrix(data = totwgt$min, nrow = nstock, ncol = 1)
-        ub.matlab <- matrix(data = totwgt$max, nrow = nstock, ncol = 1)
+        lb.matlab <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
         
         R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
                               Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
@@ -1763,7 +1824,6 @@ getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
 #' chart.RA.attr
 #' 
 #' @export
-#' @examples 
 chart.RA.attr <- function(RA_tables){
   
 }

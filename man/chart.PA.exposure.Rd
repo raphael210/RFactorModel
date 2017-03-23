@@ -14,4 +14,3 @@ riskfnames <- sapply(riskLists,'[[','factorName')
 chart.PA.exposure(PA_tables,riskfnames,plotInd=FALSE)
 chart.PA.exposure(PA_tables,riskfnames,plotInd=TRUE)
 }
-

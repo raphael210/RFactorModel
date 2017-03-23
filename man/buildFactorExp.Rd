@@ -14,4 +14,3 @@ fexp <- buildFactorExp()
 fexp <- buildFactorExp(disposition_=c(-0.01,1),beta_ = c(-0.01, 1))
 fexp <- buildFactorExp(sectorall=c(-0.05,0.05),disposition_=c(-0.01,1),ES33480000=c(0.15,0.25))
 }
-

@@ -46,11 +46,10 @@ factorPar <- list(0,1)
 TSF <- getTSF(TS,factorFun,factorPar)
 TSFR <-  getTSR(TSF)
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other frame building functions: \code{\link{getRebDates}},
   \code{\link{getTSF}}, \code{\link{getTS}}
 }
-
+\author{
+Ruifei.Yin
+}

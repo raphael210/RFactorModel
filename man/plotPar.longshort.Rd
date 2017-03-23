@@ -25,9 +25,6 @@ a \bold{plotPar} object
 \description{
 set the long-short related parametres of the ploting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{plot.longshort}}
 
@@ -36,4 +33,6 @@ Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.TSFRScatter}},
   \code{\link{plotPar.default}}
 }
-
+\author{
+Ruifei.Yin
+}

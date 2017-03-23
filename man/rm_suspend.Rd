@@ -20,4 +20,3 @@ TS <- getTS(RebDates,'EI000985')
 re <- rm_suspend(TS) # remove Suspend of nextday
 re1 <- rm_suspend(TS,nearby=c(0,1))# remove Suspend of today and nextday
 }
-

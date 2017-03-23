@@ -24,9 +24,6 @@ a \bold{backtestPar} object
 \description{
 set the Ngroup related parametres of the backtesting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{seri.Ngroup.rtn}} \code{\link{seri.Ngroup.turnover}}
 
@@ -35,4 +32,6 @@ Other backtestPar setting functions: \code{\link{backtestPar.IC}},
   \code{\link{backtestPar.fee}},
   \code{\link{backtestPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

@@ -33,9 +33,6 @@ set the rebalancing date related parametres of the model
 \details{
 The different between \code{modelPar.time} and \code{setmodelPar.time} is that the all pars of the former have default values, and the latter have not. The former is ussually used to to build the modelPar integrally, and the latter is ussually used to set the parametre individually.
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{getRebDates}}
 
@@ -43,4 +40,6 @@ Other modelPar setting functions: \code{\link{modelPar.default}},
   \code{\link{modelPar.factor}},
   \code{\link{modelPar.title}}, \code{\link{modelPar.univ}}
 }
-
+\author{
+Ruifei.Yin
+}

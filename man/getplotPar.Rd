@@ -2,12 +2,12 @@
 % Please edit documentation in R/fct00_modelsettingFuncs.R
 \name{getplotPar}
 \alias{getplotPar}
-\alias{getplotPar.IC}
-\alias{getplotPar.MC}
-\alias{getplotPar.Ngroup}
 \alias{getplotPar.TSFRScatter}
-\alias{getplotPar.longshort}
+\alias{getplotPar.IC}
 \alias{getplotPar.reg}
+\alias{getplotPar.Ngroup}
+\alias{getplotPar.longshort}
+\alias{getplotPar.MC}
 \title{getplotPar}
 \usage{
 getplotPar(plotPar, item, item_sub)
@@ -50,4 +50,3 @@ getplotPar.Ngroup(plotPar)
 \author{
 Ruifei.Yin
 }
-

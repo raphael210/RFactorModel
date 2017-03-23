@@ -9,4 +9,3 @@ exposure.TSWF(TSWF)
 \description{
 calculate factor exposure
 }
-

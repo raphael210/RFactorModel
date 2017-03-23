@@ -57,4 +57,3 @@ FactorLists2 <- buildFactorLists(
 factorIDs <- c("F000001","F000002","F000005")
 FactorLists3 <- buildFactorLists_lcfs(factorIDs)
 }
-

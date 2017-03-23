@@ -14,4 +14,3 @@ wgtSet <- buildWgtSet()
 wgtSet <- buildWgtSet(wgtall=c(0,0.02),EQ601318=c(0.05,0.15))
 wgtSet <- buildWgtSet(EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
 }
-

@@ -9,4 +9,3 @@ exposure.port(port, factorLists, sectorAttr = defaultSectorAttr())
 \description{
 calculate port exposure
 }
-

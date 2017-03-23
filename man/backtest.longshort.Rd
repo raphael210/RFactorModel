@@ -2,9 +2,9 @@
 % Please edit documentation in R/fct03_backtestingFuncs.R
 \name{backtest.longshort}
 \alias{backtest.longshort}
-\alias{chart.longshort.rolling}
-\alias{chart.longshort.summary}
 \alias{tables.longshort}
+\alias{chart.longshort.summary}
+\alias{chart.longshort.rolling}
 \title{backtest.longshort}
 \usage{
 tables.longshort(rtn.LSH, hitFreq = "month", backtestPar)
@@ -57,10 +57,9 @@ re <- tables.longshort(rtn.LSH)
 chart.longshort.summary(rtn.LSH)
 chart.longshort.rolling(rtn.LSH)
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{getrtn.LSH}},\code{\link{getrtn.LBH}}
 }
-
+\author{
+Ruifei.Yin
+}

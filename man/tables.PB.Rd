@@ -18,4 +18,3 @@ tables.PB
 \seealso{
 \code{\link{tables.longshort}}
 }
-

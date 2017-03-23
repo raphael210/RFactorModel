@@ -24,9 +24,6 @@ set the universe related parametres of the model
 \details{
 The different between \code{modelPar.univ} and \code{setmodelPar.univ} is that the all pars of the former have default values, and the latter have not. The former is ussually used to to build the modelPar integrally, and the latter is ussually used to set the parametre individually.
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{getTS}}
 
@@ -34,4 +31,6 @@ Other modelPar setting functions: \code{\link{modelPar.default}},
   \code{\link{modelPar.factor}},
   \code{\link{modelPar.time}}, \code{\link{modelPar.title}}
 }
-
+\author{
+Ruifei.Yin
+}

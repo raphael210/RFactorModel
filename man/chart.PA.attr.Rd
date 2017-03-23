@@ -14,4 +14,3 @@ riskfnames <- sapply(riskLists,'[[','factorName')
 chart.PA.attr(PA_tables,riskfnames)
 chart.PA.attr(PA_tables,riskfnames,plotInd=TRUE)
 }
-

@@ -42,6 +42,5 @@ TSFR <- getTSR(TSF)
 re <- reg.factor.select(TSFR)
 re <- reg.factor.select(TSFR,sectorAttr=NULL)
 nstock <- length(factorLists)
-re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock)
+re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock))
 }
-
