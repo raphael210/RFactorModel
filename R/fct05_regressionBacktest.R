@@ -290,84 +290,24 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 
 
 
-#' factor.VIF
-#'
-#' get factor's VIF or stock's residual
-#' @author Andrew Dow
-#' @param TSF is a \bold{TSF} object.
-#' @param testf is test factor name, can be missing.
-#' @param sectorAttr is sector attribute.
-#' @return data frame of VIF and residual.
-#' @examples
-#' VIF <- factor.VIF(TSF)
-#' VIF <- factor.VIF(TSF,testf)[[1]]
-#' res <- factor.VIF(TSF,testf)[[2]]
-#' @export
-factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
-  fname <- setdiff(colnames(TSF),c('date','stockID'))
-  
-  if(missing(testf)){
-    if(length(fname)==1 & is.null(sectorAttr)) stop('NO x variable!')
-  }else{
-    if(!(testf %in% fname)){
-      stop('testf not in TSF!')
-    }else if(length(fname)==1){
-      stop('NO x variable!')
-    }
-  }
-
-  
-  dates <- unique(TSF$date)
-  secNames <- NULL
-  VIF <- data.frame()
-  res <- data.frame()
-  # loop of regression
-  for(i in 1:length(dates)){ 
-    tmp.tsf <- subset(TSF,date==dates[i])
-    # get sector factor
-    if(!is.null(sectorAttr)){
-      tss <- gf.sector(tmp.tsf[,c('date','stockID')],sectorAttr)
-      if(ncol(tss)>4){
-        secNames <- as.character(unique(tss$sector))
-        tss <- dplyr::select(tss,-sector)
-        tmp.tsf <- merge.x(tmp.tsf,tss,by=c("date","stockID"))
-      }
-    }
-    
-    if(missing(testf)){
-      testf <- fname
-    }
-    
-    for(j in testf){
-      if(is.null(secNames)){
-        fml <- formula(paste(j," ~ ", paste(c(setdiff(fname,j)), collapse= "+"),sep=''))
-      }else{
-        fml <- formula(paste(j," ~ ", paste(c(setdiff(fname,j),secNames), collapse= "+"),"-1",sep=''))
-      }
-      smry <- summary(lm(fml,data = tmp.tsf))
-      VIF <- rbind(VIF,data.frame(date=dates[i],fname=j,vif=1/(1-smry$r.squared)))
-      res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],fname=j,res=smry$residuals))
-    }
-
-  }
-  return(list(VIF,res))
-}
 
 
 
 
-
-#' factor select
+#' factor_select
 #' 
+#' \bold{reg.factor.select} select alpha or risk factors using regression method.
+#' \bold{factor.VIF} caculate factor's VIF and remove factors' correlation.
 #' @name factor_select
 #' @rdname factor_select
 #' @param TSFR a \bold{TSFR} object.
+#' @param forder self defined factor importance order,can be missing,can be set of character or number,length of \code{forder} can be shorter than factors.
 #' @export
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000905')
-#' factorIDs <- c("F000006","F000007","F000008","F000012","F000013","F000014",
-#' "F000015","F000016","F000017","F000018")
+#' factorIDs <- c("F000006","F000008","F000012","F000014","F000015",
+#' "F000016","F000018")
 #' tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 #' factorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
@@ -379,15 +319,14 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 #'   buildFactorList(factorFun="gf.G_MLL_Q",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'    buildFactorList(factorFun="gf.GG_NP_Q",
-#'                    factorPar=list(filt = 0),
-#'                    factorDir=1),
-#'    buildFactorList(factorFun="gf.GG_OR_Q",
-#'                    factorPar=list(filt = 0),
-#'                    factorDir=1),                
 #'   factorStd="norm",factorNA = "median")
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
+#' ----------------------VIF----------------------
+#' VIF <- factor.VIF(TSF)
+#' VIF <- factor.VIF(TSF,testf)[[1]]
+#' res <- factor.VIF(TSF,testf)[[2]]
+#' 
 #' TSFR <- getTSR(TSF)
 #' re <- reg.factor.select(TSFR)
 #' re <- reg.factor.select(TSFR,sectorAttr=NULL)
@@ -395,17 +334,29 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 #' re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock))
 reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
+  result <- data.frame()
   if(!is.null(sectorAttr)){
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID","periodrtn")],sectorAttr = sectorAttr)[[4]]
     result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = TRUE), 
                          frtn=NA,fttest=NA,pttest=NA,tag='risk')
-  }else{
-    result <- data.frame()
   }
   
   fname <- guess_factorNames(TSFR)
   if(!missing(forder)){
-    fname <- fname[forder]
+    if(typeof(forder)=='character'){
+      if(length(forder)==length(fname)){
+        fname <- forder
+      }else{
+        fname <- c(forder,setdiff(fname,forder))
+      }
+    }else{
+      if(length(forder)==length(fname)){
+        fname <- fname[forder]
+      }else{
+        fname <- c(fname[forder],fname[setdiff(seq(1:length(fname)),forder)])
+      }
+    }
+    
   }
   
   selectf <- NULL
@@ -416,7 +367,15 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
     if(missing(forder)){
       fnameset <- setdiff(fname,selectf)
     }else{
-      fnameset <- setdiff(fname,selectf)[1]
+      if(length(forder)==length(fname)){
+        fnameset <- setdiff(fname,selectf)[1]
+      }else{
+        if(length(selectf)<length(forder)){
+          fnameset <- setdiff(fname,selectf)[1]
+        }else{
+          fnameset <- setdiff(fname,selectf)
+        }
+      }
     }
     
     for(i in fnameset){
@@ -461,11 +420,73 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   
   
   rownames(result) <- NULL
+  result <- transform(result,rsquare=round(rsquare,digits = 3),
+                      frtn=round(frtn,digits = 4),
+                      fttest=round(fttest,digits = 2),
+                      pttest=round(pttest,digits = 3),
+                      rsqPct=round((rsquare/dplyr::lag(rsquare)-1)*100,digits = 1))
   tmp <- as.character(result[result$fname!='sector','fname'])
   TSFR <- TSFR[,c("date","date_end","stockID",tmp,"periodrtn" )]
   return(list(result=result,TSFR=TSFR))
 }
 
+
+
+#' @rdname factor_select
+#' @param TSF is a \bold{TSF} object.
+#' @param testf is test factor name, can be missing.
+#' @param sectorAttr is sector attribute.
+#' @return data frame of VIF and residual.
+#' @export
+factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
+  fname <- setdiff(colnames(TSF),c('date','stockID'))
+  
+  if(missing(testf)){
+    if(length(fname)==1 & is.null(sectorAttr)) stop('NO x variable!')
+  }else{
+    if(!(testf %in% fname)){
+      stop('testf not in TSF!')
+    }else if(length(fname)==1){
+      stop('NO x variable!')
+    }
+  }
+  
+  
+  dates <- unique(TSF$date)
+  secNames <- NULL
+  VIF <- data.frame()
+  res <- data.frame()
+  # loop of regression
+  for(i in 1:length(dates)){ 
+    tmp.tsf <- subset(TSF,date==dates[i])
+    # get sector factor
+    if(!is.null(sectorAttr)){
+      tss <- gf.sector(tmp.tsf[,c('date','stockID')],sectorAttr)
+      if(ncol(tss)>4){
+        secNames <- as.character(unique(tss$sector))
+        tss <- dplyr::select(tss,-sector)
+        tmp.tsf <- merge.x(tmp.tsf,tss,by=c("date","stockID"))
+      }
+    }
+    
+    if(missing(testf)){
+      testf <- fname
+    }
+    
+    for(j in testf){
+      if(is.null(secNames)){
+        fml <- formula(paste(j," ~ ", paste(c(setdiff(fname,j)), collapse= "+"),sep=''))
+      }else{
+        fml <- formula(paste(j," ~ ", paste(c(setdiff(fname,j),secNames), collapse= "+"),"-1",sep=''))
+      }
+      smry <- summary(lm(fml,data = tmp.tsf))
+      VIF <- rbind(VIF,data.frame(date=dates[i],fname=j,vif=1/(1-smry$r.squared)))
+      res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],fname=j,res=smry$residuals))
+    }
+    
+  }
+  return(list(VIF,res))
+}
 
 
 
@@ -761,6 +782,7 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' 
 #' calculate factor return and factor covariance.
 #' @name f_rtn_cov
+#' @rdname f_rtn_cov
 #' @param RebDates
 #' @param fNames
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.

@@ -3,21 +3,36 @@
 \name{factor_select}
 \alias{factor_select}
 \alias{reg.factor.select}
-\title{factor select}
+\alias{factor.VIF}
+\title{factor_select}
 \usage{
 reg.factor.select(TSFR, sectorAttr = defaultSectorAttr(), forder)
+
+factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
+
+\item{sectorAttr}{is sector attribute.}
+
+\item{forder}{self defined factor importance order,can be missing,can be set of character or number,length of \code{forder} can be shorter than factors.}
+
+\item{TSF}{is a \bold{TSF} object.}
+
+\item{testf}{is test factor name, can be missing.}
+}
+\value{
+data frame of VIF and residual.
 }
 \description{
-factor select
+\bold{reg.factor.select} select alpha or risk factors using regression method.
+\bold{factor.VIF} caculate factor's VIF and remove factors' correlation.
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000905')
-factorIDs <- c("F000006","F000007","F000008","F000012","F000013","F000014",
-"F000015","F000016","F000017","F000018")
+factorIDs <- c("F000006","F000008","F000012","F000014","F000015",
+"F000016","F000018")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
@@ -29,15 +44,14 @@ factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.G_MLL_Q",
                   factorPar=list(),
                   factorDir=1),
-   buildFactorList(factorFun="gf.GG_NP_Q",
-                   factorPar=list(filt = 0),
-                   factorDir=1),
-   buildFactorList(factorFun="gf.GG_OR_Q",
-                   factorPar=list(filt = 0),
-                   factorDir=1),                
   factorStd="norm",factorNA = "median")
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
+----------------------VIF----------------------
+VIF <- factor.VIF(TSF)
+VIF <- factor.VIF(TSF,testf)[[1]]
+res <- factor.VIF(TSF,testf)[[2]]
+
 TSFR <- getTSR(TSF)
 re <- reg.factor.select(TSFR)
 re <- reg.factor.select(TSFR,sectorAttr=NULL)
