@@ -4,6 +4,8 @@
 \alias{f_rtn_cov}
 \alias{getfRtn}
 \alias{calfCov}
+\alias{getResidual}
+\alias{calDelta}
 \title{factor return and covariance}
 \usage{
 getfRtn(RebDates, fNames, dure = months(1), type = c("mean", "rollmean",
@@ -11,16 +13,29 @@ getfRtn(RebDates, fNames, dure = months(1), type = c("mean", "rollmean",
 
 calfCov(RebDates, fNames, dure = months(1), covtype = c("robust", "simple",
   "roll-simple", "roll-robust"), nwin, reg_results)
+
+getResidual(TS, dure, reg_results)
+
+calDelta(TS, dure, datasrc = c("local", "regResult"), reg_results,
+  nwin = 250)
 }
 \arguments{
+\item{RebDates}{is date set}
+
+\item{fNames}{is factor names, can be missing.}
+
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
-\item{type}{}
+\item{type}{is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.}
 
-\item{nwin}{rolling windows.}
+\item{nwin}{is rolling windows forward.}
+
+\item{reg_results}{see examples in \code{\link{reg.TSFR}}}
+
+\item{covtype}{means type of caculating covariance,\bold{robust} can see example in \code{\link[robust]{covRob}},simple see \code{\link{cov}}.}
 }
 \value{
-a factor return data frame.
+a data frame of factors' return .
 }
 \description{
 calculate factor return and factor covariance.

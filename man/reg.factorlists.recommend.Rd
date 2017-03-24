@@ -6,6 +6,9 @@
 \usage{
 reg.factorlists.recommend(indexID)
 }
+\arguments{
+\item{indexID}{is index ID.}
+}
 \description{
 factorlists recommend
 }

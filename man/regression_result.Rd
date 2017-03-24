@@ -29,7 +29,7 @@ reg.TS(TS, FactorLists, dure = months(1), regType = c("glm", "lm"),
 \item{dure}{see example in \code{\link{getTSR}}.}
 }
 \value{
-return a list, contains dataframes of frtn, residual and Rsquare.
+return a list, contains dataframes of TSFR,frtn, residual and Rsquare.
 }
 \description{
 Regression to the TSFR data, calculate factor return, residuals, and R squrare, etc.

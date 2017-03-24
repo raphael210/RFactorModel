@@ -14,6 +14,8 @@ lcdb.update.RegTables(begT, endT, FactorLists)
 \item{begT}{is begin date}
 
 \item{endT}{is end date}
+
+\item{FactorLists}{see example in \code{\link{buildFactorLists}}.}
 }
 \description{
 build and update local database's regression result tables

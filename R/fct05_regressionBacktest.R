@@ -12,7 +12,7 @@
 #' @rdname lcdb_regtables
 #' @param begT is begin date
 #' @param endT is end date
-#' @param FactorLists
+#' @param FactorLists see example in \code{\link{buildFactorLists}}.
 #' @examples
 #' begT <- as.Date('2010-01-01')
 #' endT <- as.Date('2012-12-31')
@@ -72,6 +72,7 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
 }
 
 
+#inner function
 lcdb.subfun.regtables <- function(dates,FactorLists){
 
   cat(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...\n')
@@ -161,7 +162,7 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 #' @param glm_wgt glm's weight data, default value is sqrt of floating market value.
 #' @param sectorAttr sector attribute.
 #' @param secRtnOut whether output sector's return,default value is \code{FALSE}.
-#' @return return a list, contains dataframes of frtn, residual and Rsquare.
+#' @return return a list, contains dataframes of TSFR,frtn, residual and Rsquare.
 #' @export
 #' @author Ruifei.yin
 #' @examples
@@ -493,7 +494,7 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 
 #' factorlists recommend
 #' 
-#' @param indexID.
+#' @param indexID is index ID.
 #' @export
 #' @examples 
 #' FactorLists <- reg.factorlists.recommend(indexID='EI000300')
@@ -783,13 +784,13 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' calculate factor return and factor covariance.
 #' @name f_rtn_cov
 #' @rdname f_rtn_cov
-#' @param RebDates
-#' @param fNames
+#' @param RebDates is date set
+#' @param fNames is factor names, can be missing.
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param type 
-#' @param nwin rolling windows.
-#' @param reg_results
-#' @return a factor return data frame.
+#' @param type is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.
+#' @param nwin is rolling windows forward.
+#' @param reg_results see examples in \code{\link{reg.TSFR}}
+#' @return a data frame of factors' return .
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
 #' fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
@@ -921,6 +922,7 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 
 
 #' @rdname f_rtn_cov
+#' @param covtype means type of caculating covariance,\bold{robust} can see example in \code{\link[robust]{covRob}},simple see \code{\link{cov}}.
 #' 
 #' @export
 calfCov <- function(RebDates,fNames,dure=months(1),
@@ -949,6 +951,7 @@ calfCov <- function(RebDates,fNames,dure=months(1),
     if(covtype=='simple'){
       result <- data.frame(cov(re))
     }else if(covtype=='robust'){
+      require(robust)
       result <- data.frame(robust::covRob(re)$cov)
     }
     
@@ -973,6 +976,7 @@ calfCov <- function(RebDates,fNames,dure=months(1),
         }
         result <- rbind(result,data.frame(date=i,cov(tmp.re)))
       }else if(covtype=='roll-robust'){
+        require(robust)
         if(nrow(tmp.re)<2*ncol(tmp.re)){
           warning('Data too short for training period!',call. = FALSE)
           next
@@ -992,19 +996,9 @@ calfCov <- function(RebDates,fNames,dure=months(1),
 
 
 
-#' getResidual
+
+#' @rdname f_rtn_cov
 #' 
-#' get stocks' residual
-#' @param TS a \bold{TS} object.
-#' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param reg_results
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2012-01-31'),as.Date('2016-08-31'))
-#' TS <- getTS(RebDates)
-#' dure <- lubridate::days(1)
-#' res <- getResidual(TS,dure)
-#' dure <- months(1)
-#' res <- getResidual(TS,dure)
 #' @export
 getResidual <- function(TS,dure,reg_results){
   if(missing(reg_results)){
@@ -1039,16 +1033,9 @@ getResidual <- function(TS,dure,reg_results){
 
 
 
-#' calDelta
+
+#' @rdname f_rtn_cov
 #'
-#' calculate residual's Delta
-#' @param reg_results is a factor return dataframe.
-#' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param nwin is rolling window.
-#' @param reg_results
-#' @return delta.
-#' @examples 
-#' delta <- calDelta(TS,dure)
 #' @export
 calDelta <- function(TS,dure,datasrc=c('local','regResult'),reg_results,nwin=250){
   datasrc <- match.arg(datasrc)
@@ -1125,10 +1112,10 @@ biasTest <- function(reg_results,portID){
 #'
 #' optimize portfolio weight.
 #' @author Andrew Dow
-#' @param TSF 
+#' @param TSF is multiple factors' \bold{TSF} object
 #' @param alphaf is alpha factors' name, can be missing.
-#' @param fRtn
-#' @param Fcov is the covariance matrix.
+#' @param fRtn see \code{\link{getfRtn}}
+#' @param fCov is the covariance matrix.
 #' @param bmk is the benckmark for optimization,can be missing.
 #' @return a \bold{port} object.
 #' @examples 
@@ -1311,15 +1298,51 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
 
 
 
-
-
-#' buildWgtSet
+#' OptWgt_settingFuncs
 #' 
-#' build weight setting in optimization function
+#' \bold{buildFactorExp} build factor exposure setting in optimization function.
+#' \bold{buildWgtSet} build weight setting in optimization function.
+#' \bold{buildBoxConstr} build box constraint in optimization function.
+#' @name OptWgt_settingFuncs
+#' @rdname OptWgt_settingFuncs
 #' @examples 
+#' fexp <- buildFactorExp()
+#' fexp <- buildFactorExp(disposition_=c(-0.01,1),beta_ = c(-0.01, 1))
+#' fexp <- buildFactorExp(sectorall=c(-0.05,0.05),disposition_=c(-0.01,1),ES33480000=c(0.15,0.25))
+#' ---------------------------------------------------------------------
 #' wgtSet <- buildWgtSet()
 #' wgtSet <- buildWgtSet(wgtall=c(0,0.02),EQ601318=c(0.05,0.15))
 #' wgtSet <- buildWgtSet(EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
+#' ---------------------------------------------------------------------
+#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85))
+#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85),EI000300=c(0.15,0.35))
+#' @export
+buildFactorExp <- function(sectorall=c(-0.05,0.05),...){
+  if(is.null(sectorall)){
+    result <- data.frame()
+  }else{
+    result <- data.frame(fname="sectorall",
+                         min=sectorall[1],
+                         max=sectorall[2])
+  }
+  
+  tmp <- list(...)
+  if(length(tmp)>0){
+    tmp <- plyr::ldply(tmp)
+    colnames(tmp) <- c('fname','min','max')
+    result <- rbind(result,tmp)
+  }
+  if(any(result$max<=result$min)){
+    warning('max less than min',call. = FALSE)
+  }
+  result$fname <- as.character(result$fname)
+  return(result)
+}
+
+
+
+#' @rdname OptWgt_settingFuncs
+#' 
 #' @export
 buildWgtSet <- function(wgtall=c(0,0.01),...){
   if(is.null(wgtall)){
@@ -1345,43 +1368,10 @@ buildWgtSet <- function(wgtall=c(0,0.01),...){
 
 
 
-#' buildFactorExp
+
+
+#' @rdname OptWgt_settingFuncs
 #' 
-#' build factor exposure setting in optimization function
-#' @examples 
-#' fexp <- buildFactorExp()
-#' fexp <- buildFactorExp(disposition_=c(-0.01,1),beta_ = c(-0.01, 1))
-#' fexp <- buildFactorExp(sectorall=c(-0.05,0.05),disposition_=c(-0.01,1),ES33480000=c(0.15,0.25))
-#' @export
-buildFactorExp <- function(sectorall=c(-0.05,0.05),...){
-  if(is.null(sectorall)){
-    result <- data.frame()
-  }else{
-    result <- data.frame(fname="sectorall",
-                         min=sectorall[1],
-                         max=sectorall[2])
-  }
-
-  tmp <- list(...)
-  if(length(tmp)>0){
-    tmp <- plyr::ldply(tmp)
-    colnames(tmp) <- c('fname','min','max')
-    result <- rbind(result,tmp)
-  }
-  if(any(result$max<=result$min)){
-    warning('max less than min',call. = FALSE)
-  }
-  result$fname <- as.character(result$fname)
-  return(result)
-}
-
-
-#' buildBoxConstr
-#' 
-#' build box constraint in optimization function
-#' @examples 
-#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85))
-#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85),EI000300=c(0.15,0.35))
 #' @export
 buildBoxConstr <- function(...){
   tmp <- list(...)
@@ -1468,15 +1458,13 @@ getfExpLimit <- function(factorExp,bmk,TSF){
       
     }
     result <- rbind(tmp.result1,tmp.result2)
-
-    
     
   }else{
     tmp.result1 <- subset(bmk,fname %in% factorExp$fname)
     if(nrow(tmp.result1)>0){
       tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      tmp.result1 <- transform(tmp.result1,min=fexp+min,
-                               max=fexp+max)
+      tmp.result1 <- transform(tmp.result1,min=ifelse(sustr(fname,1,2)=='ES',fexp*(1+min),fexp+min),
+                               max=ifelse(sustr(fname,1,2)=='ES',fexp*(1+max),fexp+max))
     }
     
     tmp.result2 <- subset(bmk,!(fname %in% factorExp$fname))
@@ -1551,8 +1539,14 @@ getStockWgtLimit <- function(TS,wgtSet,sectorAttr){
 # inner function
 getnewTSFtotwgt <- function(TSF,totwgt,boxConstr){
   for(i in 1:nrow(boxConstr)){
-    indexComp <- data.frame(stockID=getIndexComp(boxConstr$indexID[i],unique(TSF$date)),value=c(1))
-    colnames(indexComp) <- c('stockID',boxConstr$indexID[i])
+    tmp.indexID <- boxConstr$indexID[i]
+    if(substr(tmp.indexID,1,2=='ES')){
+      totwgt[totwgt$fname==tmp.indexID,'min'] <- max(totwgt[totwgt$fname==tmp.indexID,'min'],boxConstr$min[i])
+      totwgt[totwgt$fname==tmp.indexID,'max'] <- min(totwgt[totwgt$fname==tmp.indexID,'max'],boxConstr$max[i])
+      next
+    }
+    indexComp <- data.frame(stockID=getIndexComp(tmp.indexID,unique(TSF$date)),value=c(1))
+    colnames(indexComp) <- c('stockID',tmp.indexID)
     indexComp$stockID <- as.character(indexComp$stockID)
     TSF <- dplyr::left_join(TSF,indexComp,by='stockID')
   }

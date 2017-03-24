@@ -10,13 +10,15 @@ OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "balance"), bmk,
   "solve.QP", "Matlab"))
 }
 \arguments{
-\item{TSF}{}
+\item{TSF}{is multiple factors' \bold{TSF} object}
 
 \item{alphaf}{is alpha factors' name, can be missing.}
 
-\item{bmk}{is the benckmark for optimization,can be missing.}
+\item{fRtn}{see \code{\link{getfRtn}}}
 
-\item{Fcov}{is the covariance matrix.}
+\item{fCov}{is the covariance matrix.}
+
+\item{bmk}{is the benckmark for optimization,can be missing.}
 }
 \value{
 a \bold{port} object.
