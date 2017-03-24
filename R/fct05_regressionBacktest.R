@@ -439,7 +439,7 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 #' @return data frame of VIF and residual.
 #' @export
 factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
-  fname <- setdiff(colnames(TSF),c('date','stockID'))
+  fname <- guess_factorNames(TSF,is_factorname = "factorscore")
   
   if(missing(testf)){
     if(length(fname)==1 & is.null(sectorAttr)) stop('NO x variable!')
