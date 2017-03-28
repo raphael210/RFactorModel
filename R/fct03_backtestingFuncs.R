@@ -1,4 +1,138 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
+# -------------------- Factor descriptive statistics --------------
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
+
+
+#' Factor descriptive statistics
+#' 
+#' draw factor's histogram and boxplot,and summarize factor's statistics value.
+#' @name factor_descriptive_statistics
+#' @rdname factor_descriptive_statistics
+#' @examples 
+#' mp <- modelPar.default()
+#' TSF <- Model.TSF(mp)
+#' chart.TSF_hist(TSF) #plot each period
+#' chart.TSF_hist(TSF,Nbin='year') #plot each year
+#' chart.TSF_box(TSF)
+#' chart.TSF_density(TSF)
+#' re <- table.TSF_descr(TSF)
+#' ####################################~~ multiple factor ~~##################
+#' FactorLists <- buildFactorLists_lcfs(c("F000006","F000002","F000005"))
+#' TSF <- getMultiFactor(TSF[,c('date','stockID')],FactorLists)
+#' MC.chart.TSF_hist(TSF)
+#' MC.chart.TSF_box(TSF)
+#' MC.chart.TSF_density(TSF)
+#' re <- MC.table.TSF_descr(TSF)
+#' @export
+chart.TSF_hist <- function(TSF,Nbin='day'){
+  #facet by dates
+  TSF$date <- cut.Date2(TSF$date,Nbin)
+  ggplot(TSF, aes(factorscore)) + geom_histogram(colour = "black", fill = "white")+facet_wrap(~date,scales = "free")
+}
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+chart.TSF_density <- function(TSF,Nbin='day'){
+  #facet by dates
+  TSF$date <- as.factor(cut.Date2(TSF$date,Nbin))
+  ggplot(TSF, aes(factorscore,color=date)) + geom_density()
+}
+
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+chart.TSF_box <- function(TSF,Nbin='day'){
+  #facet by dates
+  TSF$date <- cut.Date2(TSF$date,Nbin)
+  TSF$date <- as.factor(TSF$date)
+  ggplot(TSF, aes(date,factorscore)) + geom_boxplot()+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+table.TSF_descr <- function(TSF,Nbin='day'){
+  # mean/median/sd/min/max/skewness/kurtosis...
+  # by dates
+  TSF$date <- cut.Date2(TSF$date,Nbin)
+  re <- TSF %>% group_by(date) %>%
+    dplyr::summarise(fnum=length(factorscore),
+              NAper=sum(is.na(factorscore))/length(factorscore),
+              min=min(factorscore,na.rm = TRUE),
+              max=max(factorscore,na.rm = TRUE),
+              mean=mean(factorscore,na.rm = TRUE),
+              median=median(factorscore,na.rm = TRUE),
+              sd=sd(factorscore,na.rm = TRUE),
+              skewness=e1071::skewness(factorscore,na.rm = TRUE),
+              kurtosis=e1071::kurtosis(factorscore,na.rm = TRUE))
+  return(re)
+}
+
+
+# ---------------------  ~~ Multi comparison - descriptive stat --------------
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+MC.chart.TSF_hist <- function(TSF){
+  #facet by factors
+  TSF <- reshape2::melt(TSF,id.vars=c('date','stockID'),variable.name = "fname",
+                        value.name = "factorscore")
+  ggplot(TSF, aes(factorscore)) + geom_histogram(colour = "black", fill = "white")+facet_wrap(~fname,scales="free")
+  
+}
+
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+MC.chart.TSF_density <- function(TSF,Nbin='day'){
+  #facet by dates
+  TSF <- reshape2::melt(TSF,id.vars=c('date','stockID'),variable.name = "fname",
+                        value.name = "factorscore")
+  TSF$date <- as.factor(cut.Date2(TSF$date,Nbin))
+  ggplot(TSF, aes(factorscore,color=date)) + geom_density()+facet_wrap(~fname,scales="free")
+}
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+MC.chart.TSF_box <- function(TSF,Nbin='day'){
+  #facet by dates
+  TSF <- reshape2::melt(TSF,id.vars=c('date','stockID'),variable.name = "fname",
+                        value.name = "factorscore")
+  TSF$date <- cut.Date2(TSF$date,Nbin)
+  ggplot(TSF, aes(factor(date),factorscore)) + geom_boxplot()+facet_wrap(~fname,scales = "free")+theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+MC.table.TSF_descr <- function(TSF){
+  # mean/median/sd/min/max/skewness/kurtosis...
+  # by factors
+  TSF <- reshape2::melt(TSF,id.vars=c('date','stockID'),variable.name = "fname",
+                        value.name = "factorscore")
+  re <- TSF %>% group_by(fname) %>%
+    dplyr::summarise(fnum=length(factorscore),
+                     NAper=sum(is.na(factorscore))/length(factorscore),
+                     min=min(factorscore,na.rm = TRUE),
+                     max=max(factorscore,na.rm = TRUE),
+                     mean=mean(factorscore,na.rm = TRUE),
+                     median=median(factorscore,na.rm = TRUE),
+                     sd=sd(factorscore,na.rm = TRUE),
+                     skewness=e1071::skewness(factorscore,na.rm = TRUE),
+                     kurtosis=e1071::kurtosis(factorscore,na.rm = TRUE))
+  return(re)
+  
+}
+
+
+
+
+
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 # --------------------  backtesting with 'scatter' method --------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
