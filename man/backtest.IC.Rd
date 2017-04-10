@@ -10,6 +10,7 @@
 \alias{MC.chart.IC.corr}
 \alias{MC.table.IC}
 \alias{MC.chart.IC}
+\alias{MC.chart.IC2}
 \alias{MC.chart.IC.decay}
 \title{backtest.IC}
 \usage{
@@ -33,6 +34,9 @@ MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
 
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
   ncol = 3, plotPar)
+
+MC.chart.IC2(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
+  facet_by = c("date", "fname"))
 
 MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 }
@@ -92,6 +96,7 @@ TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.chart.IC.corr(TSFRs)
 MC.table.IC(TSFRs)
 MC.chart.IC(TSFRs)
+MC.chart.IC2(TSFRs)
 MC.chart.IC.decay(TSFRs)
 }
 \author{

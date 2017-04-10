@@ -15,6 +15,7 @@
 \alias{chart.Ngroup.turnover}
 \alias{MC.table.Ngroup.overall}
 \alias{MC.chart.Ngroup.overall}
+\alias{MC.chart.Ngroup.spread2}
 \title{backtest.Ngroup}
 \usage{
 seri.Ngroup.rtn(TSFR, N = 5, stat = c("mean", "median"), sectorNe = FALSE,
@@ -61,6 +62,10 @@ MC.table.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
 MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
   sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar,
   bysector = FALSE)
+
+MC.chart.Ngroup.spread2(TSFRs, N = 5, Nbin = "day", stat = c("mean",
+  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
+  facet_by = c("none", "date", "fname"))
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
@@ -138,6 +143,7 @@ TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.table.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall(TSFRs)
+MC.chart.Ngroup.spread2(TSFRs)
 }
 \author{
 Ruifei.Yin

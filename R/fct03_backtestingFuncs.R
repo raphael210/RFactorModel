@@ -434,6 +434,52 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
   return(IC.multicharts)
 }
 
+#' @rdname backtest.IC
+#' @export
+#' @examples 
+#' MC.chart.IC2(TSFRs)
+MC.chart.IC2 <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),
+                         facet_by=c("date","fname")){
+  check.name_exist(TSFRs)
+  stat <- match.arg(stat)
+  facet_by <- match.arg(facet_by)
+  
+  IC <- plyr::llply(TSFRs,seri.IC,stat=stat)
+  IC <- lapply(IC,function(ts){
+    df <- data.frame(date=zoo::index(ts),IC=zoo::coredata(ts))
+    df$date <- cut.Date2(df$date,Nbin)
+    df <- df %>% dplyr::group_by(date) %>% dplyr::summarise(IC=mean(IC,na.rm = TRUE)) %>%
+      dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
+    return(df)
+  })
+  IC <- dplyr::bind_rows(IC,.id = 'fname')
+  
+  if(facet_by=='date'){
+    ggplot(IC,aes(fname, IC,fill=fname)) +
+      geom_bar(stat = "identity") + facet_wrap(~date)
+  }else if(facet_by=='fname'){
+    seri <- reshape2::dcast(IC,date~fname,value.var = 'IC')
+    seri <- xts::xts(seri[,-1],order.by = seri[,1])
+    wid <- round(365/periodicity_Ndays(seri))
+    if(wid > NROW(seri)){
+      ggplot(IC,aes(date, IC)) +
+        geom_bar(stat = "identity") + facet_wrap(~fname)
+    } else {
+      ICma <- zoo::rollapply(zoo::as.zoo(seri),width=wid,FUN=mean,na.rm=TRUE,align='right')
+      by <- cut.Date2(zoo::index(ICma),Nbin)
+      ICma.aggr <- aggregate(ICma,as.Date(by),tail,1)
+      ICma.aggr <- melt.ts(ICma.aggr)
+      colnames(ICma.aggr) <- c("date","fname","IC.MA")
+      
+      ggplot(IC,aes(date, IC)) +
+        geom_bar(stat = "identity")+
+        geom_line(data=ICma.aggr,aes(x=date,y=IC.MA),size=1)+
+        ggtitle("IC series (with its 12 months MA)")+
+        facet_wrap(~fname)
+    }
+  }
+}
+
 
 #' @rdname backtest.IC
 #' @export
@@ -1019,8 +1065,41 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,stat=c("mean","median"),
   return(Ngroup.multicharts)
 }
 
-
-
+#' @rdname backtest.Ngroup
+#' @export
+#' @examples 
+#' MC.chart.Ngroup.spread2(TSFRs)
+MC.chart.Ngroup.spread2 <- function(TSFRs,N=5,Nbin="day",stat=c("mean","median"),
+                                    sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
+                                    facet_by=c("none","date","fname")){
+  stat <- match.arg(stat)
+  facet_by <- match.arg(facet_by)
+  
+  rtnseri <- plyr::llply(TSFRs,seri.Ngroup.rtn,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
+  rtnseri <- lapply(rtnseri,function(ts){
+    rtn <- ts[,1]-ts[,ncol(ts)]
+    wealth <- WealthIndex(rtn)
+    spread <- data.frame(date=zoo::index(wealth),zoo::coredata(rtn),zoo::coredata(wealth))
+    colnames(spread) <- c('date','rtn','wealth')
+    return(spread)})
+  rtnseri <- dplyr::bind_rows(rtnseri,.id = 'fname')
+  
+  if(facet_by=='none'){
+    ggplot(rtnseri, aes(x=date, y=wealth, color=fname)) +
+      geom_line()
+  }else if(facet_by=='date'){
+    
+    rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
+    rtnseri <- rtnseri %>% dplyr::group_by(fname,date) %>% dplyr::summarise(rtn=prod(1+rtn)-1) %>%
+      dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
+    
+    ggplot(rtnseri, aes(x=fname, y=rtn,fill=fname)) +
+      geom_bar(stat = 'identity')+facet_wrap(~date)
+  }else if(facet_by=='fname'){
+    ggplot(rtnseri, aes(x=date, y=wealth)) +
+      geom_line()+facet_wrap(~fname)
+  }
+}
 
 
 
