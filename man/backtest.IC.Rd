@@ -35,7 +35,7 @@ MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
   ncol = 3, plotPar)
 
-MC.chart.IC2(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
+MC.chart.IC2(TSFR, Nbin = "day", stat = c("pearson", "spearman"),
   facet_by = c("date", "fname"))
 
 MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
@@ -56,6 +56,8 @@ MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
+
+\item{TSFR}{a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.}
 }
 \value{
 seri.IC return a xts object, which containing the IC seri
@@ -96,7 +98,8 @@ TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.chart.IC.corr(TSFRs)
 MC.table.IC(TSFRs)
 MC.chart.IC(TSFRs)
-MC.chart.IC2(TSFRs)
+TSFR <- getMultiFactor(TSR,FactorLists)
+MC.chart.IC2(TSFR)
 MC.chart.IC.decay(TSFRs)
 }
 \author{

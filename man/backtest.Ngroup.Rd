@@ -63,7 +63,7 @@ MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
   sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar,
   bysector = FALSE)
 
-MC.chart.Ngroup.spread2(TSFRs, N = 5, Nbin = "day", stat = c("mean",
+MC.chart.Ngroup.spread2(TSFR, N = 5, Nbin = "day", stat = c("mean",
   "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
   facet_by = c("none", "date", "fname"))
 }
@@ -91,6 +91,8 @@ MC.chart.Ngroup.spread2(TSFRs, N = 5, Nbin = "day", stat = c("mean",
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
 
 \item{turnoverType}{a character string,indicating the method to calculate the turnover,could be "num" or "wgt".}
+
+\item{TSFR}{a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.}
 }
 \value{
 seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
@@ -143,7 +145,8 @@ TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.table.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall(TSFRs)
-MC.chart.Ngroup.spread2(TSFRs)
+TSFR <- getMultiFactor(TSR)
+MC.chart.Ngroup.spread2(TSFR)
 }
 \author{
 Ruifei.Yin

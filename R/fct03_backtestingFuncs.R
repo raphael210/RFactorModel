@@ -434,13 +434,20 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
   return(IC.multicharts)
 }
 
+#' @param TSFR a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.
 #' @rdname backtest.IC
 #' @export
-#' @examples 
-#' MC.chart.IC2(TSFRs)
-MC.chart.IC2 <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),
+#' @examples
+#' TSFR <- getMultiFactor(TSR,FactorLists)
+#' MC.chart.IC2(TSFR)
+MC.chart.IC2 <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),
                          facet_by=c("date","fname")){
-  check.name_exist(TSFRs)
+  fnames <- guess_factorNames(TSFR)
+  TSFRs <- lapply(TSFR[,fnames],function(x,TSFR){
+    as.data.frame(cbind(TSFR[,c('date','date_end','stockID')],
+                        factorscore=x,periodrtn=TSFR[,'periodrtn']))
+    },TSFR=TSFR)
+
   stat <- match.arg(stat)
   facet_by <- match.arg(facet_by)
   
@@ -1065,13 +1072,21 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,stat=c("mean","median"),
   return(Ngroup.multicharts)
 }
 
+#' @param TSFR a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.
 #' @rdname backtest.Ngroup
 #' @export
 #' @examples 
-#' MC.chart.Ngroup.spread2(TSFRs)
-MC.chart.Ngroup.spread2 <- function(TSFRs,N=5,Nbin="day",stat=c("mean","median"),
+#' TSFR <- getMultiFactor(TSR)
+#' MC.chart.Ngroup.spread2(TSFR)
+MC.chart.Ngroup.spread2 <- function(TSFR,N=5,Nbin="day",stat=c("mean","median"),
                                     sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
                                     facet_by=c("none","date","fname")){
+  fnames <- guess_factorNames(TSFR)
+  TSFRs <- lapply(TSFR[,fnames],function(x,TSFR){
+    as.data.frame(cbind(TSFR[,c('date','date_end','stockID')],
+                        factorscore=x,periodrtn=TSFR[,'periodrtn']))
+  },TSFR=TSFR)
+  
   stat <- match.arg(stat)
   facet_by <- match.arg(facet_by)
   
