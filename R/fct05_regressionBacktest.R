@@ -574,7 +574,7 @@ table.reg.rsquare <- function(reg_results){
 #' @rdname regression_result_summary
 #' 
 #' @export
-table.reg.fRtn <- function(reg_results){
+table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
   # annrtn,annvol,sharpe,hitRatio,avg_T_sig
   fRtn <- reg_results$fRtn
   
@@ -593,12 +593,14 @@ table.reg.fRtn <- function(reg_results){
   
   TSF <- reg_results$TSFR
   TSF <- dplyr::select(TSF,-date_end,-periodrtn)
-  VIF <- factor.VIF(TSF,sectorAttr = NULL)[[1]]
-  VIF <- dplyr::summarise(group_by(VIF,fname),vif=mean(vif))
-  VIF$fname <- as.character(VIF$fname)
-  
+
   re <- dplyr::left_join(rtnsum,tstat,by='fname')
-  re <- dplyr::left_join(re,VIF,by='fname')
+  if(includeVIF){
+    VIF <- factor.VIF(TSF,sectorAttr = NULL)[[1]]
+    VIF <- dplyr::summarise(group_by(VIF,fname),vif=mean(vif))
+    VIF$fname <- as.character(VIF$fname)
+    re <- dplyr::left_join(re,VIF,by='fname')
+  }
   re <- dplyr::arrange(re,dplyr::desc(Sharpe))
   return(re)
 }

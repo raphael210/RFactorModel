@@ -12,7 +12,7 @@
 \usage{
 table.reg.rsquare(reg_results)
 
-table.reg.fRtn(reg_results)
+table.reg.fRtn(reg_results, includeVIF = FALSE)
 
 chart.reg.fRtnWealthIndex(reg_results, facet = FALSE)
 

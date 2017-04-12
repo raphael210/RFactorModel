@@ -23,8 +23,8 @@ kable(ftbale)
 
 ## ----reg_result----------------------------------------------------------
 #  # parameter setting
-#  begT <- as.Date('2013-01-31')
-#  endT <- as.Date('2017-01-31')
+#  begT <- Sys.Date()-lubridate::years(7)
+#  endT <- Sys.Date()
 #  RebDates <- getRebDates(begT,endT)
 #  indexID <- 'EI000985'
 #  

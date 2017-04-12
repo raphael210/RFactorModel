@@ -4,7 +4,7 @@
 
 <head>
 
-<meta charset="utf-8">
+<meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-03-15" />
+<meta name="date" content="2017-04-12" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-03-15</em></h4>
+<h4 class="date"><em>2017-04-12</em></h4>
 
 
 
@@ -274,8 +274,8 @@ FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recom
 <div id="regression-result-show" class="section level2">
 <h2>regression result show</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># parameter setting</span>
-begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2013-01-31'</span>)
-endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2017-01-31'</span>)
+begT &lt;-<span class="st"> </span><span class="kw">Sys.Date</span>()-lubridate::<span class="kw">years</span>(<span class="dv">7</span>)
+endT &lt;-<span class="st"> </span><span class="kw">Sys.Date</span>()
 RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
 indexID &lt;-<span class="st"> 'EI000985'</span>
 
