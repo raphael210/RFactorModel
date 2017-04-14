@@ -491,6 +491,59 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 
 
 
+factor.VIFNEW <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
+  fnames <- guess_factorNames(TSF,is_factorname = "factorscore")
+  
+  if(missing(testf)){
+    if(length(fnames)==1 & is.null(sectorAttr)) stop('NO x variable!')
+  }else{
+    if(!(testf %in% fnames)){
+      stop('testf not in TSF!')
+    }else if(length(fnames)==1){
+      stop('NO x variable!')
+    }
+  }
+  
+  # get sector factor
+  if(!is.null(sectorAttr)){
+    tss <- gf.sector(TSF[,c('date','stockID')],sectorAttr)
+    if(ncol(tss)>4){
+      indnames <- as.character(unique(tss$sector))
+      TSF <- dplyr::left_join(TSF,tss,by=c("date","stockID"))
+    }
+  }
+  
+  dates <- unique(TSF$date)
+  VIF <- data.frame()
+  res <- data.frame()
+  # loop of regression
+  for(i in 1:length(dates)){ 
+    tmp.tsf <- subset(TSF,date==dates[i])
+    tmp.indnames <- as.character(unique(tmp.tsf$sector))
+    
+    
+    if(missing(testf)){
+      testf <- fnames
+    }
+    
+    for(j in testf){
+      if(is.null(secNames)){
+        fml <- formula(paste(j," ~ ", paste(c(setdiff(fnames,j)), collapse= "+"),sep=''))
+      }else{
+        fml <- formula(paste(j," ~ ", paste(c(setdiff(fnames,j),secNames), collapse= "+"),"-1",sep=''))
+      }
+      smry <- summary(lm(fml,data = tmp.tsf))
+      VIF <- rbind(VIF,data.frame(date=dates[i],fname=j,vif=1/(1-smry$r.squared)))
+      res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],fname=j,res=smry$residuals))
+    }
+    
+  }
+  return(list(VIF,res))
+}
+
+
+
+
 
 #' factorlists recommend
 #' 
