@@ -880,7 +880,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','for
 
     }
     result <- transform(result,fname=as.character(fname))
-    result <- dplyr::arrange(frtn,date,fname)
+    result <- dplyr::arrange(result,date,dplyr::desc(frtn))
   }
   return(result)
 }
