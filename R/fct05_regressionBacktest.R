@@ -491,55 +491,94 @@ factor.VIF <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
 
 
 
-factor.VIFNEW <- function(TSF,testf,sectorAttr=defaultSectorAttr()){
-  fnames <- guess_factorNames(TSF,is_factorname = "factorscore")
-  
-  if(missing(testf)){
-    if(length(fnames)==1 & is.null(sectorAttr)) stop('NO x variable!')
-  }else{
-    if(!(testf %in% fnames)){
-      stop('testf not in TSF!')
-    }else if(length(fnames)==1){
-      stop('NO x variable!')
-    }
+
+#' @rdname factor_select
+#' 
+#' @export
+factor.orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
+  fname_all <- guess_factorNames(TSF,is_factorname = "factorscore")
+  fname <- fname_all[substr(fname_all,1,2)!='ES']
+  if(length(fname)==1 & is.null(sectorAttr)){
+    stop('NO x variable!')
   }
-  
-  # get sector factor
+  if(!(y %in% fname)){
+    stop('y not in TSF!')
+  }
+  if(missing(x)){
+    x <- setdiff(fname,y)
+  }
   if(!is.null(sectorAttr)){
-    tss <- gf.sector(TSF[,c('date','stockID')],sectorAttr)
-    if(ncol(tss)>4){
-      indnames <- as.character(unique(tss$sector))
-      TSF <- dplyr::left_join(TSF,tss,by=c("date","stockID"))
+    if(!identical(sectorAttr,"keep_old")){ # keep the old sector cols.
+      TSF <- gf.sector(TSF,sectorAttr)
     }
   }
   
+  secNames_all <- fname_all[substr(fname_all,1,2)=='ES']
   dates <- unique(TSF$date)
-  VIF <- data.frame()
   res <- data.frame()
-  # loop of regression
+  VIF <- data.frame()
+  
   for(i in 1:length(dates)){ 
     tmp.tsf <- subset(TSF,date==dates[i])
-    tmp.indnames <- as.character(unique(tmp.tsf$sector))
-    
-    
-    if(missing(testf)){
-      testf <- fnames
-    }
-    
-    for(j in testf){
-      if(is.null(secNames)){
-        fml <- formula(paste(j," ~ ", paste(c(setdiff(fnames,j)), collapse= "+"),sep=''))
-      }else{
-        fml <- formula(paste(j," ~ ", paste(c(setdiff(fnames,j),secNames), collapse= "+"),"-1",sep=''))
+    if(length(secNames_all)>1){
+      secNames_i <- unique(tmp.tsf$sector)
+      secNames_null <- setdiff(secNames_all,secNames_i)
+      if(length(secNames_null)>0){
+        tmp.tsf[,secNames_null] <- NULL
       }
-      smry <- summary(lm(fml,data = tmp.tsf))
-      VIF <- rbind(VIF,data.frame(date=dates[i],fname=j,vif=1/(1-smry$r.squared)))
-      res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],fname=j,res=smry$residuals))
+      fml <- formula(paste(y," ~ ", paste(c(x,secNames_i), collapse= "+"),"-1",sep=''))
+    } else {
+      fml <- formula(paste(y," ~ ", paste(x, collapse= "+"),sep=''))
     }
-    
+    smry <- summary(lm(fml,data = tmp.tsf))
+    VIF <- rbind(VIF,data.frame(date=dates[i],vif=1/(1-smry$r.squared)))
+    res <- rbind(res,data.frame(tmp.tsf[,c('date','stockID')],res=smry$residuals))
   }
-  return(list(VIF,res))
+  return(list(VIF=VIF,res=res))
 }
+
+
+#' @rdname factor_select
+#' 
+#' @export
+factor.orthogon <- function(TSF,forder,sectorAtrr=defaultSectorAttr()){
+  re <- data.frame()
+  if(!is.null(sectorAttr)){
+    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
+    indnames <- unique(TSF$sector)
+    re <- factor.orthogon_single(TSF,y = forder[1],x=indnames,sectorAttr = "keep_old")$res
+  }
+  
+  for(j in 2:length(forder)){
+    fname_j <- forder[j]
+    res <- factor.orthogon_single(TSF,y = fname_j,x=forder[1:(j-1)],sectorAttr = "keep_old")$res
+    re <- rbind(re,data.frame(fname=fname_j,res))
+  }
+  return(re)
+}
+
+
+
+
+#' @rdname factor_select
+#' 
+#' @export
+factor.VIF2 <- function(TSF,sectorAttr=defaultSectorAttr()){
+  fname <- guess_factorNames(TSF,is_factorname = "factorscore")
+  if(!is.null(sectorAttr)){
+    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
+  }
+
+  re <- data.frame()
+  for(j in 1:length(fname)){
+    fname_j <- fname[j]
+    VIF <- factor.orthogon_single(TSF,y = fname_j,sectorAttr = "keep_old")$VIF
+    re <- rbind(re,data.frame(fname=fname_j,VIF))
+  }
+  return(re)
+}
+
+
 
 
 
