@@ -4,16 +4,22 @@
 \alias{factor_select}
 \alias{reg.factor.select}
 \alias{factor.VIF}
+\alias{factor_orthogon_single}
+\alias{factor_orthogon}
 \title{factor_select}
 \usage{
 reg.factor.select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 
-factor.VIF(TSF, testf, sectorAttr = defaultSectorAttr())
+factor.VIF(TSF, sectorAttr = defaultSectorAttr())
+
+factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr())
+
+factor_orthogon(TSF, forder, sectorAttr = defaultSectorAttr())
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
 
-\item{sectorAttr}{is sector attribute.}
+\item{sectorAttr}{a sector-attribute list or NULL or 'existing'. If a list, regress with the sectors specified by sectorAttr;if "existing", use the existing sector data in TSF(Make sure they are already exist!); if null, not regress with sectors.}
 
 \item{forder}{self defined factor importance order,can be missing,can be set of character or number,length of \code{forder} can be shorter than factors.}
 
@@ -26,13 +32,13 @@ data frame of VIF and residual.
 }
 \description{
 \bold{reg.factor.select} select alpha or risk factors using regression method.
-\bold{factor.VIF} caculate factor's VIF and remove factors' correlation.
+\bold{factor.VIF} caculate factor's VIF.
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000905')
-factorIDs <- c("F000006","F000008","F000012","F000014","F000015",
-"F000016","F000018")
+factorIDs <- c("F000006","F000008","F000012","F000015",
+"F000016")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
@@ -49,8 +55,6 @@ factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 ----------------------VIF----------------------
 VIF <- factor.VIF(TSF)
-VIF <- factor.VIF(TSF,testf)[[1]]
-res <- factor.VIF(TSF,testf)[[2]]
 
 TSFR <- getTSR(TSF)
 re <- reg.factor.select(TSFR)
