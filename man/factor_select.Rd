@@ -2,15 +2,15 @@
 % Please edit documentation in R/fct05_regressionBacktest.R
 \name{factor_select}
 \alias{factor_select}
-\alias{reg.factor.select}
-\alias{factor.VIF}
+\alias{reg.factor_select}
+\alias{factor_VIF}
 \alias{factor_orthogon_single}
 \alias{factor_orthogon}
 \title{factor_select}
 \usage{
-reg.factor.select(TSFR, sectorAttr = defaultSectorAttr(), forder)
+reg.factor_select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 
-factor.VIF(TSF, sectorAttr = defaultSectorAttr())
+factor_VIF(TSF, sectorAttr = defaultSectorAttr())
 
 factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr())
 
@@ -31,8 +31,8 @@ factor_orthogon(TSF, forder, sectorAttr = defaultSectorAttr())
 data frame of VIF and residual.
 }
 \description{
-\bold{reg.factor.select} select alpha or risk factors using regression method.
-\bold{factor.VIF} caculate factor's VIF.
+\bold{reg.factor_select} select alpha or risk factors using regression method.
+\bold{factor_VIF} caculate factor's VIF.
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
@@ -54,11 +54,11 @@ factorLists <- buildFactorLists(
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 ----------------------VIF----------------------
-VIF <- factor.VIF(TSF)
+VIF <- factor_VIF(TSF)
 
 TSFR <- getTSR(TSF)
-re <- reg.factor.select(TSFR)
-re <- reg.factor.select(TSFR,sectorAttr=NULL)
+re <- reg.factor_select(TSFR)
+re <- reg.factor_select(TSFR,sectorAttr=NULL)
 nstock <- length(factorLists)
-re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock))
+re <- reg.factor_select(TSFR,forder=sample(1:nstock,nstock))
 }

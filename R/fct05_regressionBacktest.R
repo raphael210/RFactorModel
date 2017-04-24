@@ -278,8 +278,8 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 
 #' factor_select
 #' 
-#' \bold{reg.factor.select} select alpha or risk factors using regression method.
-#' \bold{factor.VIF} caculate factor's VIF.
+#' \bold{reg.factor_select} select alpha or risk factors using regression method.
+#' \bold{factor_VIF} caculate factor's VIF.
 #' @name factor_select
 #' @rdname factor_select
 #' @param TSFR a \bold{TSFR} object.
@@ -305,14 +305,14 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' ----------------------VIF----------------------
-#' VIF <- factor.VIF(TSF)
+#' VIF <- factor_VIF(TSF)
 #' 
 #' TSFR <- getTSR(TSF)
-#' re <- reg.factor.select(TSFR)
-#' re <- reg.factor.select(TSFR,sectorAttr=NULL)
+#' re <- reg.factor_select(TSFR)
+#' re <- reg.factor_select(TSFR,sectorAttr=NULL)
 #' nstock <- length(factorLists)
-#' re <- reg.factor.select(TSFR,forder=sample(1:nstock,nstock))
-reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
+#' re <- reg.factor_select(TSFR,forder=sample(1:nstock,nstock))
+reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   cols <- colnames(TSFR)
   fname <- guess_factorNames(TSFR)
   
@@ -426,7 +426,7 @@ reg.factor.select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 #' @param sectorAttr a sector-attribute list or NULL or 'existing'. If a list, regress with the sectors specified by sectorAttr;if "existing", use the existing sector data in TSF(Make sure they are already exist!); if null, not regress with sectors.
 #' @return data frame of VIF and residual.
 #' @export
-factor.VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
+factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
   fname <- guess_factorNames(TSF,is_factorname = "factorscore")
   if(!is.null(sectorAttr) & !identical(sectorAttr,"existing")){
     TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
@@ -469,12 +469,8 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
   if(missing(x)){
     x <- setdiff(fname,y)
   }
-  if(!is.null(sectorAttr)){
-    if(identical(sectorAttr,"existing")){ # use the existing sector data.
-      check.colnames(TSF,"sector")
-    } else {
-      TSF <- gf.sector(TSF,sectorAttr)
-    }
+  if(!is.null(sectorAttr) & !identical(sectorAttr,"existing")){
+    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
   }
 
   if(is.null(sectorAttr)){
@@ -508,12 +504,10 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
   if(!is.null(sectorAttr)){ # forder[1]
-    res_orth <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing")
-    TSF[,forder[1]] <- res_orth[,forder[1]]
+    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing")
   }
   for(j in 2:length(forder)){ # forder[2:length]
-    res_orth <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_)
-    TSF[,forder[j]] <- res_orth[,forder[j]]
+    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_)
   }
   return(TSF[,cols])
 }
@@ -531,6 +525,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
   coef <- data.frame()
   resd <- data.frame()
   if(secIN){
+    check.colnames_sectorfs(data)
     secdf <- data %>% dplyr::group_by(date,sector) %>% 
       dplyr::summarise(n=1) %>% dplyr::ungroup()
     secdf <- reshape2::dcast(secdf,date~sector,fill = 0,value.var = 'n')
@@ -566,7 +561,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
     }
     rsq <- dplyr::arrange(rsq,date)
     coef <- dplyr::arrange(coef,date,term)
-    resd <- dplyr::arrange(resd,date,stockID)
+    resd <- merge.x(data[,c("date","stockID")],resd,by=c("date","stockID"))
     
   }else{
     fml <- formula(paste(y," ~ ", paste(x, collapse= "+"),sep=''))
@@ -696,7 +691,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
 
   re <- dplyr::left_join(rtnsum,tstat,by='fname')
   if(includeVIF){
-    VIF <- factor.VIF(TSF,sectorAttr = NULL)
+    VIF <- factor_VIF(TSF,sectorAttr = NULL)
     VIF <- VIF %>% dplyr::group_by(fname) %>% dplyr::summarise(vif=mean(vif)) %>% ungroup()
     re <- dplyr::left_join(re,VIF,by='fname')
   }
@@ -896,7 +891,7 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
 #' fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
 #' fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
-#' fCov <- calfCov(RebDates,fNames,reg_results=reg_results)
+#' fCov <- getfCov(RebDates,fNames,reg_results=reg_results)
 #' @export
 getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','forcast'),
                     nwin=lubridate::years(-2),reg_results){
@@ -1026,7 +1021,7 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 #' @param covtype means type of caculating covariance,\bold{robust} can see example in \code{\link[robust]{covRob}},simple see \code{\link{cov}}.
 #' 
 #' @export
-calfCov <- function(RebDates,fNames,dure=months(1),
+getfCov <- function(RebDates,fNames,dure=months(1),
                     covtype=c('robust','simple','roll-simple','roll-robust'),
                     nwin,reg_results){
   covtype <- match.arg(covtype)
@@ -1250,9 +1245,8 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
     tmp.TSF <- TSF[TSF$date==i,]
     #add sector factor
     if(!is.null(sectorAttr)){
-      tmp <- gf.sector(tmp.TSF[,c('date','stockID')],sectorAttr)
-      tmp <- dplyr::select(tmp,-sector)
-      tmp.TSF <- dplyr::left_join(tmp.TSF,tmp,by=c('date','stockID'))
+      tmp.TSF <- gf.sector(tmp.TSF,sectorAttr)
+      tmp.TSF <- dplyr::select(tmp.TSF,-sector)
     }
     
     #get factor return and factor covariance
@@ -1491,10 +1485,10 @@ buildBoxConstr <- function(...){
 # inner function, get benchmark's factor exposure
 # bmkdata <- getbmkfExp(TSF,bmk)
 getbmkfExp <- function(TSF,bmk){
+  fnames <- guess_factorNames(TSF,silence = TRUE)
   bmkdata <- getIndexCompWgt(bmk,unique(TSF$date))
-  bmkdata <- dplyr::left_join(bmkdata,TSF,by=c('date','stockID'))
+  bmkdata <- dplyr::left_join(bmkdata,TSF[,c("date","stockID",fnames)],by=c('date','stockID'))
   bmkdata[is.na(bmkdata)] <- 0
-  fnames <- setdiff(colnames(bmkdata),c("date","stockID","wgt"))
   
   result <- data.frame()
   for(i in unique(bmkdata$date)){
@@ -1561,8 +1555,8 @@ getfExpLimit <- function(factorExp,bmk,TSF){
     tmp.result1 <- subset(bmk,fname %in% factorExp$fname)
     if(nrow(tmp.result1)>0){
       tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      tmp.result1 <- transform(tmp.result1,min=ifelse(sustr(fname,1,2)=='ES',fexp*(1+min),fexp+min),
-                               max=ifelse(sustr(fname,1,2)=='ES',fexp*(1+max),fexp+max))
+      tmp.result1 <- transform(tmp.result1,min=ifelse(substr(fname,1,2)=='ES',fexp*(1+min),fexp+min),
+                               max=ifelse(substr(fname,1,2)=='ES',fexp*(1+max),fexp+max))
     }
     
     tmp.result2 <- subset(bmk,!(fname %in% factorExp$fname))
@@ -1636,7 +1630,7 @@ getStockWgtLimit <- function(TS,wgtSet,sectorAttr){
 getnewTSFtotwgt <- function(TSF,totwgt,boxConstr){
   for(i in 1:nrow(boxConstr)){
     tmp.indexID <- boxConstr$indexID[i]
-    if(substr(tmp.indexID,1,2=='ES')){
+    if(substr(tmp.indexID,1,2)=='ES'){
       totwgt[totwgt$fname==tmp.indexID,'min'] <- max(totwgt[totwgt$fname==tmp.indexID,'min'],boxConstr$min[i])
       totwgt[totwgt$fname==tmp.indexID,'max'] <- min(totwgt[totwgt$fname==tmp.indexID,'max'],boxConstr$max[i])
       next
@@ -1956,7 +1950,15 @@ chart.RA.attr <- function(RA_tables){
 gf.sector <- function(TS, sectorAttr) {
   TSS <- getSectorID(TS,sectorAttr = sectorAttr)
   TSS <- sectorNA_fill(TSS,sectorAttr=sectorAttr)
-  re <- reshape2::dcast(TSS,date+stockID~sector,length,fill=0,value.var = 'sector')
+  re <- cast_sector(TSS)
+  return(re)
+}
+
+cast_sector <- function(TSS){
+  check.TSS(TSS)
+  TSS$.tmp <- 1
+  re <- reshape2::dcast(TSS,date+stockID~sector,fill=0,value.var = '.tmp')
+  TSS$.tmp <- NULL
   re <- merge.x(TSS,re,by = c("date","stockID"))
   return(re)
 }
@@ -1984,3 +1986,14 @@ getActivewgt <- function(port,bmk,res=c("all","active")) {
 }
 
 
+
+#' check.colnames_sectorfs
+#' 
+#' @export
+check.colnames_sectorfs <- function(data){
+  check.colnames(data,"sector")
+  cols <- colnames(data)
+  if(!any(substr(cols,1,2)=="ES")){
+    stop("the data must contain the sector-factors!")
+  }
+}

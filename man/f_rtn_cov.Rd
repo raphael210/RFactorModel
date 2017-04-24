@@ -3,7 +3,7 @@
 \name{f_rtn_cov}
 \alias{f_rtn_cov}
 \alias{getfRtn}
-\alias{calfCov}
+\alias{getfCov}
 \alias{getResidual}
 \alias{calDelta}
 \title{factor return and covariance}
@@ -11,7 +11,7 @@
 getfRtn(RebDates, fNames, dure = months(1), type = c("mean", "rollmean",
   "forcast"), nwin = lubridate::years(-2), reg_results)
 
-calfCov(RebDates, fNames, dure = months(1), covtype = c("robust", "simple",
+getfCov(RebDates, fNames, dure = months(1), covtype = c("robust", "simple",
   "roll-simple", "roll-robust"), nwin, reg_results)
 
 getResidual(TS, dure, reg_results)
@@ -44,5 +44,5 @@ calculate factor return and factor covariance.
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
 fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
 fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
-fCov <- calfCov(RebDates,fNames,reg_results=reg_results)
+fCov <- getfCov(RebDates,fNames,reg_results=reg_results)
 }
