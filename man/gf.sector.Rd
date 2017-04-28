@@ -9,4 +9,3 @@ gf.sector(TS, sectorAttr)
 \description{
 get factorscore of sector
 }
-

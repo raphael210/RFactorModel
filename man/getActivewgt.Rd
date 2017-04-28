@@ -9,4 +9,3 @@ getActivewgt(port, bmk, res = c("all", "active"))
 \description{
 get active wgt
 }
-

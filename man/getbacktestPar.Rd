@@ -3,10 +3,10 @@
 \name{getbacktestPar}
 \alias{getbacktestPar}
 \alias{getbacktestPar.IC}
-\alias{getbacktestPar.Ngroup}
-\alias{getbacktestPar.fee}
-\alias{getbacktestPar.longshort}
 \alias{getbacktestPar.reg}
+\alias{getbacktestPar.Ngroup}
+\alias{getbacktestPar.longshort}
+\alias{getbacktestPar.fee}
 \title{getbacktestPar}
 \usage{
 getbacktestPar(backtestPar, item, item_sub)
@@ -47,4 +47,3 @@ getbacktestPar.longshort(backtestPar)
 \author{
 Ruifei.Yin
 }
-

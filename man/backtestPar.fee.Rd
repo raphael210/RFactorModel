@@ -22,9 +22,6 @@ a \bold{backtestPar} object
 \description{
 set the fee related parametres of the backtesting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{port.backtest}},\code{\link{getrtn.LSH}},\code{\link{getrtn.LBH}}
 
@@ -33,4 +30,6 @@ Other backtestPar setting functions: \code{\link{backtestPar.IC}},
   \code{\link{backtestPar.default}},
   \code{\link{backtestPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

@@ -3,11 +3,10 @@
 \docType{package}
 \name{RFactorModel}
 \alias{RFactorModel}
-\alias{RFactorModel-package}
 \alias{factormodel}
 \alias{package-factormodel}
+\alias{RFactorModel-package}
 \title{Building,testing,reporting the factor model.}
 \description{
 ...
 }
-

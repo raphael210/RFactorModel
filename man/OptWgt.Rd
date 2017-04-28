@@ -4,20 +4,21 @@
 \alias{OptWgt}
 \title{OptWgt}
 \usage{
-OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "return-risk"),
-  constr = c("IndSty", "Ind", "IndStyTE"), benchmark = "EI000905",
-  indfexp = 0.05, fexp, sectorAttr = defaultSectorAttr(), maxWgt = 0.01,
-  addEvent = TRUE, optWay = c("ipop", "solve.QP", "Matlab"))
+OptWgt(TSF, alphaf, fRtn, fCov, target = c("return", "balance"), bmk,
+  sectorAttr = defaultSectorAttr(), factorExp = buildFactorExp(),
+  wgtSet = buildWgtSet(), boxConstr, addEvent = FALSE, optWay = c("ipop",
+  "solve.QP", "Matlab"))
 }
 \arguments{
-\item{alphaf}{is alpha factors' name.}
+\item{TSF}{is multiple factors' \bold{TSF} object}
 
-\item{constr}{is optimization constraint,\bold{IndSty} means industry and style neutral,
-\bold{IndStyTE} means besides industry and style neutral,tracking error also required.}
+\item{alphaf}{is alpha factors' name, can be missing.}
 
-\item{benchmark}{is the benckmark for optimization.}
+\item{fRtn}{see \code{\link{getfRtn}}}
 
-\item{Fcov}{is the covariance matrix.}
+\item{fCov}{is the covariance matrix.}
+
+\item{bmk}{is the benckmark for optimization,can be missing.}
 }
 \value{
 a \bold{port} object.
@@ -32,4 +33,3 @@ optimize portfolio weight.
 \author{
 Andrew Dow
 }
-

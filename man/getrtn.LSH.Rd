@@ -38,11 +38,10 @@ PB.L <- port.backtest(port.L)
 PB.S <- port.backtest(port.S)
 re <- getrtn.LSH(PB.L,PB.S)
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other LSH-frame building functions: \code{\link{addrtn.hedge}},
   \code{\link{getrtn.LBH}}, \code{\link{getrtn.bmk}}
 }
-
+\author{
+Ruifei.Yin
+}

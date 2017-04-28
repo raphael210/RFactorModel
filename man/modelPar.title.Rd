@@ -28,12 +28,11 @@ The different between \code{modelPar.title} and \code{setmodelPar.title} is that
 modelPar <- modelPar.default()
 modelPar.title(modelPar,modelID="M_000001",modelName="HS300-eqwgt-momentumn")
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other modelPar setting functions: \code{\link{modelPar.default}},
   \code{\link{modelPar.factor}},
   \code{\link{modelPar.time}}, \code{\link{modelPar.univ}}
 }
-
+\author{
+Ruifei.Yin
+}

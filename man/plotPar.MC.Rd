@@ -21,9 +21,6 @@ a \bold{plotPar} object
 \description{
 set the multi-comparison related parametres of the ploting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.Ngroup}},
@@ -31,4 +28,6 @@ Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.default}},
   \code{\link{plotPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

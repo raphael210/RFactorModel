@@ -17,4 +17,3 @@ default.factorName(factorFun,list(N=60,M=30))
 default.factorName(factorFun,"20,\\"IF00\\"")
 default.factorName(factorFun,"lag=20,id=\\"IF00\\"")
 }
-

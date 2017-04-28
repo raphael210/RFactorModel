@@ -65,7 +65,7 @@ kable(ftbale)
 #  # get factor return
 #  fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results)
 #  # get factor covariance
-#  fCov <- calfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
+#  fCov <- getfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
 #  
 #  # Date Alignment
 #  tmp.date1 <- max(min(fRtn$date),min(fCov$date))

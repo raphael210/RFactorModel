@@ -40,4 +40,3 @@ MC.wgt.CAPM(TSFRs)
 MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
 MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)  
 }
-

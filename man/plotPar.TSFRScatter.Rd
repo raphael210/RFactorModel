@@ -17,9 +17,6 @@ a \bold{plotPar} object
 \description{
 set the TSFRScatter related parametres of the ploting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{plot.TSFRScatter}}
 
@@ -28,4 +25,6 @@ Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.default}},
   \code{\link{plotPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

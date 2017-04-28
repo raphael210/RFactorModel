@@ -1,40 +1,245 @@
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-# --------------------  backtesting with 'scatter' method --------------
+# -------------------- Factor descriptive statistics --------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
-#' chart.TSFRScatter
+
+#' Factor descriptive statistics
 #' 
-#' plot the \bold{TSFR} object with scatter,which demonstrating the relationship between the factorscore and periodrtn.
-#' @param TSFR a \bold{TSFR} object 
-#' @param Nbin the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.
-#' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
-#' @return a list, with 2 plot objects: 
-#'    \itemize{
-#'    \item scatter.overall: the all span scatter
-#'    \item scatter.ts: the time series scatter,which is display in diffrent facets
-#'    }
-#' @author Ruifei.Yin
+#' draw factor's histogram and boxplot,and summarize factor's statistics value.
+#' @name factor_descriptive_statistics
+#' @rdname factor_descriptive_statistics
+#' @examples 
+#' mp <- modelPar.default()
+#' TSF <- Model.TSF(mp)
+#' chart.Fct_hist(TSF)
+#' chart.Fct_box(TSF)
+#' chart.Fct_density(TSF)
+#' re <- table.Fct_descr(TSF)
+#' #~~ multiple factor ~~
+#' FactorLists <- buildFactorLists_lcfs(c("F000006","F000002","F000005"))
+#' TS <- Model.TS(mp)
+#' mTSF <- getMultiFactor(TS,FactorLists)
+#' MF.chart.Fct_hist(mTSF)
+#' MF.chart.Fct_box(mTSF)
+#' MF.chart.Fct_density(mTSF)
+#' re2 <- MF.table.Fct_descr(mTSF)
+#' @export
+chart.Fct_hist <- function(TSF,bins=NULL,ncol=NULL){
+  ggplot(TSF, aes(factorscore)) + 
+    geom_histogram(colour = "black", fill = "white",bins = bins)+
+    facet_wrap(~date,scales = "free",ncol = ncol)
+}
+
+#' @rdname factor_descriptive_statistics
+#' @export
+chart.Fct_density <- function(TSF){
+  ggplot(TSF, aes(factorscore,color=as.factor(date))) + 
+    geom_density()
+}
+
+
+#' @rdname factor_descriptive_statistics
+#' @export
+chart.Fct_box <- function(TSF){
+  #facet by dates
+  TSF$date <- as.factor(TSF$date)
+  ggplot(TSF, aes(date,factorscore)) + 
+    geom_boxplot()+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+#' @rdname factor_descriptive_statistics
+#' @export
+table.Fct_descr <- function(TSF){
+  re <- TSF %>% group_by(date) %>%
+    dplyr::summarise(Obs=length(factorscore),
+                     NAs=sum(is.na(factorscore)),
+                     min=min(factorscore,na.rm = TRUE),
+                     max=max(factorscore,na.rm = TRUE),
+                     mean=mean(factorscore,na.rm = TRUE),
+                     median=median(factorscore,na.rm = TRUE),
+                     sd=sd(factorscore,na.rm = TRUE),
+                     skewness=PerformanceAnalytics::skewness(factorscore,na.rm = TRUE),
+                     kurtosis=PerformanceAnalytics::kurtosis(factorscore,na.rm = TRUE))
+  return(re)
+}
+
+
+#' chart.FctRtn_scatter
+#' 
 #' @export
 #' @examples 
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
-#' chart.TSFRScatter(TSFR,25)
-chart.TSFRScatter <- function(TSFR,Nbin="day",plotPar){
-  if(!missing(plotPar)){
-    Nbin <- getplotPar.TSFRScatter(plotPar,"Nbin")
-  }
-  check.TSFR(TSFR)
-  # ---- plot the all span scatter
-  data1 <- plyr::ddply(TSFR,c("stockID"),plyr::summarise,periodrtn=mean(periodrtn,na.rm=TRUE),factorscore=mean(factorscore,na.rm=TRUE))
-  scatter.overall <- qplot(x=factorscore,y=periodrtn,data=data1,geom=c("point","smooth"),main="Scatter of all span")  
-  # ---- plot the scatter by time seris
-  TSFR$date <- (cut.Date2(TSFR$date,Nbin))
-  data2 <- plyr::ddply(TSFR,c("date","stockID"),plyr::summarise,periodrtn=mean(periodrtn,na.rm=TRUE),factorscore=mean(factorscore,na.rm=TRUE))  
-  scatter.ts <- qplot(x=factorscore,y=periodrtn,data=data2,facets=~date,geom=c("point","smooth"),
-                      main="Scatter by date")
-  return(list(scatter.overall=scatter.overall,scatter.ts=scatter.ts))
+#' chart.FctRtn_scatter(TSFR,25)
+chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
+  ggplot(TSFR, aes(factorscore,periodrtn)) + 
+    geom_point()+
+    geom_smooth()+
+    facet_wrap(~date,scales = "free",ncol = ncol)
 }
 
+# ---------------------  ~~ Multi-factor - descriptive stat --------------
+#' @rdname factor_descriptive_statistics
+#' @export
+MF.chart.Fct_hist <- function(mTSF){
+  fnames <- guess_factorNames(mTSF)
+  mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
+  ggplot(mTSF, aes(factorscore)) + 
+    geom_histogram(colour = "black", fill = "white")+
+    facet_grid(date~fname,scales="free")
+  
+}
+
+
+#' @rdname factor_descriptive_statistics
+#' @export
+MF.chart.Fct_density <- function(mTSF,ncol=NULL){
+  fnames <- guess_factorNames(mTSF)
+  mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
+  ggplot(mTSF, aes(factorscore,color=fname)) + 
+    geom_density()+
+    facet_wrap(~date,scales="free",ncol = ncol)
+}
+
+#' @rdname factor_descriptive_statistics
+#' 
+#' @export
+MF.chart.Fct_box <- function(mTSF,ncol=NULL){
+  fnames <- guess_factorNames(mTSF)
+  mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
+  ggplot(mTSF, aes(fname,factorscore)) + 
+    geom_boxplot()+
+    facet_wrap(~date,scales = "free",ncol = ncol)+
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+}
+
+#' @rdname factor_descriptive_statistics
+#' @export
+MF.table.Fct_descr <- function(mTSF){
+  fnames <- guess_factorNames(mTSF)
+  mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
+  re <- mTSF %>% group_by(date,fname) %>%
+    dplyr::summarise(Obs=length(factorscore),
+                     NAs=sum(is.na(factorscore)),
+                     min=min(factorscore,na.rm = TRUE),
+                     max=max(factorscore,na.rm = TRUE),
+                     mean=mean(factorscore,na.rm = TRUE),
+                     median=median(factorscore,na.rm = TRUE),
+                     sd=sd(factorscore,na.rm = TRUE),
+                     skewness=PerformanceAnalytics::skewness(factorscore,na.rm = TRUE),
+                     kurtosis=PerformanceAnalytics::kurtosis(factorscore,na.rm = TRUE))
+  return(re)
+  
+}
+
+
+
+#' @name factor_descriptive_statistics
+#' @param Nbin the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.
+#' @examples
+#' # ---  raw_factor_correlation
+#' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
+#' TS <- getTS(RebDates,indexID = 'EI000985')
+#' factorIDs <- c("F000006","F000008","F000012")
+#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
+#' mTSF <- getMultiFactor(TS,FactorLists = FactorLists)
+#' MF.chart.Fct_corr(mTSF)
+#' MF.chart.Fct_corr(mTSF,Nbin='year')
+#' @export
+MF.chart.Fct_corr <- function(mTSF,Nbin){
+  
+  # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
+  fnames <- guess_factorNames(mTSF)
+  mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
+  
+  cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
+  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
+  cordata <- reshape2::melt(cordata,id=c('date','fname'),
+                            variable.name='fnamecor',factorsAsStrings=FALSE)
+  cordata <- transform(cordata,fname=as.character(fname),
+                       fnamecor=as.character(fnamecor))
+  
+  subfun <- function(df){
+    df <- dplyr::arrange(df,fname,fnamecor)
+    df <- reshape2::dcast(df,fname~fnamecor)
+    rownames(df) <- df$fname
+    df <- as.matrix(df[,-1])
+    df[upper.tri(df)] <- NA
+    df <- reshape2::melt(df, na.rm = TRUE)
+    colnames(df) <- c("fname","fnamecor",'value')
+    return(df)
+  }
+  
+  if(missing(Nbin)){
+    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
+    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+    cordata_by <- subfun(cordata_by)
+    
+    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
+      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
+      geom_text(aes(fname,fnamecor, label = value), color = "black")+
+      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
+  }else{
+    cordata$date <- cut.Date2(cordata$date,Nbin)
+    N <- length(unique(cordata$date))
+    N <- floor(sqrt(N))
+    cordata_by <- dplyr::group_by(cordata,date,fname,fnamecor)
+    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+    cordata_by <- split(cordata_by[,-1],cordata_by$date)
+    cordata_by <- plyr::ldply(cordata_by,subfun,.id = 'date')
+    
+    cordata_by$value <- round(cordata_by$value,2)
+    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
+      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
+      geom_text(aes(fname,fnamecor, label = value), color = "black")+facet_wrap(~ date,ncol=N)+
+      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
+  }
+  
+}
+
+
+
+#' @rdname factor_descriptive_statistics
+#' @examples 
+#' MF.table.Fct_corr(mTSF)
+#' MF.table.Fct_corr(mTSF,Nbin='year')
+#' @export
+MF.table.Fct_corr <- function(mTSF,Nbin){
+  
+  # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
+  fnames <- guess_factorNames(mTSF)
+  mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
+  
+  cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
+  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
+  cordata <- reshape2::melt(cordata,id=c('date','fname'),
+                            variable.name='fnamecor',factorsAsStrings=FALSE)
+  cordata <- transform(cordata,fname=as.character(fname),
+                       fnamecor=as.character(fnamecor))
+  
+  if(missing(Nbin)){
+    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
+    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+    cordata_by <- dplyr::arrange(cordata_by,fname,fnamecor)
+    cordata_by <- reshape2::dcast(cordata_by,fname~fnamecor)
+    rownames(cordata_by) <- cordata_by$fname
+    cordata_by <- as.matrix(cordata_by[,-1])
+  }else{
+    cordata$tmp <- cut.Date2(cordata$date,Nbin)
+    cordata_by <- dplyr::group_by(cordata,tmp,fname,fnamecor)
+    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+    cordata_by <- dplyr::arrange(cordata_by,tmp,fname,fnamecor)
+    cordata_by <- reshape2::dcast(cordata_by,tmp+fname~fnamecor)
+    cordata_by <- split(cordata_by[,-1],cordata_by$tmp)
+    cordata_by <- plyr::llply(cordata_by,function(df){
+      rownames(df) <- df$fname
+      df <- as.matrix(df[,-1])
+      return(df)
+    })
+  }
+  return(cordata_by)
+}
 
 
 
@@ -231,6 +436,61 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
 
 
 
+
+#' @param mTSFR a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.
+#' @rdname backtest.IC
+#' @export
+#' @examples
+#' mTSFR <- getMultiFactor(TSR,FactorLists)
+#' MF.chart.IC(mTSFR)
+MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
+                        facet_by=c("date","fname")){
+  fnames <- guess_factorNames(mTSFR)
+  TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
+    as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
+                        factorscore=x,periodrtn=mTSFR[,'periodrtn']))
+  },mTSFR=mTSFR)
+  
+  stat <- match.arg(stat)
+  facet_by <- match.arg(facet_by)
+  
+  IC <- plyr::llply(TSFRs,seri.IC,stat=stat)
+  IC <- lapply(IC,function(ts){
+    df <- data.frame(date=zoo::index(ts),IC=zoo::coredata(ts))
+    df$date <- cut.Date2(df$date,Nbin)
+    df <- df %>% dplyr::group_by(date) %>% dplyr::summarise(IC=mean(IC,na.rm = TRUE)) %>%
+      dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
+    return(df)
+  })
+  IC <- dplyr::bind_rows(IC,.id = 'fname')
+  
+  if(facet_by=='date'){
+    ggplot(IC,aes(fname, IC,fill=fname)) +
+      geom_bar(stat = "identity") + facet_wrap(~date)
+  }else if(facet_by=='fname'){
+    seri <- reshape2::dcast(IC,date~fname,value.var = 'IC')
+    seri <- xts::xts(seri[,-1],order.by = seri[,1])
+    wid <- round(365/periodicity_Ndays(seri))
+    if(wid > NROW(seri)){
+      ggplot(IC,aes(date, IC)) +
+        geom_bar(stat = "identity") + facet_wrap(~fname)
+    } else {
+      ICma <- zoo::rollapply(zoo::as.zoo(seri),width=wid,FUN=mean,na.rm=TRUE,align='right')
+      by <- cut.Date2(zoo::index(ICma),Nbin)
+      ICma.aggr <- aggregate(ICma,as.Date(by),tail,1)
+      ICma.aggr <- melt.ts(ICma.aggr)
+      colnames(ICma.aggr) <- c("date","fname","IC.MA")
+      
+      ggplot(IC,aes(date, IC)) +
+        geom_bar(stat = "identity")+
+        geom_line(data=ICma.aggr,aes(x=date,y=IC.MA),size=1)+
+        ggtitle("IC series (with its 12 months MA)")+
+        facet_wrap(~fname)
+    }
+  }
+}
+
+
 # ---------------------  ~~ Multi comparison - IC --------------
 
 
@@ -299,6 +559,9 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
   IC.multicharts <- multiplot_facet(plotlist=IC.charts,ncol=ncol)
   return(IC.multicharts)
 }
+
+
+
 
 
 #' @rdname backtest.IC
@@ -819,6 +1082,51 @@ chart.Ngroup.turnover <- function(TSFR,N=5,turnoverType=c("num","wgt"),group=1,
 
 
 
+#' @param mTSFR a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.
+#' @rdname backtest.Ngroup
+#' @export
+#' @examples 
+#' mTSFR <- getMultiFactor(TSR)
+#' MF.chart.Ngroup.spread(mTSFR)
+MF.chart.Ngroup.spread <- function(mTSFR,N=5,Nbin="day",stat=c("mean","median"),
+                                   sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
+                                   facet_by=c("none","date","fname")){
+  fnames <- guess_factorNames(mTSFR)
+  TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
+    as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
+                        factorscore=x,periodrtn=mTSFR[,'periodrtn']))
+  },mTSFR=mTSFR)
+  
+  stat <- match.arg(stat)
+  facet_by <- match.arg(facet_by)
+  
+  rtnseri <- plyr::llply(TSFRs,seri.Ngroup.rtn,N=N,stat=stat,sectorNe=sectorNe,sectorAttr=sectorAttr)
+  rtnseri <- lapply(rtnseri,function(ts){
+    rtn <- ts[,1]-ts[,ncol(ts)]
+    wealth <- WealthIndex(rtn)
+    spread <- data.frame(date=zoo::index(wealth),zoo::coredata(rtn),zoo::coredata(wealth))
+    colnames(spread) <- c('date','rtn','wealth')
+    return(spread)})
+  rtnseri <- dplyr::bind_rows(rtnseri,.id = 'fname')
+  
+  if(facet_by=='none'){
+    ggplot(rtnseri, aes(x=date, y=wealth, color=fname)) +
+      geom_line(size=1)
+  }else if(facet_by=='date'){
+    
+    rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
+    rtnseri <- rtnseri %>% dplyr::group_by(fname,date) %>% dplyr::summarise(rtn=prod(1+rtn)-1) %>%
+      dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
+    
+    ggplot(rtnseri, aes(x=fname, y=rtn,fill=fname)) +
+      geom_bar(stat = 'identity')+facet_wrap(~date)
+  }else if(facet_by=='fname'){
+    ggplot(rtnseri, aes(x=date, y=wealth)) +
+      geom_line(size=1)+facet_wrap(~fname)
+  }
+}
+
+
 
 # --------------------- ~~ Multi comparison - Ngroup --------------
 
@@ -1137,6 +1445,7 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
   IC.seris <- t(IC.seris)
   IC.seris <- xts::xts(IC.seris,order.by = unique(TSFRs[[1]]$date_end)[1:nrow(IC.seris)])
   
+  require(ROI)
   factor.names <- colnames(IC.seris)
   pspec <- PortfolioAnalytics::portfolio.spec(assets=factor.names)
   pspec <- PortfolioAnalytics::add.constraint(portfolio=pspec, type="full_investment")

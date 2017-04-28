@@ -180,7 +180,7 @@ setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
 #'                            factorNA = "na",
 #'                            factorOutlier = 3 )
 modelPar.factor <- function(modelPar = modelPar.default() , 
-                            factorFun = "gf.demo" ,
+                            factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1    ,
                             factorStd  = "none" ,
@@ -342,7 +342,7 @@ setmodelPar.factor_combi <- function(modelPar,
 #' # -- set modelPar.factor by a factorlist
 #' FactorList <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20))
 #' modelPar <- modelPar.factor(modelPar,FactorList=FactorList)
-buildFactorList <- function(factorFun = "gf.demo" ,
+buildFactorList <- function(factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1 ,
                             factorStd  = "none" ,
@@ -559,10 +559,10 @@ default.factorName <- function (factorFun, factorPar, factorDir) {
 #' @return a TSF object
 #' @export
 #' @author Ruifei.Yin
-gf.demo <- function(TS,rho=0){
+gf_demo <- function(TS,rho=0, dure=NULL, date_end_pad){
   check.TS(TS)
   rows <- dim(TS)[1]
-  rtn <- getTSR(TS)$periodrtn
+  rtn <- getTSR(TS, dure = dure, date_end_pad = date_end_pad)$periodrtn
   na.len <- length(rtn[is.na(rtn)])
   na.replace <- rnorm(na.len)
   rtn[is.na(rtn)] <- na.replace

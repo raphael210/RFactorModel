@@ -2,10 +2,10 @@
 % Please edit documentation in R/fct00_modelsettingFuncs.R
 \name{getmodelPar}
 \alias{getmodelPar}
-\alias{getmodelPar.factor}
-\alias{getmodelPar.time}
 \alias{getmodelPar.title}
+\alias{getmodelPar.time}
 \alias{getmodelPar.univ}
+\alias{getmodelPar.factor}
 \title{getmodelPar}
 \usage{
 getmodelPar(modelPar, item, item_sub)
@@ -44,4 +44,3 @@ getmodelPar.title(modelPar)
 \author{
 Ruifei.Yin
 }
-

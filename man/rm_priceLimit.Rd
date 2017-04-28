@@ -22,4 +22,3 @@ re <- rm_priceLimit(TS)
 re1 <- rm_priceLimit(TS,nearby=-1:1)
 re2 <- rm_priceLimit(TS,lim=c(-Inf,10)) # remove limit-up
 }
-

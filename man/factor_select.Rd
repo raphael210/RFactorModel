@@ -2,22 +2,43 @@
 % Please edit documentation in R/fct05_regressionBacktest.R
 \name{factor_select}
 \alias{factor_select}
-\alias{reg.factor.select}
-\title{factor select}
+\alias{reg.factor_select}
+\alias{factor_VIF}
+\alias{factor_orthogon_single}
+\alias{factor_orthogon}
+\title{factor_select}
 \usage{
-reg.factor.select(TSFR, sectorAttr = defaultSectorAttr())
+reg.factor_select(TSFR, sectorAttr = defaultSectorAttr(), forder)
+
+factor_VIF(TSF, sectorAttr = defaultSectorAttr())
+
+factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr())
+
+factor_orthogon(TSF, forder, sectorAttr = defaultSectorAttr())
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
+
+\item{sectorAttr}{a sector-attribute list or NULL or 'existing'. If a list, regress with the sectors specified by sectorAttr;if "existing", use the existing sector data in TSF(Make sure they are already exist!); if null, not regress with sectors.}
+
+\item{forder}{self defined factor importance order,can be missing,can be set of character or number,length of \code{forder} can be shorter than factors.}
+
+\item{TSF}{is a \bold{TSF} object.}
+
+\item{testf}{is test factor name, can be missing.}
+}
+\value{
+data frame of VIF and residual.
 }
 \description{
-factor select
+\bold{reg.factor_select} select alpha or risk factors using regression method.
+\bold{factor_VIF} caculate factor's VIF.
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000905')
-factorIDs <- c("F000006","F000007","F000008","F000012","F000013","F000014",
-"F000015","F000016","F000017","F000018")
+factorIDs <- c("F000006","F000008","F000012","F000015",
+"F000016")
 tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
@@ -29,16 +50,15 @@ factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.G_MLL_Q",
                   factorPar=list(),
                   factorDir=1),
-   buildFactorList(factorFun="gf.GG_NP_Q",
-                   factorPar=list(filt = 0),
-                   factorDir=1),
-   buildFactorList(factorFun="gf.GG_OR_Q",
-                   factorPar=list(filt = 0),
-                   factorDir=1),                
   factorStd="norm",factorNA = "median")
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
-TSFR <- getTSR(TSF)
-re <- reg.factor.select(TSFR,sectorAttr=NULL)
-}
+----------------------VIF----------------------
+VIF <- factor_VIF(TSF)
 
+TSFR <- getTSR(TSF)
+re <- reg.factor_select(TSFR)
+re <- reg.factor_select(TSFR,sectorAttr=NULL)
+nstock <- length(factorLists)
+re <- reg.factor_select(TSFR,forder=sample(1:nstock,nstock))
+}

@@ -12,12 +12,11 @@ a \bold{modelPar} object with default parametres
 \description{
 get a \bold{modelPar} object with default parametres
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other modelPar setting functions: \code{\link{modelPar.factor}},
   \code{\link{modelPar.time}},
   \code{\link{modelPar.title}}, \code{\link{modelPar.univ}}
 }
-
+\author{
+Ruifei.Yin
+}

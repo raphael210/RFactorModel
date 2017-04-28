@@ -32,13 +32,12 @@ TS2 <- getTS(RebDates,'ES09440000')  # financial servive sector
 TS3 <- getTS(RebDates,'setdiff(EI000300,ES09440000)')  # CSI300 ex. financial servive sector
 TS4 <- getTS(RebDates,stocks=c("EQ000002","EQ000023","EQ600000"))
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{getComps}}
 
 Other frame building functions: \code{\link{getRebDates}},
   \code{\link{getTSF}}, \code{\link{getTSR}}
 }
-
+\author{
+Ruifei.Yin
+}

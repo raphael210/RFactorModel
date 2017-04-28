@@ -12,13 +12,12 @@ a \bold{backtestPar} object with default parametres
 \description{
 set the backtesting with default parametres
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other backtestPar setting functions: \code{\link{backtestPar.IC}},
   \code{\link{backtestPar.Ngroup}},
   \code{\link{backtestPar.fee}},
   \code{\link{backtestPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}

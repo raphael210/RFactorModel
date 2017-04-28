@@ -14,4 +14,3 @@ a \bold{TSR} including the decayed period rtns
 \description{
 getTSR_decay
 }
-

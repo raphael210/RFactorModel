@@ -36,11 +36,10 @@ rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
 re <- getrtn.bmk(rtn,"EI000300")
 re2 <- getrtn.bmk(rtn,"EI000300",date_start_pad=as.Date("2010-03-01"))
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 Other LSH-frame building functions: \code{\link{addrtn.hedge}},
   \code{\link{getrtn.LBH}}, \code{\link{getrtn.LSH}}
 }
-
+\author{
+Ruifei.Yin
+}

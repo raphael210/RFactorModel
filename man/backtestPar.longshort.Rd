@@ -45,9 +45,6 @@ a \bold{backtestPar} object
 \description{
 set the long-short related parametres of the backtesting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{getPort}}, \code{\link{addwgt2port}}, \code{\link{port.substitute}}, \code{\link{port.backtest}}, \code{\link{getrtn.LSH}}, \code{\link{getrtn.LBH}}, \code{\link{tables.longshort}}
 
@@ -56,4 +53,6 @@ Other backtestPar setting functions: \code{\link{backtestPar.IC}},
   \code{\link{backtestPar.default}},
   \code{\link{backtestPar.fee}}
 }
-
+\author{
+Ruifei.Yin
+}

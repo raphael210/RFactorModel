@@ -27,9 +27,6 @@ a \bold{plotPar} object
 \description{
 set the Ngroup related parametres of the ploting
 }
-\author{
-Ruifei.Yin
-}
 \seealso{
 \code{\link{chart.Ngroup.overall}},\code{\link{chart.Ngroup.seri}}
 
@@ -39,4 +36,6 @@ Other plotPar setting functions: \code{\link{plotPar.IC}},
   \code{\link{plotPar.default}},
   \code{\link{plotPar.longshort}}
 }
-
+\author{
+Ruifei.Yin
+}
