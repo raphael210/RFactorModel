@@ -315,6 +315,7 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   cols <- colnames(TSFR)
   fname <- guess_factorNames(TSFR)
+  TSF <- TSFR[,c('date','stockID',fname)]
   
   #sector only
   result <- data.frame()
