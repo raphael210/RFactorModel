@@ -4,7 +4,11 @@
 
 <head>
 
+<<<<<<< HEAD
 <meta charset="utf-8" />
+=======
+<meta charset="utf-8">
+>>>>>>> upstream/master
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
@@ -12,7 +16,11 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
+<<<<<<< HEAD
 <meta name="date" content="2017-04-12" />
+=======
+<meta name="date" content="2017-02-08" />
+>>>>>>> upstream/master
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +78,11 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
+<<<<<<< HEAD
 <h4 class="date"><em>2017-04-12</em></h4>
+=======
+<h4 class="date"><em>2017-02-08</em></h4>
+>>>>>>> upstream/master
 
 
 
@@ -198,8 +210,13 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </tr>
 <tr class="even">
 <td align="left">F000012</td>
+<<<<<<< HEAD
 <td align="left">G_SCF_Q</td>
 <td align="left">gf.G_SCF_Q</td>
+=======
+<td align="left">GG_OR_Q</td>
+<td align="left">gf.GG_OR_Q</td>
+>>>>>>> upstream/master
 <td align="left"></td>
 <td align="right">1</td>
 <td align="left"></td>
@@ -207,26 +224,45 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </tr>
 <tr class="odd">
 <td align="left">F000013</td>
+<<<<<<< HEAD
 <td align="left">liquidity_</td>
 <td align="left">gf.liquidity</td>
 <td align="left"></td>
 <td align="right">-1</td>
+=======
+<td align="left">G_SCF_Q</td>
+<td align="left">gf.G_SCF_Q</td>
+<td align="left"></td>
+<td align="right">1</td>
+>>>>>>> upstream/master
 <td align="left"></td>
 <td align="left"></td>
 </tr>
 <tr class="even">
 <td align="left">F000014</td>
+<<<<<<< HEAD
 <td align="left">volatility_</td>
 <td align="left">gf.volatility</td>
 <td align="left"></td>
 <td align="right">-1</td>
+=======
+<td align="left">G_MLL_Q</td>
+<td align="left">gf.G_MLL_Q</td>
+<td align="left"></td>
+<td align="right">1</td>
+>>>>>>> upstream/master
 <td align="left"></td>
 <td align="left"></td>
 </tr>
 <tr class="odd">
 <td align="left">F000015</td>
+<<<<<<< HEAD
 <td align="left">disposition_</td>
 <td align="left">gf.disposition</td>
+=======
+<td align="left">liquidity_</td>
+<td align="left">gf.liquidity</td>
+>>>>>>> upstream/master
 <td align="left"></td>
 <td align="right">-1</td>
 <td align="left"></td>
@@ -252,8 +288,40 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </tr>
 <tr class="even">
 <td align="left">F000018</td>
+<<<<<<< HEAD
 <td align="left">ILLIQ</td>
 <td align="left">gf.ILLIQ</td>
+=======
+<td align="left">NP_YOY</td>
+<td align="left">gf.NP_YOY</td>
+<td align="left"></td>
+<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000019</td>
+<td align="left">G_OCF</td>
+<td align="left">gf.G_OCF</td>
+<td align="left"></td>
+<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="even">
+<td align="left">F000020</td>
+<td align="left">G_scissor_Q</td>
+<td align="left">gf.G_scissor_Q</td>
+<td align="left"></td>
+<td align="right">1</td>
+<td align="left"></td>
+<td align="left"></td>
+</tr>
+<tr class="odd">
+<td align="left">F000021</td>
+<td align="left">GG_NP_Q</td>
+<td align="left">gf.GG_NP_Q</td>
+>>>>>>> upstream/master
 <td align="left"></td>
 <td align="right">1</td>
 <td align="left"></td>
@@ -274,8 +342,13 @@ FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recom
 <div id="regression-result-show" class="section level2">
 <h2>regression result show</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># parameter setting</span>
+<<<<<<< HEAD
 begT &lt;-<span class="st"> </span><span class="kw">Sys.Date</span>()-lubridate::<span class="kw">years</span>(<span class="dv">7</span>)
 endT &lt;-<span class="st"> </span><span class="kw">Sys.Date</span>()
+=======
+begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2012-01-31'</span>)
+endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2016-12-31'</span>)
+>>>>>>> upstream/master
 RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
 indexID &lt;-<span class="st"> 'EI000985'</span>
 
@@ -306,6 +379,7 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 </div>
 <div id="portfolio-optimization" class="section level2">
 <h2>portfolio optimization</h2>
+<<<<<<< HEAD
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set alpha factor</span>
 alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
 
@@ -313,6 +387,20 @@ alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">
 fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,alphaf,<span class="dt">rollavg =</span> F,<span class="dt">reg_results =</span> reg_results)
 <span class="co"># get factor covariance</span>
 fCov &lt;-<span class="st"> </span><span class="kw">calfCov</span>(RebDates,alphaf,<span class="dt">rollavg=</span>F,<span class="dt">reg_results =</span> reg_results)
+=======
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set factor's exposure</span>
+fNames &lt;-<span class="st"> </span><span class="kw">sapply</span>(FactorLists, <span class="st">'[['</span>,<span class="st">'factorName'</span>)
+fexp &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">fname=</span>fNames,
+                   <span class="dt">low=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>),
+                   <span class="dt">up=</span><span class="kw">c</span>(     <span class="dv">1</span>, <span class="fl">0.01</span>,  <span class="dv">100</span>,  <span class="dv">100</span>,  <span class="dv">2</span>,    <span class="dv">100</span>))
+<span class="co"># set alpha factor</span>
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;beta_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
+
+<span class="co"># get factor return</span>
+fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,alphaf,<span class="dt">rollavg =</span> T,<span class="dt">reg_results =</span> reg_results)
+<span class="co"># get factor covariance</span>
+fCov &lt;-<span class="st"> </span><span class="kw">calfCov</span>(RebDates,alphaf,<span class="dt">rollavg=</span>T,<span class="dt">reg_results =</span> reg_results)
+>>>>>>> upstream/master
 
 <span class="co"># Date Alignment</span>
 tmp.date1 &lt;-<span class="st"> </span><span class="kw">max</span>(<span class="kw">min</span>(fRtn$date),<span class="kw">min</span>(fCov$date))
@@ -322,6 +410,7 @@ fCov &lt;-<span class="st"> </span><span class="kw">subset</span>(fCov,date&gt;=
 TSF &lt;-<span class="st"> </span><span class="kw">subset</span>(TSF,date&gt;=tmp.date1,date&lt;=tmp.date2)
 
 ## portfolio demo
+<<<<<<< HEAD
 <span class="co"># set factor's exposure</span>
 fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span class="dt">PB_mrq_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
                         <span class="dt">volatility_ =</span> <span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
@@ -343,6 +432,14 @@ boxConstr &lt;-<span class="st"> </span><span class="kw">buildBoxConstr</span>(<
 
 <span class="co"># with benchmark,risk return balance</span>
 <span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'balance'</span>,<span class="dt">bmk =</span> <span class="st">'EI000905'</span>,<span class="dt">factorExp =</span> fexp,<span class="dt">boxConstr =</span> boxConstr))
+=======
+<span class="co"># industry neutral,maximize return</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'Ind'</span>))
+<span class="co"># industry and style neutral,maximize return</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp,<span class="dt">addEvent =</span> F))
+<span class="co"># industry and style neutral,risk return balance</span>
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return-risk'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp))
+>>>>>>> upstream/master
 
 
 <span class="co"># port backtest and return summary</span>

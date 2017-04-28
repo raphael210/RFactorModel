@@ -23,8 +23,13 @@ kable(ftbale)
 
 ## ----reg_result----------------------------------------------------------
 #  # parameter setting
+<<<<<<< HEAD
 #  begT <- Sys.Date()-lubridate::years(7)
 #  endT <- Sys.Date()
+=======
+#  begT <- as.Date('2012-01-31')
+#  endT <- as.Date('2016-12-31')
+>>>>>>> upstream/master
 #  RebDates <- getRebDates(begT,endT)
 #  indexID <- 'EI000985'
 #  
@@ -54,6 +59,7 @@ kable(ftbale)
 #  table.reg.fRtn(reg_results)
 
 ## ----portOpt-------------------------------------------------------------
+<<<<<<< HEAD
 #  # set alpha factor
 #  alphaf <- c("disposition_","PB_mrq_","ln_mkt_cap_","NP_YOY" )
 #  
@@ -61,6 +67,20 @@ kable(ftbale)
 #  fRtn <- getfRtn(RebDates,alphaf,rollavg = F,reg_results = reg_results)
 #  # get factor covariance
 #  fCov <- calfCov(RebDates,alphaf,rollavg=F,reg_results = reg_results)
+=======
+#  # set factor's exposure
+#  fNames <- sapply(FactorLists, '[[','factorName')
+#  fexp <- data.frame(fname=fNames,
+#                     low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
+#                     up=c(     1, 0.01,  100,  100,  2,    100))
+#  # set alpha factor
+#  alphaf <- c("disposition_","beta_","ln_mkt_cap_","NP_YOY" )
+#  
+#  # get factor return
+#  fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results)
+#  # get factor covariance
+#  fCov <- getfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
+>>>>>>> upstream/master
 #  
 #  # Date Alignment
 #  tmp.date1 <- max(min(fRtn$date),min(fCov$date))
@@ -70,6 +90,7 @@ kable(ftbale)
 #  TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
 #  
 #  ## portfolio demo
+<<<<<<< HEAD
 #  # set factor's exposure
 #  fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
 #                          volatility_ = c(-0.01, 0.01),
@@ -91,6 +112,14 @@ kable(ftbale)
 #  
 #  # with benchmark,risk return balance
 #  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000905',factorExp = fexp,boxConstr = boxConstr))
+=======
+#  # industry neutral,maximize return
+#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
+#  # industry and style neutral,maximize return
+#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
+#  # industry and style neutral,risk return balance
+#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
+>>>>>>> upstream/master
 #  
 #  
 #  # port backtest and return summary

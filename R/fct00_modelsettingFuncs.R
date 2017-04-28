@@ -180,20 +180,18 @@ setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
 #'                            factorNA = "na",
 #'                            factorOutlier = 3 )
 modelPar.factor <- function(modelPar = modelPar.default() , 
-                            factorFun = "gf.demo" ,
+                            factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1    ,
-                            factorStd  = c("none","norm","sectorNe") ,
+                            factorStd  = "none" ,
                             sectorAttr = defaultSectorAttr(),
                             factorOutlier = 3 ,
-                            factorNA = c("na","mean","median","min","max","sectmean"),
+                            factorNA = "na",
                             factorName = default.factorName(factorFun,factorPar,factorDir), 
                             factorID = "" ,
                             factorType = ""   ,
                             factorDesc = ""   ,
                             FactorList ){
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
   if(missing(FactorList)){        
     FactorList <- buildFactorList(factorFun  = factorFun ,
                                   factorPar   = factorPar  ,  
@@ -282,8 +280,8 @@ setmodelPar.factor <- function(modelPar ,
 #' mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
 setmodelPar.factor_combi <- function(modelPar,
                                      factorLists, wgts, 
-                                     factorStd_mult=c("none","norm","sectorNe"),
-                                     factorNA_mult=c("na","mean","median","min","max","sectmean"),
+                                     factorStd_mult="none",
+                                     factorNA_mult="na",
                                      sectorAttr_mult=defaultSectorAttr(),
                                      factorDir,
                                      factorStd,
@@ -344,19 +342,17 @@ setmodelPar.factor_combi <- function(modelPar,
 #' # -- set modelPar.factor by a factorlist
 #' FactorList <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20))
 #' modelPar <- modelPar.factor(modelPar,FactorList=FactorList)
-buildFactorList <- function(factorFun = "gf.demo" ,
+buildFactorList <- function(factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1 ,
-                            factorStd  = c("none","norm","sectorNe") ,
+                            factorStd  = "none" ,
                             sectorAttr = defaultSectorAttr(),
                             factorOutlier = 3 ,
-                            factorNA = c("na","mean","median","min","max","sectmean"),
+                            factorNA = "na",
                             factorName = default.factorName(factorFun,factorPar,factorDir), 
                             factorID ="" ,
                             factorType = ""  ,
                             factorDesc = "" ){
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
   #   if(factorFun=="gf_lcfs"){
   #     factorID <- if(is.list(factorPar)) unlist(factorPar) else gsub("\"","",factorPar)
   #     tmpdf <- CT_FactorLists(factorID=factorID)
@@ -392,13 +388,11 @@ buildFactorList <- function(factorFun = "gf.demo" ,
 #' # -- build a factorlist through "lcfs"
 #' FactorList2 <- buildFactorList_lcfs(factorID="F000001")
 buildFactorList_lcfs <- function(factorID,
-                                 factorStd  = c("none","norm","sectorNe") ,
+                                 factorStd  = "none",
                                  sectorAttr = defaultSectorAttr(),
                                  factorOutlier = 3 ,
-                                 factorNA = c("na","mean","median","min","max","sectmean")
+                                 factorNA = "na"
 ){
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
   re <- buildFactorList(factorFun = "gf_lcfs",
                         factorPar = list(factorID),
                         factorDir = CT_FactorLists(factorID=factorID)$factorDir,
@@ -416,21 +410,19 @@ buildFactorList_lcfs <- function(factorID,
 
 #' @export
 buildFactorList_combi <- function(factorLists, wgts, 
-                                  factorStd_mult=c("none","norm","sectorNe"),
-                                  factorNA_mult=c("na","mean","median","min","max","sectmean"),
+                                  factorStd_mult="none",
+                                  factorNA_mult="na",
                                   sectorAttr_mult=defaultSectorAttr(),
                                   factorDir  = 1 ,
-                                  factorStd  = c("none","norm","sectorNe") ,
+                                  factorStd  = "none",
                                   sectorAttr = defaultSectorAttr(),
                                   factorOutlier = 3 ,
-                                  factorNA = c("na","mean","median","min","max","sectmean"),
+                                  factorNA = "na",
                                   factorName = "combi_factor",
                                   factorID ="",
                                   factorType ="",
                                   factorDesc =""
                                   ){
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
   re <-list(factorFun="getMultiFactor",
             factorPar=list(factorLists,wgts,factorStd_mult,factorNA_mult,sectorAttr_mult),  
             factorDir   = factorDir  ,
@@ -508,12 +500,10 @@ buildFactorLists <- function(... ,
 #' factorIDs <- c("F000001","F000002","F000005")
 #' FactorLists3 <- buildFactorLists_lcfs(factorIDs)
 buildFactorLists_lcfs <- function(factorIDs,
-                                  factorStd  = c("none","norm","sectorNe") ,                                  
+                                  factorStd  = "none",
                                   sectorAttr = defaultSectorAttr(),
                                   factorOutlier = 3 ,
-                                  factorNA = c("na","mean","median","min","max","sectmean")){
-  factorStd <- match.arg(factorStd)
-  factorNA <- match.arg(factorNA)
+                                  factorNA = "na"){
   re <- lapply(factorIDs, buildFactorList_lcfs, 
                factorStd=factorStd, 
                sectorAttr=sectorAttr,
@@ -569,10 +559,10 @@ default.factorName <- function (factorFun, factorPar, factorDir) {
 #' @return a TSF object
 #' @export
 #' @author Ruifei.Yin
-gf.demo <- function(TS,rho=0){
+gf_demo <- function(TS,rho=0, dure=NULL, date_end_pad){
   check.TS(TS)
   rows <- dim(TS)[1]
-  rtn <- getTSR(TS)$periodrtn
+  rtn <- getTSR(TS, dure = dure, date_end_pad = date_end_pad)$periodrtn
   na.len <- length(rtn[is.na(rtn)])
   na.replace <- rnorm(na.len)
   rtn[is.na(rtn)] <- na.replace
@@ -871,8 +861,8 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 #' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
-#' @param buffer.in
-#' @param buffer.keep
+#' @param force_in
+#' @param buffer_keep
 #' @param init_port
 #' @param holdingEndT the ending date of the holding portfolio.
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
@@ -890,29 +880,29 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   topN = 50,
                                   topQ = NA,
-                                  factorNA = c("na","mean","median","min","max","sectmean"),
+                                  factorNA ="median",
                                   pick.sectorNe=FALSE, 
                                   sectorAttr=defaultSectorAttr(),
-                                  buffer.in=0, 
-                                  buffer.keep=0,
+                                  force_in=0, 
+                                  buffer_keep=0,
+                                  buffer_rate=0,
                                   init_port=NULL,
                                   holdingEndT = Sys.Date(),
-                                  wgtType = c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"), 
+                                  wgtType = "eq", 
                                   wgt.sectorNe = FALSE,
                                   wgt.max = NA,
                                   bmk="EI000300",
                                   hedge.rebFreq="month",
                                   hedge.posi=1,
                                   hitFreq="month"){ 
-  factorNA <- match.arg(factorNA)
-  wgtType <- match.arg(wgtType)
   backtestPar$longshort <-list(topN         = topN,
                                topQ         = topQ,
                                factorNA     = factorNA,
                                pick.sectorNe= pick.sectorNe,
                                sectorAttr   = sectorAttr,
-                               buffer.in    = buffer.in,
-                               buffer.keep  = buffer.keep,
+                               force_in    = force_in,
+                               buffer_keep  = buffer_keep,
+                               buffer_rate  = buffer_rate,
                                init_port    = init_port,
                                holdingEndT  = holdingEndT,
                                wgtType      = wgtType,
@@ -932,8 +922,9 @@ setbacktestPar.longshort <- function(backtestPar,
                                      factorNA,
                                      pick.sectorNe,
                                      sectorAttr,
-                                     buffer.in,
-                                     buffer.keep,
+                                     force_in,
+                                     buffer_keep,
+                                     buffer_rate,
                                      init_port,
                                      holdingEndT,
                                      wgtType,
@@ -954,8 +945,9 @@ setbacktestPar.longshort <- function(backtestPar,
   if(!missing(factorNA)) backtestPar$longshort$factorNA <- factorNA
   if(!missing(pick.sectorNe)) backtestPar$longshort$pick.sectorNe <- pick.sectorNe  
   if(!missing(sectorAttr)) backtestPar$longshort$sectorAttr <- sectorAttr
-  if(!missing(buffer.in)) backtestPar$longshort$buffer.in <- buffer.in
-  if(!missing(buffer.keep)) backtestPar$longshort$buffer.keep <- buffer.keep
+  if(!missing(force_in)) backtestPar$longshort$force_in <- force_in
+  if(!missing(buffer_keep)) backtestPar$longshort$buffer_keep <- buffer_keep
+  if(!missing(buffer_rate)) backtestPar$longshort$buffer_rate <- buffer_rate
   if(!missing(init_port)) backtestPar$longshort$init_port <- init_port
   if(!missing(holdingEndT)) backtestPar$longshort$holdingEndT <- holdingEndT
   if(!missing(wgtType)) backtestPar$longshort$wgtType <- wgtType

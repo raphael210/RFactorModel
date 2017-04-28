@@ -3,6 +3,7 @@
 \name{getTSF}
 \alias{getTSF}
 \alias{getRawFactor}
+\alias{gf_lcfs}
 \title{getTSF}
 \usage{
 getTSF(TS, factorFun, factorPar = list(), factorDir = 1,
@@ -10,6 +11,8 @@ getTSF(TS, factorFun, factorPar = list(), factorDir = 1,
   sectorAttr = defaultSectorAttr(), FactorList, splitbin = 100000L)
 
 getRawFactor(TS, factorFun, factorPar)
+
+gf_lcfs(TS, factorID)
 }
 \arguments{
 \item{TS}{a \bold{TS} or \bold{TSR} objectobject(See detail in \code{\link{getTS}} and  \code{\link{getTSR}})}
@@ -60,7 +63,7 @@ get the \bold{TSF} ('time-stock-factor') or \bold{TSFR}('time-stock-factor-rtn')
 # - get a TSF object
 RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 TS <- getTS(RebDates,'EI000300')
-factorFun <- "gf.demo"
+factorFun <- "gf_demo"
 factorPar <- list(mean=0,sd=1)
 TSF <- getTSF(TS,factorFun,factorPar)
 # - get a TSFR object
@@ -69,12 +72,12 @@ TSFR <- getTSF(TSR)
 
 # -- you can also get the TSF through the modelPar object directively --
 modelPar <- modelPar.default()
-modelPar <- modelPar.factor(modelPar,factorFun="gf.demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
+modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
 TSF <- Model.TSF(modelPar)
 
 # -- factorPar as character string
-TSF2 <- getTSF(TS,"gf.demo","0,1")
-TSF2 <- getTSF(TS,"gf.demo","mean=0,sd=1")
+TSF2 <- getTSF(TS,"gf_demo","0,1")
+TSF2 <- getTSF(TS,"gf_demo","mean=0,sd=1")
 TSF2 <- getTSF(TS,"gf.foo","2,3")
 TSF2 <- getTSF(TS,"gf.bar","20,\\"IF00\\"")
 # -- get 'raw' factorscore

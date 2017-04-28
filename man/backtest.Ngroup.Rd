@@ -13,9 +13,9 @@
 \alias{chart.Ngroup.seri_line}
 \alias{chart.Ngroup.spread}
 \alias{chart.Ngroup.turnover}
+\alias{MF.chart.Ngroup.spread}
 \alias{MC.table.Ngroup.overall}
 \alias{MC.chart.Ngroup.overall}
-\alias{MC.chart.Ngroup.spread2}
 \title{backtest.Ngroup}
 \usage{
 seri.Ngroup.rtn(TSFR, N = 5, stat = c("mean", "median"), sectorNe = FALSE,
@@ -55,6 +55,10 @@ chart.Ngroup.spread(TSFR, N = 5, stat = c("mean", "median"),
 chart.Ngroup.turnover(TSFR, N = 5, turnoverType = c("num", "wgt"),
   group = 1, sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
 
+MF.chart.Ngroup.spread(mTSFR, N = 5, Nbin = "day", stat = c("mean",
+  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
+  facet_by = c("none", "date", "fname"))
+
 MC.table.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
   turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
   sectorAttr = defaultSectorAttr(), backtestPar)
@@ -62,10 +66,6 @@ MC.table.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
 MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
   sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar,
   bysector = FALSE)
-
-MC.chart.Ngroup.spread2(TSFR, N = 5, Nbin = "day", stat = c("mean",
-  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
-  facet_by = c("none", "date", "fname"))
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
@@ -86,13 +86,13 @@ MC.chart.Ngroup.spread2(TSFR, N = 5, Nbin = "day", stat = c("mean",
 
 \item{group}{a integer, indicating the group whose turnover be plotted}
 
+\item{mTSFR}{a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.}
+
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
 
 \item{turnoverType}{a character string,indicating the method to calculate the turnover,could be "num" or "wgt".}
-
-\item{TSFR}{a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.}
 }
 \value{
 seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
@@ -137,6 +137,8 @@ chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.spread(TSFR,5)
 chart.Ngroup.turnover(TSFR,5)
+mTSFR <- getMultiFactor(TSR)
+MF.chart.Ngroup.spread(mTSFR)
 mp = modelPar.default()
 factorIDs <- c("F000001","F000002","F000005")
 FactorLists <- buildFactorLists_lcfs(factorIDs)
@@ -145,8 +147,6 @@ TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.table.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall(TSFRs)
-TSFR <- getMultiFactor(TSR)
-MC.chart.Ngroup.spread2(TSFR)
 }
 \author{
 Ruifei.Yin

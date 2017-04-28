@@ -7,10 +7,10 @@
 \alias{table.IC}
 \alias{chart.IC}
 \alias{chart.IC.decay}
+\alias{MF.chart.IC}
 \alias{MC.chart.IC.corr}
 \alias{MC.table.IC}
 \alias{MC.chart.IC}
-\alias{MC.chart.IC2}
 \alias{MC.chart.IC.decay}
 \title{backtest.IC}
 \usage{
@@ -28,15 +28,15 @@ chart.IC.decay(TSF, stat = c("pearson", "spearman"), backtestPar,
   prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
   months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
 
+MF.chart.IC(mTSFR, Nbin = "day", stat = c("pearson", "spearman"),
+  facet_by = c("date", "fname"))
+
 MC.chart.IC.corr(TSFRs, stat = c("pearson", "spearman"), plotPar)
 
 MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
 
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
   ncol = 3, plotPar)
-
-MC.chart.IC2(TSFR, Nbin = "day", stat = c("pearson", "spearman"),
-  facet_by = c("date", "fname"))
 
 MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 }
@@ -53,11 +53,11 @@ MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 
 \item{plotPar}{Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar}
 
+\item{mTSFR}{a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.}
+
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
-
-\item{TSFR}{a multi factors' \bold{TSFR} object. See \code{\link{getMultiFactor}}.}
 }
 \value{
 seri.IC return a xts object, which containing the IC seri
@@ -89,6 +89,8 @@ IC.table <- table.IC(TSFR)
 IC.chart <- chart.IC(TSFR,"3 month")
 re <- chart.IC.decay(TSF)
 attr(re,"table") # the result table
+mTSFR <- getMultiFactor(TSR,FactorLists)
+MF.chart.IC(mTSFR)
 mp = modelPar.default()
 factorIDs <- c("F000001","F000002","F000005")
 FactorLists <- buildFactorLists_lcfs(factorIDs)
@@ -98,8 +100,6 @@ TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.chart.IC.corr(TSFRs)
 MC.table.IC(TSFRs)
 MC.chart.IC(TSFRs)
-TSFR <- getMultiFactor(TSR,FactorLists)
-MC.chart.IC2(TSFR)
 MC.chart.IC.decay(TSFRs)
 }
 \author{

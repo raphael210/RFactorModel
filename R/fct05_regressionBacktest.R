@@ -1343,14 +1343,14 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
         beq.matlab <- 1
         lb.matlab <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
         ub.matlab <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
-        
-        R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
-                              Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
-        R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
-        R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
-        res.tmp <- R.matlab::getVariable(matlab, "res")
-        res.matlab <- res.tmp$res
-        
+        system.time({
+          R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
+                                Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
+          R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
+          R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
+          res.tmp <- R.matlab::getVariable(matlab, "res")
+          res.matlab <- res.tmp$res
+        })
         tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
       }
       

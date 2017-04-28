@@ -8,10 +8,9 @@
 \alias{buildFactorList_lcfs}
 \title{modelPar.factor}
 \usage{
-modelPar.factor(modelPar = modelPar.default(), factorFun = "gf.demo",
-  factorPar = list(), factorDir = 1, factorStd = c("none", "norm",
-  "sectorNe"), sectorAttr = defaultSectorAttr(), factorOutlier = 3,
-  factorNA = c("na", "mean", "median", "min", "max", "sectmean"),
+modelPar.factor(modelPar = modelPar.default(), factorFun = "gf_demo",
+  factorPar = list(), factorDir = 1, factorStd = "none",
+  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na",
   factorName = default.factorName(factorFun, factorPar, factorDir),
   factorID = "", factorType = "", factorDesc = "", FactorList)
 
@@ -19,23 +18,18 @@ setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorStd,
   sectorAttr, factorOutlier, factorNA, factorName, factorID, factorType,
   factorDesc, FactorList)
 
-setmodelPar.factor_combi(modelPar, factorLists, wgts,
-  factorStd_mult = c("none", "norm", "sectorNe"), factorNA_mult = c("na",
-  "mean", "median", "min", "max", "sectmean"),
-  sectorAttr_mult = defaultSectorAttr(), factorDir, factorStd, sectorAttr,
-  factorOutlier, factorNA, factorName = "multifactor", factorID, factorType,
-  factorDesc)
+setmodelPar.factor_combi(modelPar, factorLists, wgts, factorStd_mult = "none",
+  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr(), factorDir,
+  factorStd, sectorAttr, factorOutlier, factorNA, factorName = "multifactor",
+  factorID, factorType, factorDesc)
 
-buildFactorList(factorFun = "gf.demo", factorPar = list(), factorDir = 1,
-  factorStd = c("none", "norm", "sectorNe"),
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = c("na",
-  "mean", "median", "min", "max", "sectmean"),
-  factorName = default.factorName(factorFun, factorPar, factorDir),
-  factorID = "", factorType = "", factorDesc = "")
+buildFactorList(factorFun = "gf_demo", factorPar = list(), factorDir = 1,
+  factorStd = "none", sectorAttr = defaultSectorAttr(), factorOutlier = 3,
+  factorNA = "na", factorName = default.factorName(factorFun, factorPar,
+  factorDir), factorID = "", factorType = "", factorDesc = "")
 
-buildFactorList_lcfs(factorID, factorStd = c("none", "norm", "sectorNe"),
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = c("na",
-  "mean", "median", "min", "max", "sectmean"))
+buildFactorList_lcfs(factorID, factorStd = "none",
+  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na")
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}

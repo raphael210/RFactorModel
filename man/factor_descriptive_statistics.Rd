@@ -2,31 +2,41 @@
 % Please edit documentation in R/fct03_backtestingFuncs.R
 \name{factor_descriptive_statistics}
 \alias{factor_descriptive_statistics}
-\alias{chart.TSF_hist}
-\alias{chart.TSF_density}
-\alias{chart.TSF_box}
-\alias{table.TSF_descr}
-\alias{MC.chart.TSF_hist}
-\alias{MC.chart.TSF_density}
-\alias{MC.chart.TSF_box}
-\alias{MC.table.TSF_descr}
+\alias{chart.Fct_hist}
+\alias{chart.Fct_density}
+\alias{chart.Fct_box}
+\alias{table.Fct_descr}
+\alias{MF.chart.Fct_hist}
+\alias{MF.chart.Fct_density}
+\alias{MF.chart.Fct_box}
+\alias{MF.table.Fct_descr}
+\alias{factor_descriptive_statistics}
+\alias{MF.chart.Fct_corr}
+\alias{MF.table.Fct_corr}
 \title{Factor descriptive statistics}
 \usage{
-chart.TSF_hist(TSF, Nbin = "day")
+chart.Fct_hist(TSF, bins = NULL, ncol = NULL)
 
-chart.TSF_density(TSF, Nbin = "day")
+chart.Fct_density(TSF)
 
-chart.TSF_box(TSF, Nbin = "day")
+chart.Fct_box(TSF)
 
-table.TSF_descr(TSF, Nbin = "day")
+table.Fct_descr(TSF)
 
-MC.chart.TSF_hist(TSF)
+MF.chart.Fct_hist(mTSF)
 
-MC.chart.TSF_density(TSF, Nbin = "day")
+MF.chart.Fct_density(mTSF, ncol = NULL)
 
-MC.chart.TSF_box(TSF, Nbin = "day")
+MF.chart.Fct_box(mTSF, ncol = NULL)
 
-MC.table.TSF_descr(TSF)
+MF.table.Fct_descr(mTSF)
+
+MF.chart.Fct_corr(mTSF, Nbin)
+
+MF.table.Fct_corr(mTSF, Nbin)
+}
+\arguments{
+\item{Nbin}{the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.}
 }
 \description{
 draw factor's histogram and boxplot,and summarize factor's statistics value.
@@ -34,16 +44,26 @@ draw factor's histogram and boxplot,and summarize factor's statistics value.
 \examples{
 mp <- modelPar.default()
 TSF <- Model.TSF(mp)
-chart.TSF_hist(TSF) #plot each period
-chart.TSF_hist(TSF,Nbin='year') #plot each year
-chart.TSF_box(TSF)
-chart.TSF_density(TSF)
-re <- table.TSF_descr(TSF)
-####################################~~ multiple factor ~~##################
+chart.Fct_hist(TSF)
+chart.Fct_box(TSF)
+chart.Fct_density(TSF)
+re <- table.Fct_descr(TSF)
+#~~ multiple factor ~~
 FactorLists <- buildFactorLists_lcfs(c("F000006","F000002","F000005"))
-TSF <- getMultiFactor(TSF[,c('date','stockID')],FactorLists)
-MC.chart.TSF_hist(TSF)
-MC.chart.TSF_box(TSF)
-MC.chart.TSF_density(TSF)
-re <- MC.table.TSF_descr(TSF)
+TS <- Model.TS(mp)
+mTSF <- getMultiFactor(TS,FactorLists)
+MF.chart.Fct_hist(mTSF)
+MF.chart.Fct_box(mTSF)
+MF.chart.Fct_density(mTSF)
+re2 <- MF.table.Fct_descr(mTSF)
+# ---  raw_factor_correlation
+RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
+TS <- getTS(RebDates,indexID = 'EI000985')
+factorIDs <- c("F000006","F000008","F000012")
+FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
+mTSF <- getMultiFactor(TS,FactorLists = FactorLists)
+MF.chart.Fct_corr(mTSF)
+MF.chart.Fct_corr(mTSF,Nbin='year')
+MF.table.Fct_corr(mTSF)
+MF.table.Fct_corr(mTSF,Nbin='year')
 }

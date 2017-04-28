@@ -41,7 +41,7 @@ TSR <- getTSR(TS) # rebalance properly joined
 require(lubridate)
 TSR2 <- getTSR(TS,weeks(2)); TSR3 <- getTSR(TS,months(2))  # rebalance not properly joined
 ## -- get a TSFR object
-factorFun <- "gf.demo"
+factorFun <- "gf_demo"
 factorPar <- list(0,1)
 TSF <- getTSF(TS,factorFun,factorPar)
 TSFR <-  getTSR(TSF)

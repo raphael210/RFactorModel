@@ -76,7 +76,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){
   if(!is.null(stocks)){
     TS <- expand.grid(date=RebDates,stockID=stocks)
   } else {
-    TS <- getComps(sectorIDs=indexID,endT=RebDates,drop=FALSE) 
+    TS <- getComps(ID=indexID,endT=RebDates,drop=FALSE) 
   }
   if("suspend" %in% rm){
     TS <- rm_suspend(TS, nearby = 1L)
@@ -122,7 +122,7 @@ getTS <- function(RebDates,indexID="EI000300",stocks=NULL,rm=NULL){
 #' require(lubridate)
 #' TSR2 <- getTSR(TS,weeks(2)); TSR3 <- getTSR(TS,months(2))  # rebalance not properly joined
 #' ## -- get a TSFR object
-#' factorFun <- "gf.demo"
+#' factorFun <- "gf_demo"
 #' factorPar <- list(0,1)
 #' TSF <- getTSF(TS,factorFun,factorPar)
 #' TSFR <-  getTSR(TSF)
@@ -235,7 +235,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' # - get a TSF object
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000300')
-#' factorFun <- "gf.demo"
+#' factorFun <- "gf_demo"
 #' factorPar <- list(mean=0,sd=1)
 #' TSF <- getTSF(TS,factorFun,factorPar)
 #' # - get a TSFR object
@@ -244,12 +244,12 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' 
 #' # -- you can also get the TSF through the modelPar object directively --
 #' modelPar <- modelPar.default()
-#' modelPar <- modelPar.factor(modelPar,factorFun="gf.demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
+#' modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
 #' TSF <- Model.TSF(modelPar)
 #' 
 #' # -- factorPar as character string
-#' TSF2 <- getTSF(TS,"gf.demo","0,1")
-#' TSF2 <- getTSF(TS,"gf.demo","mean=0,sd=1")
+#' TSF2 <- getTSF(TS,"gf_demo","0,1")
+#' TSF2 <- getTSF(TS,"gf_demo","mean=0,sd=1")
 #' TSF2 <- getTSF(TS,"gf.foo","2,3")
 #' TSF2 <- getTSF(TS,"gf.bar","20,\"IF00\"")
 getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
@@ -276,14 +276,14 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
   subFun <- function(TS){
     # ---- get the raw factorscore
     TSF <- getRawFactor(TS[,c("date","stockID")],factorFun,factorPar)
-    # ---- adjust the direction
-    TSF$factorscore <- TSF$factorscore*factorDir
     # ---- deal with the outliers
     TSF <- factor.outlier(TSF,factorOutlier)
     # ---- standardize the factorscore
     TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
     # ---- deal with the missing values
     TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
+    # ---- adjust the direction
+    TSF$factorscore <- TSF$factorscore*factorDir
     # ---- re-order
     TSF <- merge.x(TS,TSF,by=c("date","stockID"))
     return(TSF)
@@ -351,17 +351,17 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' get multiple single-factor-scores and the combined-factor-score.#' 
 #' @param TS
 #' @param FactorLists a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).
-#' @param wgts a numeric vector with the same length of FactorLists and sum of 1(if not, the wgts will be rescaled to sum 1). If missing, then only return all the single-factor-scores, without the combined-factor-score.
+#' @param wgts a numeric vector with the same length of FactorLists(if the sum of wgts not equals to 1, the wgts will be rescaled to sum 1). If 'eq', \code{wgts <- rep(1/length(FactorLists),length(FactorLists))} ;If missing, then only return all the single-factor-scores, without the combined-factor-score.
 #' @param factorStd_mult
 #' @param factorNA_mult
-#' @return  \code{getMultiFactor} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
+#' @return  \code{getMultiFactor} return a \bold{mTSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
 #' @note  Function \code{getMultiFactor} not only could be used to get the "raw" combined-factor-score, but also could be used as the \code{"factorFun"} parametre in function \code{getTSF} to get the "clean and standardized" combined-factor-score. See more detail in the examples.
 #' @details Function \code{getMultiFactor} firstly get all the single-factor-scores and then calculating the weighted sum of them to get the combined-factor-score.
 #' @export
 #' @examples
 #' # -- get multi-factor by FactorLists 
 #' FactorLists <- list(
-#'   buildFactorList(factorFun="gf.PE",
+#'   buildFactorList(factorFun="gf.PE_ttm",
 #'                   factorPar=list(),
 #'                   factorDir=-1),
 #'   buildFactorList(factorFun="gf.pct_chg_per",
@@ -395,8 +395,9 @@ getMultiFactor <- function(TS,FactorLists,wgts,
   
   factorStd_mult <- match.arg(factorStd_mult)
   factorNA_mult <- match.arg(factorNA_mult)
-
   # ---- get all the single-factor-scores
+  warnings_std <- c()
+  warnings_na <- c()
   for(i in 1:length(FactorLists)){
     factorFun <- FactorLists[[i]]$factorFun
     factorPar <- FactorLists[[i]]$factorPar
@@ -417,13 +418,13 @@ getMultiFactor <- function(TS,FactorLists,wgts,
     TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
     TSF <- factor.std(TSF,factorStd_mult,sectorAttr=sectorAttr_mult) 
     if(factorStd=="none" && factorStd_mult=="none"){
-      warning(paste("'factorStd' of factor",factorName, "is 'none'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
+      warnings_std <- c(warnings_std,factorName)
     }
     # ---- deal with the missing values 
     TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
     TSF <- factor.na(TSF,factorNA_mult,sectorAttr=sectorAttr_mult)
     if(factorNA=="na" && factorNA_mult=="na" ){
-      warning(paste("'factorNA' of factor",factorName, "is 'na'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
+      warnings_na <- c(warnings_na,factorName)
     }
     # ---- merge
     TSF <- renameCol(TSF,"factorscore",factorName)
@@ -432,48 +433,23 @@ getMultiFactor <- function(TS,FactorLists,wgts,
     } else {
       re <- merge.x(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
     }
+  }
+  if(length(warnings_std)>0){
+    warning(paste("'factorStd' of factor:",paste(warnings_std,collapse = ","), " is 'none'. It might make mistake when computing the combined-factorscore or testing by regression method!"))
+  }
+  if(length(warnings_na)>0){
+    warning(paste("'factorNA' of factor:",paste(warnings_na,collapse = ","), "is 'na'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
   }
   
   # ---- get the combi-factor-score
   factorNames <- sapply(FactorLists,"[[","factorName")
   if(!missing(wgts)){
-    re <- MultiFactor2CombiFactor(TSF_M=re,wgts=wgts,factorNames=factorNames,keep_single_factors="TRUE")
+    re <- MultiFactor2CombiFactor(mTSF=re,wgts=wgts,factorNames=factorNames,keep_single_factors="TRUE")
   }
   
   return(re)
 }
 
-
-#' @rdname getMultiFactor
-#' @export
-getRawMultiFactor <- function(TS,FactorLists){
-  for(i in 1:length(FactorLists)){
-    factorFun <- FactorLists[[i]]$factorFun
-    factorPar <- FactorLists[[i]]$factorPar
-    factorName <- FactorLists[[i]]$factorName
-    # factorDir <- FactorLists[[i]]$factorDir
-    # factorOutlier <- FactorLists[[i]]$factorOutlier
-    # factorNA <- FactorLists[[i]]$factorNA    
-    # factorStd <- FactorLists[[i]]$factorStd 
-    # sectorAttr  <- FactorLists[[i]]$sectorAttr
-    cat(paste("Function getMultiFactor: getting the score of factor",factorName,"....\n"))
-    # ---- get the raw factorscore
-    TSF <- getRawFactor(TS,factorFun,factorPar) 
-    # ---- merge
-    TSF <- renameCol(TSF,"factorscore",factorName)
-    if(i==1L){
-      re <- merge.x(TS,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
-    } else {
-      re <- merge.x(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
-    }
-  }
-  return(re)
-}
-
-
-getRawMultiFactor_lcfs <- function(){
-  
-}
 
 
 #' @rdname getMultiFactor
@@ -488,15 +464,132 @@ getRawMultiFactor_lcfs <- function(){
 getMultiFactorbyTSFs <- function(TSFs,wgts,
                                  factorStd_mult="none",
                                  factorNA_mult="na",
-                                 sectorAttr_mult=defaultSectorAttr()){
-
+                                 sectorAttr_mult=defaultSectorAttr(),
+                                 factorNames = names(TSFs)){
+  
   # ---- get all the single-factor-scores
+  re <- TSFs2MultiFactor(TSFs=TSFs,factorStd_mult=factorStd_mult,factorNA_mult=factorNA_mult,
+                         factorNames = factorNames)
+  
+  # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
+  if(!missing(wgts)){
+    re <- MultiFactor2CombiFactor(mTSF=re,wgts=wgts,factorNames=factorNames,keep_single_factors="TRUE")
+  }
+  
+  return(re)
+}
+
+
+#' @rdname getMultiFactor
+#' @export
+getRawMultiFactor <- function(TS,FactorLists,name_suffix=FALSE){
+  for(i in 1:length(FactorLists)){
+    factorFun <- FactorLists[[i]]$factorFun
+    factorPar <- FactorLists[[i]]$factorPar
+    factorName <- FactorLists[[i]]$factorName
+    # factorDir <- FactorLists[[i]]$factorDir
+    # factorOutlier <- FactorLists[[i]]$factorOutlier
+    # factorNA <- FactorLists[[i]]$factorNA    
+    # factorStd <- FactorLists[[i]]$factorStd 
+    # sectorAttr  <- FactorLists[[i]]$sectorAttr
+    cat(paste("Function getMultiFactor: getting the score of factor",factorName,"....\n"))
+    # ---- get the raw factorscore
+    TSF <- getRawFactor(TS,factorFun,factorPar) 
+    # ---- merge
+    if(name_suffix){
+      factorName <- paste(factorName,"R",sep="_")
+    }
+    TSF <- renameCol(TSF,"factorscore",factorName)
+    if(i==1L){
+      re <- merge.x(TS,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
+    } else {
+      re <- merge.x(re,TSF[,c("date","stockID",factorName)],by=c("date","stockID"))
+    }
+  }
+  return(re)
+}
+
+
+getRawMultiFactor_lcfs <- function(TS,FactorIDs,name_suffix=FALSE){
+  
+}
+getMultiFactor_lcfs <- function(){
+  
+}
+
+#' @rdname getTSF
+#' @export
+gf_lcfs <- function(TS,factorID){
+  re <- getTech(TS,variables=factorID,tableName="QT_FactorScore",datasrc = "local")
+  re <- renameCol(re,factorID,"factorscore")
+  return(re)
+}
+
+#' @rdname getMultiFactor
+#' @param mTSF a dataframe of 'TS & MultiFactors'
+#' @param factorNames
+#' @param keep_single_factors
+#' @export
+MultiFactor2CombiFactor <- function(mTSF,
+                                    wgts,
+                                    factorNames = guess_factorNames(mTSF),
+                                    na_deal=c("ignore","rm"),
+                                    keep_single_factors=TRUE){
+  na_deal <- match.arg(na_deal)
+  # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
+  TSF_mat <- mTSF[,factorNames,drop=FALSE]
+  if(identical(wgts,'eq')){
+    wgts <- rep(1/length(factorNames),length(factorNames))
+  }
+  if(ncol(TSF_mat) != length(wgts)) {
+    stop("The numbers of factors and wgts are not equal!")
+  }
+  if(!isTRUE(all.equal(sum(wgts),1,tolerance=0.001))){
+    warning("The sum of wgts is not 1. The wgts will be rescaled! ")
+    wgts <- wgts/sum(wgts)
+  }  
+  
+  TSF_mat <- as.matrix(TSF_mat)
+  if(na_deal=="ignore"){ # ignore the na value of specific factorscore.
+    is_na <- is.na(TSF_mat)
+    N <- nrow(TSF_mat)
+    M <- ncol(TSF_mat)
+    wgts_mat <- kronecker(matrix(1,N,1),t(wgts))
+    wgts_mat <- wgts_mat*(!is_na)
+    wgts_mat <- wgts_mat/kronecker(matrix(1,1,M),rowSums(wgts_mat))
+    TSF_mat[is_na] <- 0
+    sumScore <- rowSums(TSF_mat*wgts_mat)
+  } else if(na_deal=="rm"){ # return NA when any factorscore is NA.
+    sumScore <- TSF_mat %*% wgts
+  } else {
+    stop("uncorrect value of param 'na_deal'!")
+  }
+  
+  if(keep_single_factors){
+    re <- cbind(mTSF,factorscore=sumScore)
+  } else {
+    re <- cbind(dplyr::select(mTSF,-one_of(factorNames)),factorscore=sumScore)
+  }
+  return(re)
+}
+
+
+
+
+#' @rdname getMultiFactor
+#' @export
+#' @examples 
+#' #-- TSFs2mTSF
+#' mTSF <- TSFs2mTSF(TSFs)
+TSFs2mTSF <- function(TSFs,factorStd_mult="none",factorNA_mult="na",sectorAttr_mult=defaultSectorAttr(),
+                             factorNames = names(TSFs)){
   nrows <- sapply(TSFs,NROW)
   if(!all(nrows[1]==nrows)){
     stop("NROWs of TSFs are not all equal!\n")
     print(nrows)
   }
-  factorNames <- names(TSFs)
+  warnings_std <- c()
+  warnings_na <- c()
   for(i in 1:length(TSFs)){
     factorName <- factorNames[i]
     TSF <- TSFs[[i]]
@@ -506,78 +599,60 @@ getMultiFactorbyTSFs <- function(TSFs,wgts,
       if(!is.null(attr(TSF,"MP"))) {
         factorStd <- attr(TSF,"MP")$factor$factorStd
         if(factorStd=="none" && factorStd_mult=="none" ){
-          warning(paste("'factorStd' of factor",factorName, "is 'none'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
+          warnings_std <- c(warnings_std,factorName) 
         }
         factorNA <- attr(TSF,"MP")$factor$factorNA
         if(factorNA=="na" && factorNA_mult=="na"){
-          warning(paste("'factorNA' of factor",factorName, "is 'na'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
+          warnings_na <- c(warnings_na,factorName) 
         }
       }
     }
     TSF <- renameCol(TSF,"factorscore",factorNames[i])
     if(i==1L){
-      # re <- TSF[, intersect(c("date","stockID","date_end","periodrtn","sector",factorNames[i]),colnames(TSF))]
-      re <- TSF[, c(colnames(TSF)[is_usualcols(colnames(TSF))],factorNames[i])]      
-      
+      kept_cols <- colnames(TSF)[is_usualcols(colnames(TSF))]
+      re <- TSF[, c(kept_cols,factorNames[i])]
     } else {
       re <- merge.x(re,TSF[, c("date","stockID",factorNames[i])], by=c("date","stockID"))
     }
-  }  
-  
-  # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
-  if(!missing(wgts)){
-    re <- MultiFactor2CombiFactor(TSF_M=re,wgts=wgts,factorNames=factorNames,keep_single_factors="TRUE")
+  } 
+  if(length(warnings_std)>0){
+    warning(paste("'factorStd' of factor:",paste(warnings_std,collapse = ","), " is 'none'. It might make mistake when computing the combined-factorscore or testing by regression method!"))
   }
-  
+  if(length(warnings_na)>0){
+    warning(paste("'factorNA' of factor:",paste(warnings_na,collapse = ","), "is 'na'. It might make mistake when computing the combined-factorscore or testing by regression method!")) 
+  }
   return(re)
 }
+
 
 #' @rdname getMultiFactor
-#' @param TSF_M a dataframe of 'TS & MultiFactors'
-#' @param factorNames
-#' @param keep_single_factors
 #' @export
-MultiFactor2CombiFactor <- function(TSF_M,
-                                    wgts,
-                                    factorNames = setdiff(colnames(TSF_M),usualcols()),
-                                    keep_single_factors="TRUE"){
-  # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
-  TSF_mat <- TSF_M[,factorNames,drop=FALSE]
-  if(!missing(wgts)){
-    if(ncol(TSF_mat) != length(wgts)) {
-      stop("The numbers of factors and wgts are not equal!")
-    }
-    if(!isTRUE(all.equal(sum(wgts),1,tolerance=0.001))){
-      warning("The sum of wgts is not 1. The wgts will be rescaled! ")
-      wgts <- wgts/sum(wgts)
-    }  
-    sumScore <- as.matrix(TSF_mat) %*% wgts
-    if(keep_single_factors){
-      re <- cbind(TSF_M,factorscore=sumScore)
-    } else {
-      re <- cbind(dplyr::select(TSF_M,-one_of(factorNames)),factorscore=sumScore)
-    }
+#' @examples 
+#' #-- mTSF2TSFs
+#' TSFs <- mTSF2TSFs(mTSF)
+mTSF2TSFs <- function(mTSF,
+                             factorNames = guess_factorNames(mTSF)){
+  all_cols <- colnames(mTSF)
+  if("factorscore" %in% all_cols){
+    stop("There should not be 'factorscore' in the cols of mTSF! Please try to rename it.")
   }
+  no_fnames <- setdiff(all_cols,factorNames)
+  re <- list()
+  for (i in 1:length(factorNames)){
+    fname <- factorNames[i]
+    re_i <- mTSF[,c(no_fnames,fname)]
+    re_i <- renameCol(re_i,fname,"factorscore")
+    re[[i]] <- re_i
+  }
+  names(re) <- factorNames
   return(re)
 }
-
-
-
-
-MultiFactor2TSFs <- function(TSF_M,
-                             factorNames = setdiff(colnames(TSF_M),usualcols())){
-  
-  
-  
-}
-
-
 
 # --------------------  ~~ intermediately called functions ----------------
 
 # ---- deal with the outliers of factorscore
 factor.outlier <- function (TSF, factorOutlier) {
-  if(typeof(factorOutlier)=='double'){
+  if(typeof(factorOutlier) %in% c('double',"integer")){
     if(factorOutlier>=1){
       TSF <- plyr::ddply(TSF,"date",
                          function(x,outlier){  
@@ -599,15 +674,15 @@ factor.outlier <- function (TSF, factorOutlier) {
     if(factorOutlier=='mad'){
       TSF <- plyr::ddply(TSF,"date",                         
                          function(x){  
-                              outlier_u <- with(x,median(factorscore,na.rm = TRUE)+3*mad(factorscore,na.rm=TRUE))
-                              outlier_l <- with(x,median(factorscore,na.rm = TRUE)-3*mad(factorscore,na.rm=TRUE))
-                              transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                         ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-      })
+                           outlier_u <- with(x,median(factorscore,na.rm = TRUE)+3*mad(factorscore,na.rm=TRUE))
+                           outlier_l <- with(x,median(factorscore,na.rm = TRUE)-3*mad(factorscore,na.rm=TRUE))
+                           transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
+                                                            ifelse(factorscore < outlier_l, outlier_l, factorscore)))
+                         })
     }else if(factorOutlier=='boxplot'){
       TSF <- plyr::ddply(TSF,"date",
                          function(x){ 
-                           tmp <- with(x,boxplot.stats(factorscore)[[1]])
+                           tmp <- with(x,boxplot.stats(factorscore,coef = 1.5)[[1]])
                            outlier_u <- max(tmp)
                            outlier_l <- min(tmp)
                            transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
@@ -616,21 +691,29 @@ factor.outlier <- function (TSF, factorOutlier) {
     }
     
   }
-
-
+  
   return(TSF)
 }
+
 # ---- standardize the factorscore
-factor.std <- function (TSF,factorStd=c("none","norm","sectorNe"),sectorAttr) {
+factor.std <- function (TSF,factorStd=c("none","norm","sectorNe","log_norm","log_sectorNe"),sectorAttr) {
   factorStd <- match.arg(factorStd)
-  if(factorStd == "norm"){ 
-    TSF <- plyr::ddply(TSF,"date",transform,factorscore=as.numeric(scale(factorscore)))     
-  } else if (factorStd == "sectorNe"){
-    TSF <- getSectorID(TSF,sectorAttr=sectorAttr)  
-    TSF <- data.table::data.table(TSF,key=c("date","sector"))
-    TSF <- TSF[,factorscore:=as.numeric(scale(factorscore)), by = c("date","sector")]
+  if(factorStd != "none"){
+    if(factorStd %in% c("sectorNe","log_sectorNe")){
+      TSF <- getSectorID(TSF, sectorAttr = sectorAttr)
+      TSF <- dplyr::group_by(TSF, date, sector)
+    } else{
+      TSF <- dplyr::group_by(TSF, date)
+    }
+    if(factorStd %in% c("log_norm","log_sectorNe")){
+      TSF <- dplyr::mutate(TSF, factorscore=as.numeric(scale(log(factorscore))))
+    } else {
+      TSF <- dplyr::mutate(TSF, factorscore=as.numeric(scale(factorscore)))
+    }
+    
     TSF <- as.data.frame(TSF)
   }
+  
   return(TSF)
 }
 # ---- deal with the missing values of factorscore

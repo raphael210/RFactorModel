@@ -2,34 +2,42 @@
 % Please edit documentation in R/fct01_frameBuildingFuncs.R
 \name{getMultiFactor}
 \alias{getMultiFactor}
-\alias{getRawMultiFactor}
 \alias{getMultiFactorbyTSFs}
+\alias{getRawMultiFactor}
 \alias{MultiFactor2CombiFactor}
+\alias{TSFs2mTSF}
+\alias{mTSF2TSFs}
 \title{get multiFactors}
 \usage{
 getMultiFactor(TS, FactorLists, wgts, factorStd_mult = c("none", "norm",
   "sectorNe"), factorNA_mult = c("na", "mean", "median", "min", "max",
   "sectmean"), sectorAttr_mult = defaultSectorAttr())
 
-getRawMultiFactor(TS, FactorLists)
-
 getMultiFactorbyTSFs(TSFs, wgts, factorStd_mult = "none",
-  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr())
+  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr(),
+  factorNames = names(TSFs))
 
-MultiFactor2CombiFactor(TSF_M, wgts, factorNames = setdiff(colnames(TSF_M),
-  usualcols()), keep_single_factors = "TRUE")
+getRawMultiFactor(TS, FactorLists, name_suffix = FALSE)
+
+MultiFactor2CombiFactor(mTSF, wgts, factorNames = guess_factorNames(mTSF),
+  na_deal = c("ignore", "rm"), keep_single_factors = TRUE)
+
+TSFs2mTSF(TSFs, factorStd_mult = "none", factorNA_mult = "na",
+  sectorAttr_mult = defaultSectorAttr(), factorNames = names(TSFs))
+
+mTSF2TSFs(mTSF, factorNames = guess_factorNames(mTSF))
 }
 \arguments{
 \item{FactorLists}{a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).}
 
-\item{wgts}{a numeric vector with the same length of FactorLists and sum of 1(if not, the wgts will be rescaled to sum 1). If missing, then only return all the single-factor-scores, without the combined-factor-score.}
+\item{wgts}{a numeric vector with the same length of FactorLists(if the sum of wgts not equals to 1, the wgts will be rescaled to sum 1). If 'eq', \code{wgts <- rep(1/length(FactorLists),length(FactorLists))} ;If missing, then only return all the single-factor-scores, without the combined-factor-score.}
 
 \item{TSFs}{a \bold{TSFs} object. see /code{/link{Model.TSFs}}}
 
-\item{TSF_M}{a dataframe of 'TS & MultiFactors'}
+\item{mTSF}{a dataframe of 'TS & MultiFactors'}
 }
 \value{
-\code{getMultiFactor} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
+\code{getMultiFactor} return a \bold{mTSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
 
 \code{getMultiFactorbyTSFs} return a \bold{TSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combi-factor-score, from a \bold{TSFs} list. (If param TSFs is a TSFRs object, then will return a TSFR object.)
 }
@@ -45,7 +53,7 @@ Function \code{getMultiFactor} not only could be used to get the "raw" combined-
 \examples{
 # -- get multi-factor by FactorLists 
 FactorLists <- list(
-  buildFactorList(factorFun="gf.PE",
+  buildFactorList(factorFun="gf.PE_ttm",
                   factorPar=list(),
                   factorDir=-1),
   buildFactorList(factorFun="gf.pct_chg_per",
@@ -76,4 +84,8 @@ TSF.multi4 <- Model.TSF_byTS(modelPar, TS)
 MPs <- getMPs_FactorLists(FactorLists, modelPar.default())
 TSFs <- Model.TSFs(MPs)
 TSF.multi5 <- getMultiFactorbyTSFs(TSFs,wgts)
+#-- TSFs2mTSF
+mTSF <- TSFs2mTSF(TSFs)
+#-- mTSF2TSFs
+TSFs <- mTSF2TSFs(mTSF)
 }
