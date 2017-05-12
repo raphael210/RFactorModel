@@ -11,8 +11,8 @@
 getfRtn(RebDates, fNames, dure = months(1), type = c("mean", "rollmean",
   "forcast"), nwin = lubridate::years(-2), reg_results)
 
-getfCov(RebDates, fNames, dure = months(1), covtype = c("robust", "simple",
-  "roll-simple", "roll-robust"), nwin, reg_results)
+getfCov(RebDates, fNames, dure = months(1), covtype = c("shrink", "simple",
+  "roll-simple", "roll-shrink"), nwin, reg_results)
 
 getResidual(TS, dure, reg_results)
 
@@ -32,7 +32,7 @@ calDelta(TS, dure, datasrc = c("local", "regResult"), reg_results,
 
 \item{reg_results}{see examples in \code{\link{reg.TSFR}}}
 
-\item{covtype}{means type of caculating covariance,\bold{robust} can see example in \code{\link[robust]{covRob}},simple see \code{\link{cov}}.}
+\item{covtype}{means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.}
 }
 \value{
 a data frame of factors' return .

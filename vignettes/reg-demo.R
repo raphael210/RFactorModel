@@ -6,15 +6,42 @@ knitr::opts_chunk$set(
   warning = FALSE
 )
 
-## ----eval=TRUE,echo=FALSE------------------------------------------------
+## ----local_factorLists,eval=TRUE,echo=FALSE------------------------------
 ftbale <- CT_FactorLists()
 ftbale <- dplyr::arrange(ftbale,factorID)
 kable(ftbale)
 
-## ----getlists_buildlocaltables-------------------------------------------
-#  # get recommended factorlists
-#  FactorLists <- reg.factorlists.recommend(indexID = 'EI000985')
+## ----getfactorlist-------------------------------------------------------
+#  # get recommended factorlists last year based on regression
+#  begT <- Sys.Date()-months(6)
+#  endT <- Sys.Date()-1
+#  indexID <- 'EI000985'
+#  re <- reg.factorlists_recommend(indexID,begT,endT)
+#  FactorLists <- re$FactorLists
+#  # recommend result
+#  re$result
+
+## ----showfactorstat------------------------------------------------------
+#  RebDates <- getRebDates(begT,endT)
+#  TS <- getTS(RebDates,indexID)
+#  TSF <- getMultiFactor(TS,FactorLists)
+#  MF.chart.Fct_box(TSF)
+#  MF.chart.Fct_corr(TSF)
+#  MF.chart.Fct_density(TSF)
 #  
+#  #remove strange factors
+#  #FactorLists[[4]] <- NULL
+#  #FactorLists[[1]] <- NULL
+#  #FactorLists[[6]] <- NULL
+#  #FactorLists[[8]] <- NULL
+#  #TSF$F_ROE_1 <- NULL
+#  #TSF$float_cap_ <- NULL
+#  #TSF$disposition_ <- NULL
+#  #TSF$ILLIQ <-NULL
+#  
+#  
+
+## ----getlists_buildlocaltables-------------------------------------------
 #  # build local database's regression tables
 #  system.time(lcdb.build.RegTables(FactorLists=FactorLists))
 #  
@@ -23,21 +50,15 @@ kable(ftbale)
 
 ## ----reg_result----------------------------------------------------------
 #  # parameter setting
-<<<<<<< HEAD
-#  begT <- Sys.Date()-lubridate::years(7)
-#  endT <- Sys.Date()
-=======
-#  begT <- as.Date('2012-01-31')
-#  endT <- as.Date('2016-12-31')
->>>>>>> upstream/master
+#  begT <- trday.nearest(Sys.Date()-lubridate::years(3))
+#  endT <- trday.nearest(Sys.Date()-30)
 #  RebDates <- getRebDates(begT,endT)
-#  indexID <- 'EI000985'
 #  
 #  # get TS,TSF,TSFR
 #  TS <- getTS(RebDates,indexID)
-#  FactorLists <- reg.factorlists.recommend(indexID)
-#  TSF <- getMultiFactor(TS,FactorLists = FactorLists)
-#  TSFR <- getTSR(TSF)
+#  TSF <- getMultiFactor(TS,FactorLists)
+#  TSFR <- getTSR(TSF,date_end_pad = trday.nearest(Sys.Date()-1))
+#  TSFR <- na.omit(TSFR)
 #  
 #  # get regression result
 #  reg_results <- reg.TSFR(TSFR)
@@ -59,28 +80,15 @@ kable(ftbale)
 #  table.reg.fRtn(reg_results)
 
 ## ----portOpt-------------------------------------------------------------
-<<<<<<< HEAD
 #  # set alpha factor
-#  alphaf <- c("disposition_","PB_mrq_","ln_mkt_cap_","NP_YOY" )
+#  alphaf <- c("PB_mrq_","F_ROE_1","NP_YOY")
 #  
 #  # get factor return
-#  fRtn <- getfRtn(RebDates,alphaf,rollavg = F,reg_results = reg_results)
+#  fRtn <- getfRtn(RebDates,alphaf,type = 'mean',reg_results = reg_results)
 #  # get factor covariance
-#  fCov <- calfCov(RebDates,alphaf,rollavg=F,reg_results = reg_results)
-=======
-#  # set factor's exposure
-#  fNames <- sapply(FactorLists, '[[','factorName')
-#  fexp <- data.frame(fname=fNames,
-#                     low=c(-0.01,-0.01,-0.01,-0.01,-0.01,-0.01),
-#                     up=c(     1, 0.01,  100,  100,  2,    100))
-#  # set alpha factor
-#  alphaf <- c("disposition_","beta_","ln_mkt_cap_","NP_YOY" )
+#  fCov <- getfCov(RebDates,alphaf,covtype='simple',reg_results = reg_results)
 #  
-#  # get factor return
-#  fRtn <- getfRtn(RebDates,alphaf,rollavg = T,reg_results = reg_results)
-#  # get factor covariance
-#  fCov <- getfCov(RebDates,alphaf,rollavg=T,reg_results = reg_results)
->>>>>>> upstream/master
+#  
 #  
 #  # Date Alignment
 #  tmp.date1 <- max(min(fRtn$date),min(fCov$date))
@@ -90,7 +98,6 @@ kable(ftbale)
 #  TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
 #  
 #  ## portfolio demo
-<<<<<<< HEAD
 #  # set factor's exposure
 #  fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
 #                          volatility_ = c(-0.01, 0.01),
@@ -112,14 +119,7 @@ kable(ftbale)
 #  
 #  # with benchmark,risk return balance
 #  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000905',factorExp = fexp,boxConstr = boxConstr))
-=======
-#  # industry neutral,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='Ind'))
-#  # industry and style neutral,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return',constr='IndSty',fexp=fexp,addEvent = F))
-#  # industry and style neutral,risk return balance
-#  system.time(port_opt <- OptWgt(TSF,alphaf = alphaf,fRtn,fCov,target = 'return-risk',constr='IndSty',fexp=fexp))
->>>>>>> upstream/master
+#  
 #  
 #  
 #  # port backtest and return summary

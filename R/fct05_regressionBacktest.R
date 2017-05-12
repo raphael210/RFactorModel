@@ -23,11 +23,11 @@
 #' @export
 lcdb.build.RegTables <- function(begT,endT,FactorLists){
   con <- db.local()
-  if(dbExistsTable(con, "Reg_FactorRtn")) dbRemoveTable(con,'Reg_FactorRtn')
-  if(dbExistsTable(con, "Reg_Residual")) dbRemoveTable(con,'Reg_Residual')
-  if(dbExistsTable(con, "Reg_RSquare")) dbRemoveTable(con,'Reg_RSquare')
+  if(RSQLite::dbExistsTable(con, "Reg_FactorRtn")) RSQLite::dbRemoveTable(con,'Reg_FactorRtn')
+  if(RSQLite::dbExistsTable(con, "Reg_Residual")) RSQLite::dbRemoveTable(con,'Reg_Residual')
+  if(RSQLite::dbExistsTable(con, "Reg_RSquare")) RSQLite::dbRemoveTable(con,'Reg_RSquare')
   
-  dbGetQuery(con,"CREATE TABLE Reg_FactorRtn (
+  RSQLite::dbGetQuery(con,"CREATE TABLE Reg_FactorRtn (
               date int  NOT NULL,
               fname TEXT NOT NULL,
               frtn_d1 decimal(10,6) NULL,
@@ -38,32 +38,32 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
               tstat_w2 decimal(10,4) NULL,
               frtn_m1 decimal(10,6) NULL,
               tstat_m1 decimal(10,4) NULL)")
-  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_FactorRtn ON Reg_FactorRtn(date,fname)")
+  RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_FactorRtn ON Reg_FactorRtn(date,fname)")
   
-  dbGetQuery(con,"CREATE TABLE Reg_Residual (
+  RSQLite::dbGetQuery(con,"CREATE TABLE Reg_Residual (
               date int  NOT NULL,
              stockID TEXT NOT NULL,
              res_d1 decimal(10,8) NULL,
              res_w1 decimal(10,8) NULL,
              res_w2 decimal(10,8) NULL,
              res_m1 decimal(10,8) NULL)")
-  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_Residual ON Reg_Residual(date,stockID)")
+  RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_Residual ON Reg_Residual(date,stockID)")
   
-  dbGetQuery(con,"CREATE TABLE Reg_RSquare (
+  RSQLite::dbGetQuery(con,"CREATE TABLE Reg_RSquare (
              date int  NOT NULL,
              rsquare_d1 decimal(10,4) NULL,
              rsquare_w1 decimal(10,4) NULL,
              rsquare_w2 decimal(10,4) NULL,
              rsquare_m1 decimal(10,4) NULL)")
-  dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_RSquare ON Reg_RSquare(date)")
+  RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_RSquare ON Reg_RSquare(date)")
   
   
   if(missing(begT)) begT <- as.Date('2005-01-04')
   if(missing(endT)){
-    endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
+    endT <- RSQLite::dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
     endT <- trday.offset(intdate2r(endT),by = months(-1))
   }
-  dbDisconnect(con)
+  RSQLite::dbDisconnect(con)
   dates <- getRebDates(begT,endT,rebFreq = 'day')
   dates <- split(dates,cut(dates,'month'))
   plyr::l_ply(dates,lcdb.subfun.regtables,FactorLists,.progress = plyr::progress_text(style=3))
@@ -101,10 +101,10 @@ lcdb.subfun.regtables <- function(dates,FactorLists){
   colnames(RSquare) <- c('date',paste("rsquare",names(prd_lists),sep = '_'))
   
   con <- db.local()
-  dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
-  dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
-  dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
-  dbDisconnect(con)
+  RSQLite::dbWriteTable(con,'Reg_FactorRtn',transform(fRtn,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
+  RSQLite::dbWriteTable(con,'Reg_Residual',transform(res,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
+  RSQLite::dbWriteTable(con,'Reg_RSquare',transform(RSquare,date=rdate2int(date)),overwrite=FALSE,append=TRUE,row.names=FALSE)
+  RSQLite::dbDisconnect(con)
 }
 
 
@@ -115,26 +115,26 @@ lcdb.subfun.regtables <- function(dates,FactorLists){
 lcdb.update.RegTables <- function(begT,endT,FactorLists){
   con <- db.local()
   if(missing(begT)){
-    tmp.begT <- dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
+    tmp.begT <- RSQLite::dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
     tmp.begT <- trday.offset(intdate2r(tmp.begT),lubridate::days(1))
   }
   if(missing(endT)){
-    endT <- dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
+    endT <- RSQLite::dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
     endT <- trday.offset(intdate2r(endT),by = months(-1))
   }
   if(begT>endT) return('Done!')
   
-  tmp.dates <- dbGetQuery(con,"select min(date) 'mindate',max(date) 'maxdate' from Reg_RSquare")
+  tmp.dates <- RSQLite::dbGetQuery(con,"select min(date) 'mindate',max(date) 'maxdate' from Reg_RSquare")
   tmp.dates <- transform(tmp.dates,mindate=intdate2r(mindate),maxdate=intdate2r(maxdate))
   if(begT<= tmp.dates$maxdate & endT>= tmp.dates$mindate){
-    dbGetQuery(con, paste("delete from Reg_FactorRtn WHERE date>=",rdate2int(begT),
+    RSQLite::dbGetQuery(con, paste("delete from Reg_FactorRtn WHERE date>=",rdate2int(begT),
                           " and date<=",rdate2int(endT)))
-    dbGetQuery(con, paste("delete from Reg_RSquare WHERE date>=",rdate2int(begT),
+    RSQLite::dbGetQuery(con, paste("delete from Reg_RSquare WHERE date>=",rdate2int(begT),
                           " and date<=",rdate2int(endT)))
-    dbGetQuery(con, paste("delete from Reg_Residual WHERE date>=",rdate2int(begT),
+    RSQLite::dbGetQuery(con, paste("delete from Reg_Residual WHERE date>=",rdate2int(begT),
                           " and date<=",rdate2int(endT)))
   }
-  dbDisconnect(con)
+  RSQLite::dbDisconnect(con)
   
   dates <- getRebDates(begT,endT,rebFreq = 'day')
   dates <- split(dates,cut(dates,'month'))
@@ -409,12 +409,13 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   
   
   rownames(result) <- NULL
-  result <- transform(result,rsquare=round(rsquare,digits = 3),
+  result <- transform(result,fname=as.character(fname),
+                      rsquare=round(rsquare,digits = 3),
                       frtn=round(frtn,digits = 4),
                       fttest=round(fttest,digits = 2),
                       pttest=round(pttest,digits = 3),
+                      tag=as.character(tag),
                       rsqPct=round((rsquare/dplyr::lag(rsquare)-1)*100,digits = 1))
-  tmp <- as.character(result[result$fname!='sector','fname'])
   TSFR <- TSFR[,cols]
   return(list(result=result,TSFR=TSFR))
 }
@@ -576,7 +577,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
     resd <- models %>% broom::augment(mod)
     resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
   }
-  
+  rsq <- as.data.frame(rsq)
   colnames(resd) <- c('date','stockID','fitted','res')
   return(list(rsq=rsq,coef=coef,resd=resd))
 }
@@ -593,44 +594,56 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
 #' @param indexID is index ID.
 #' @export
 #' @examples 
-#' FactorLists <- reg.factorlists.recommend(indexID='EI000300')
-#' FactorLists <- reg.factorlists.recommend(indexID='EI000905')
-#' FactorLists <- reg.factorlists.recommend(indexID='EI000985')
-#' FactorLists <- reg.factorlists.recommend(indexID='ES33370000')
-reg.factorlists.recommend <- function(indexID){
+#' ##################get the recommended factorLists of last 12 months########## 
+#' begT <- Sys.Date()-lubridate::years(1)
+#' endT <- Sys.Date()-1
+#' indexID <- 'EI000905'
+#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT)
+#' ##################get the recommended factorLists of last 4 weeks########## 
+#' begT <- Sys.Date()-months(1)
+#' endT <- Sys.Date()-1
+#' indexID <- 'EI000985'
+#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT,rebFreq = "week")
+reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar=1){
+  RebDates <- getRebDates(begT,endT,rebFreq)
   
-  if(indexID=='EI000300'){
-    factorIDs <- c("F000006","F000014","F000015","F000016","F000017")
-    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-    FactorLists <- buildFactorLists(
-      buildFactorList(factorFun="gf.ln_mkt_cap",
-                      factorPar=list(),
-                      factorDir=-1),
-      factorStd="norm",factorNA = "median")
-    FactorLists <- c(tmp,FactorLists)
-  }else if(indexID=='EI000905'){
-    factorIDs <- c("F000006","F000008","F000013","F000014","F000016","F000017")
-    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-    FactorLists <- buildFactorLists(
-      buildFactorList(factorFun="gf.ln_mkt_cap",
-                      factorPar=list(),
-                      factorDir=-1),
-      factorStd="norm",factorNA = "median")
-    FactorLists <- c(tmp,FactorLists)
-  }else{
-    factorIDs <- c("F000006","F000014","F000015","F000016")
-    tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median",factorOutlier = 0.01)
-    FactorLists <- buildFactorLists(
-      buildFactorList(factorFun="gf.ln_mkt_cap",
-                      factorPar=list(),
-                      factorDir=-1),
-      buildFactorList(factorFun="gf.NP_YOY",
-                      factorPar=list(),
-                      factorDir=1),
-      factorStd="norm",factorNA = "median",factorOutlier = 0.01)
-    FactorLists <- c(tmp,FactorLists)
-  }
-  return(FactorLists)
+  TS <- getTS(RebDates,indexID)
+  factorIDs <- c("F000001","F000003","F000004","F000006","F000007","F000008","F000009","F000010","F000011","F000012","F000013","F000014","F000015","F000016","F000017","F000018")
+  tmp <- buildFactorLists_lcfs(factorIDs,factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+  FactorLists <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                    factorPar=list(),
+                    factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_MLL_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_OCF_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_scissor_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.ROE_ttm",
+                    factorPar=list(),
+                    factorDir=1),
+    factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+  FactorLists <- c(tmp,FactorLists)
+  TSF <- getMultiFactor(TS,FactorLists)
+  TSFR <- getTSR(TSF)
+  TSFR <- na.omit(TSFR)
+  
+  #factor select 
+  re <- reg.factor_select(TSFR,sectorAttr = NULL)
+  result <- re$result
+  result <- result[c(TRUE,result$rsqPct[-1]>rsqBar),]
+  TSFR <- re$TSFR
+  TSFR <- TSFR[,c("date","date_end","stockID",result$fname,"periodrtn")]
+  FactorLists <- FactorLists[sapply(FactorLists,function(x) x$factorName %in% result$fname)]
+  re <- list(FactorLists=FactorLists,result=result,TSFR=TSFR)
+  return(re)
 }
 
 
@@ -1019,11 +1032,11 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 
 
 #' @rdname f_rtn_cov
-#' @param covtype means type of caculating covariance,\bold{robust} can see example in \code{\link[robust]{covRob}},simple see \code{\link{cov}}.
+#' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
 #' 
 #' @export
 getfCov <- function(RebDates,fNames,dure=months(1),
-                    covtype=c('robust','simple','roll-simple','roll-robust'),
+                    covtype=c('shrink','simple','roll-simple','roll-shrink'),
                     nwin,reg_results){
   covtype <- match.arg(covtype)
   
@@ -1043,17 +1056,17 @@ getfCov <- function(RebDates,fNames,dure=months(1),
   re <- subset(re,fname %in% fNames)
   re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
 
-  if(covtype %in% c('robust','simple')){
-    re <- xts::xts(re[,-1],order.by = re[,1])
+  if(covtype %in% c('shrink','simple')){
     if(covtype=='simple'){
+      re <- xts::xts(re[,-1],order.by = re[,1])
       result <- data.frame(cov(re))
-    }else if(covtype=='robust'){
-      require(robust)
-      result <- data.frame(robust::covRob(re)$cov)
+    }else if(covtype=='shrink'){
+      re <- as.matrix(re[,-1])
+      result <- data.frame(nlshrink::nlshrink_cov(re))
     }
     
     
-  }else if(covtype %in% c('roll-simple','roll-robust')){
+  }else if(covtype %in% c('roll-simple','roll-shrink')){
     result <- data.frame()
     for(i in RebDates){
       i <- as.Date(i,origin='1970-01-01')
@@ -1064,24 +1077,22 @@ getfCov <- function(RebDates,fNames,dure=months(1),
         tmp.begT <- trday.offset(tmp.endT,nwin)
       }
       tmp.re <- subset(re,date<tmp.endT & date>=tmp.begT)
-      tmp.re <- xts::xts(tmp.re[,-1],order.by = tmp.re[,1])
+
       
       if(covtype=='roll-simple'){
+        tmp.re <- xts::xts(tmp.re[,-1],order.by = tmp.re[,1])
         if(nrow(tmp.re)<ncol(tmp.re)){
           warning('Data too short for training period!',call. = FALSE)
           next
         }
         result <- rbind(result,data.frame(date=i,cov(tmp.re)))
-      }else if(covtype=='roll-robust'){
-        require(robust)
+      }else if(covtype=='roll-shrink'){
+        tmp.re <- as.matrix(tmp.re[,-1])
         if(nrow(tmp.re)<2*ncol(tmp.re)){
           warning('Data too short for training period!',call. = FALSE)
           next
         }
-        tmp <- try(robust::covRob(tmp.re)$cov, silent=T) 
-        if(is(tmp,"try-error")) {
-          tmp <- cov(tmp.re)
-        } 
+        tmp <- data.frame(nlshrink::nlshrink_cov(tmp.re))
         result <- rbind(result,data.frame(date=i,tmp))
       }
     }
