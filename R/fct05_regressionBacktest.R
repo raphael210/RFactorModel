@@ -752,14 +752,20 @@ chart.reg.fRtnBar <- function(reg_results){
 #' @export
 chart.reg.rsquare <- function(reg_results){
   RSquare <- reg_results$RSquare
-  RSquare <- xts::xts(RSquare[,-1],RSquare[,1])
-  colnames(RSquare) <- c('RSquare')
-  tmp <- zoo::rollmean(RSquare,12,align='right')
-  tmp <- data.frame(date=zoo::index(tmp),RSquareMA=zoo::coredata(tmp))
-  RSquare <- data.frame(time=time(RSquare),zoo::coredata(RSquare))
-  ggplot(RSquare, aes(x=time, y=RSquare))+geom_line(color="#D55E00") +
+  Nperiod <- nrow(RSquare)
+
+  if(Nperiod>12){
+    RSquare <- xts::xts(RSquare[,-1],RSquare[,1])
+    colnames(RSquare) <- c('RSquare')
+    tmp <- zoo::rollmean(RSquare,12,align='right')
+    tmp <- data.frame(date=zoo::index(tmp),RSquareMA=zoo::coredata(tmp))
+    RSquare <- data.frame(time=time(RSquare),zoo::coredata(RSquare))
+    ggplot(RSquare, aes(x=time, y=RSquare))+geom_line(color="#D55E00") +
       ggtitle('RSquare(with MA series)') +geom_line(data=tmp,aes(x=date,y=RSquare),size=1,color="#56B4E9")
-  
+  }else{
+    ggplot(RSquare, aes(x=date, y=RSquare))+geom_line(color="#D55E00") + ggtitle('RSquare')
+  }
+
 }
 
 
@@ -990,6 +996,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','for
     result <- transform(result,fname=as.character(fname))
     result <- dplyr::arrange(result,date,dplyr::desc(frtn))
   }
+  result <- as.data.frame(result)
   return(result)
 }
 
@@ -1063,6 +1070,8 @@ getfCov <- function(RebDates,fNames,dure=months(1),
     }else if(covtype=='shrink'){
       re <- as.matrix(re[,-1])
       result <- data.frame(nlshrink::nlshrink_cov(re))
+      colnames(result) <- colnames(re)
+      rownames(result) <- colnames(re)
     }
     
     
@@ -1093,6 +1102,7 @@ getfCov <- function(RebDates,fNames,dure=months(1),
           next
         }
         tmp <- data.frame(nlshrink::nlshrink_cov(tmp.re))
+        colnames(tmp) <- colnames(tmp.re)
         result <- rbind(result,data.frame(date=i,tmp))
       }
     }

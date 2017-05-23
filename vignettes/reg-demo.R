@@ -13,33 +13,26 @@ kable(ftbale)
 
 ## ----getfactorlist-------------------------------------------------------
 #  # get recommended factorlists last year based on regression
-#  begT <- Sys.Date()-months(6)
-#  endT <- Sys.Date()-1
+#  begT <- trday.nearest(Sys.Date()-months(5))
+#  endT <- trday.nearest(Sys.Date()-1)
 #  indexID <- 'EI000985'
 #  re <- reg.factorlists_recommend(indexID,begT,endT)
 #  FactorLists <- re$FactorLists
+#  TSFR <- re$TSFR
 #  # recommend result
-#  re$result
+#  kable(re$result)
 
 ## ----showfactorstat------------------------------------------------------
-#  RebDates <- getRebDates(begT,endT)
-#  TS <- getTS(RebDates,indexID)
-#  TSF <- getMultiFactor(TS,FactorLists)
+#  TSF <- dplyr::select(TSFR, -date_end, -periodrtn)
 #  MF.chart.Fct_box(TSF)
 #  MF.chart.Fct_corr(TSF)
 #  MF.chart.Fct_density(TSF)
 #  
-#  #remove strange factors
-#  #FactorLists[[4]] <- NULL
-#  #FactorLists[[1]] <- NULL
-#  #FactorLists[[6]] <- NULL
-#  #FactorLists[[8]] <- NULL
-#  #TSF$F_ROE_1 <- NULL
-#  #TSF$float_cap_ <- NULL
-#  #TSF$disposition_ <- NULL
-#  #TSF$ILLIQ <-NULL
-#  
-#  
+#  # remove strange factors
+#  dropf <- c('F_ROE_1','float_cap_','disposition_','G_SCF_Q')
+#  FactorLists <- FactorLists[sapply(FactorLists,function(x) !(x$factorName %in% dropf))]
+#  TSF[,dropf] <- NULL
+#  TSFR[,dropf] <- NULL
 
 ## ----getlists_buildlocaltables-------------------------------------------
 #  # build local database's regression tables
@@ -49,23 +42,10 @@ kable(ftbale)
 #  system.time(lcdb.update.RegTables(FactorLists = FactorLists))
 
 ## ----reg_result----------------------------------------------------------
-#  # parameter setting
-#  begT <- trday.nearest(Sys.Date()-lubridate::years(3))
-#  endT <- trday.nearest(Sys.Date()-30)
-#  RebDates <- getRebDates(begT,endT)
-#  
-#  # get TS,TSF,TSFR
-#  TS <- getTS(RebDates,indexID)
-#  TSF <- getMultiFactor(TS,FactorLists)
-#  TSFR <- getTSR(TSF,date_end_pad = trday.nearest(Sys.Date()-1))
-#  TSFR <- na.omit(TSFR)
-#  
 #  # get regression result
 #  reg_results <- reg.TSFR(TSFR)
 #  
 #  ## show regression result
-#  # factor correlation plot
-#  MC.chart.fCorr(TSF,Nbin='year')
 #  # regression's rsquare plot
 #  chart.reg.rsquare(reg_results)
 #  # regression's rsquare table
@@ -81,44 +61,54 @@ kable(ftbale)
 
 ## ----portOpt-------------------------------------------------------------
 #  # set alpha factor
-#  alphaf <- c("PB_mrq_","F_ROE_1","NP_YOY")
+#  alphaf <- c('liquidity_','ROE_ttm','volatility_','beta_',"PB_mrq_",'G_MLL_Q')
 #  
 #  # get factor return
-#  fRtn <- getfRtn(RebDates,alphaf,type = 'mean',reg_results = reg_results)
+#  fRtn <- getfRtn(RebDates,type = 'mean',reg_results = reg_results)
 #  # get factor covariance
-#  fCov <- getfCov(RebDates,alphaf,covtype='simple',reg_results = reg_results)
+#  fCov <- getfCov(RebDates,covtype='shrink',reg_results = reg_results)
 #  
-#  
-#  
-#  # Date Alignment
-#  tmp.date1 <- max(min(fRtn$date),min(fCov$date))
-#  tmp.date2 <- min(max(fRtn$date),max(fCov$date))
-#  fRtn <- subset(fRtn,date>=tmp.date1,date<=tmp.date2)
-#  fCov <- subset(fCov,date>=tmp.date1,date<=tmp.date2)
-#  TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
+#  # # Date Alignment
+#  # tmp.date1 <- max(min(fRtn$date),min(fCov$date))
+#  # tmp.date2 <- min(max(fRtn$date),max(fCov$date))
+#  # fRtn <- subset(fRtn,date>=tmp.date1,date<=tmp.date2)
+#  # fCov <- subset(fCov,date>=tmp.date1,date<=tmp.date2)
+#  # TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
 #  
 #  ## portfolio demo
 #  # set factor's exposure
-#  fexp <- buildFactorExp(PB_mrq_=c(-0.01,100),
-#                          volatility_ = c(-0.01, 0.01),
-#                          disposition_=c(-0.01,100),
-#                          beta_=c(-0.01, 0.01),
-#                          ln_mkt_cap_=c(-0.01,100),
-#                          NP_YOY=c(-0.01,100))
+#  fexp <- buildFactorExp(sectorall = c(0,0.1),beta_=c(-0.01,100),
+#                          G_MLL_Q=c(-0.01,100),
+#                          ILLIQ=c(-0.01,0.01),
+#                          liquidity_ = c(-0.01, 100),
+#                          ln_mkt_cap_=c(-0.01, 0.01),
+#                          PB_mrq_=c(-0.01,100),
+#                          ROE_ttm=c(-0.01,100),
+#                          volatility_=c(-0.01,100),
+#                          pct_chg_per_60_=c(-0.01,0.01))
+#  
+#  
+#  #get newest optimized portfolio
+#  TS <- getTS(endT,indexID)
+#  TS <- rm_suspend(TS)
+#  TS <- is_st(TS)
+#  TS <- TS[!(TS$is_st),c('date','stockID')]
+#  TSF <- dplyr::left_join(TS,TSF,by=c('date','stockID'))
+#  
 #  # simplest way:no benchmark,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'return',factorExp = fexp))
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',factorExp = fexp))
 #  
 #  
 #  #build weight setting
 #  wgtSet <- buildWgtSet(ES33480000=c(0,0.05),ES33490000=c(0,0.03))
 #  
 #  #build box constrain
-#  boxConstr <- buildBoxConstr(EI000905=c(0.7,0.8))
+#  boxConstr <- buildBoxConstr(EI000906=c(0.7,0.8))
 #  # with benchmark,maximize return, box constrain
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'return',bmk = 'EI000985',factorExp = fexp,wgtSet = wgtSet))
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',bmk = 'EI000906',factorExp = fexp,wgtSet = wgtSet))
 #  
 #  # with benchmark,risk return balance
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000905',factorExp = fexp,boxConstr = boxConstr))
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000906',factorExp = fexp,boxConstr = boxConstr))
 #  
 #  
 #  
