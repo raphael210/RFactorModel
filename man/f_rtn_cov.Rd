@@ -5,7 +5,7 @@
 \alias{getfRtn}
 \alias{getfCov}
 \alias{getResidual}
-\alias{calDelta}
+\alias{getDelta}
 \title{factor return and covariance}
 \usage{
 getfRtn(RebDates, fNames, dure = months(1), type = c("mean", "rollmean",
@@ -16,7 +16,7 @@ getfCov(RebDates, fNames, dure = months(1), covtype = c("shrink", "simple",
 
 getResidual(TS, dure, reg_results)
 
-calDelta(TS, dure, datasrc = c("local", "regResult"), reg_results,
+getDelta(TS, dure, datasrc = c("local", "regResult"), reg_results,
   nwin = 250)
 }
 \arguments{

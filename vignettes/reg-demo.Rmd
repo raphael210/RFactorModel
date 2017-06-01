@@ -102,7 +102,7 @@ table.reg.fRtn(reg_results)
 
 ```{r portOpt}
 # set alpha factor
-alphaf <- c('liquidity_','ROE_ttm','volatility_','beta_',"PB_mrq_",'G_MLL_Q')
+alphaf <- c('liquidity_','ROE_ttm','volatility_',"PB_mrq_")
 
 # get factor return
 fRtn <- getfRtn(RebDates,type = 'mean',reg_results = reg_results)
@@ -118,9 +118,7 @@ fCov <- getfCov(RebDates,covtype='shrink',reg_results = reg_results)
 
 ## portfolio demo
 # set factor's exposure
-fexp <- buildFactorExp(sectorall = c(0,0.1),beta_=c(-0.01,100),
-                        G_MLL_Q=c(-0.01,100),
-                        ILLIQ=c(-0.01,0.01),
+fexp <- buildFactorExp(sectorall = c(0,0.1),
                         liquidity_ = c(-0.01, 100),
                         ln_mkt_cap_=c(-0.01, 0.01),
                         PB_mrq_=c(-0.01,100),
@@ -134,10 +132,12 @@ TS <- getTS(endT,indexID)
 TS <- rm_suspend(TS)
 TS <- is_st(TS)
 TS <- TS[!(TS$is_st),c('date','stockID')]
-TSF <- dplyr::left_join(TS,TSF,by=c('date','stockID'))
+TSF <- getMultiFactor(TS,FactorLists)
 
 # simplest way:no benchmark,maximize return
 system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',factorExp = fexp))
+
+system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',factorExp = fexp,optWay = 'solve.QP'))
 
 
 #build weight setting

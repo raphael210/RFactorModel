@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-05-23" />
+<meta name="date" content="2017-06-01" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-05-23</em></h4>
+<h4 class="date"><em>2017-06-01</em></h4>
 
 
 
@@ -311,7 +311,7 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 <div id="portfolio-optimization" class="section level2">
 <h2>portfolio optimization</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set alpha factor</span>
-alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">'volatility_'</span>,<span class="st">'beta_'</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">'G_MLL_Q'</span>)
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">'volatility_'</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">'G_MLL_Q'</span>)
 
 <span class="co"># get factor return</span>
 fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,<span class="dt">type =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
@@ -327,9 +327,7 @@ fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(RebDates,<spa
 
 ## portfolio demo
 <span class="co"># set factor's exposure</span>
-fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span class="dt">sectorall =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.1</span>),<span class="dt">beta_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                        <span class="dt">G_MLL_Q=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                        <span class="dt">ILLIQ=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="fl">0.01</span>),
+fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span class="dt">sectorall =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.1</span>),
                         <span class="dt">liquidity_ =</span> <span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="dv">100</span>),
                         <span class="dt">ln_mkt_cap_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
                         <span class="dt">PB_mrq_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
@@ -343,7 +341,7 @@ TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(endT,indexID)
 TS &lt;-<span class="st"> </span><span class="kw">rm_suspend</span>(TS)
 TS &lt;-<span class="st"> </span><span class="kw">is_st</span>(TS)
 TS &lt;-<span class="st"> </span>TS[!(TS$is_st),<span class="kw">c</span>(<span class="st">'date'</span>,<span class="st">'stockID'</span>)]
-TSF &lt;-<span class="st"> </span>dplyr::<span class="kw">left_join</span>(TS,TSF,<span class="dt">by=</span><span class="kw">c</span>(<span class="st">'date'</span>,<span class="st">'stockID'</span>))
+TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
 
 <span class="co"># simplest way:no benchmark,maximize return</span>
 <span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">factorExp =</span> fexp))

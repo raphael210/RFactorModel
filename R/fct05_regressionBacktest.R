@@ -895,11 +895,11 @@ MC.table.fCorr <- function(TSF,Nbin){
 
 
 
-#' factor return and covariance
+#' factor return,covariance and delta
 #' 
-#' calculate factor return and factor covariance.
-#' @name f_rtn_cov
-#' @rdname f_rtn_cov
+#' calculate factor return, factor covariance and residual variance.
+#' @name f_rtn_cov_delta
+#' @rdname f_rtn_cov_delta
 #' @param RebDates is date set
 #' @param fNames is factor names, can be missing.
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
@@ -913,10 +913,53 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
 #' fCov <- getfCov(RebDates,fNames,reg_results=reg_results)
 #' @export
-getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','forcast'),
-                    nwin=lubridate::years(-2),reg_results){
-  type <- match.arg(type)
+f_rtn_cov_delta <- function(reg_results) {
+  
+}
 
+
+
+
+# inner function
+getRawfRtn <- function(begT,endT,dure,reg_results){
+  if(missing(begT)) begT <- as.Date('1990-01-01')
+  if(missing(endT)) endT <- as.Date('2100-01-01')
+  
+  if(missing(reg_results)){
+    if(dure==lubridate::days(1)){
+      dbname <- 'frtn_d1'
+    }else if(dure==lubridate::weeks(1)){
+      dbname <- 'frtn_w1'
+    }else if(dure==lubridate::weeks(2)){
+      dbname <- 'frtn_w2'
+    }else if(dure==months(1)){
+      dbname <- 'frtn_m1'
+    }
+    
+    con <- db.local()
+    qr <- paste("SELECT date,fname,",dbname," 'frtn'
+                FROM Reg_FactorRtn where date>=",rdate2int(begT),
+                " and date<=",rdate2int(endT))
+    re <- dbGetQuery(con,qr)
+    re <- transform(re,date=intdate2r(date))
+    dbDisconnect(con)
+  }else{
+    re <- reg_results$fRtn
+    re <- dplyr::select(re,-Tstat)
+    re <- dplyr::filter(re,date>=begT,date<=endT)
+  }
+  
+  return(re)
+}
+
+
+#' @rdname f_rtn_cov_delta
+#' 
+#' @export
+getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),
+                    nwin=24,reg_results){
+  rtntype <- match.arg(rtntype)
+  
   if(missing(reg_results)){
     re <- getRawfRtn(dure=dure)
   }else{
@@ -937,7 +980,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','for
   if(type=='mean'){
     result <- re %>% group_by(fname) %>% 
       summarise(frtn = mean(frtn,na.rm = TRUE))
-
+    
   }else if(type=='rollmean'){
     tmp.begT <- trday.offset(min(RebDates),dure*-1)
     tmp.date <- trday.offset(min(re$date),nwin*-1)
@@ -991,7 +1034,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','for
                                  frtn=forecast[forecast$ds==i,'yhat'])
         result <- rbind(result,tmp.result)
       }
-
+      
     }
     result <- transform(result,fname=as.character(fname))
     result <- dplyr::arrange(result,date,dplyr::desc(frtn))
@@ -1001,44 +1044,7 @@ getfRtn <- function(RebDates,fNames,dure=months(1),type=c('mean','rollmean','for
 }
 
 
-
-
-# inner function
-getRawfRtn <- function(begT,endT,dure,reg_results){
-  if(missing(begT)) begT <- as.Date('1990-01-01')
-  if(missing(endT)) endT <- as.Date('2100-01-01')
-  
-  if(missing(reg_results)){
-    if(dure==lubridate::days(1)){
-      dbname <- 'frtn_d1'
-    }else if(dure==lubridate::weeks(1)){
-      dbname <- 'frtn_w1'
-    }else if(dure==lubridate::weeks(2)){
-      dbname <- 'frtn_w2'
-    }else if(dure==months(1)){
-      dbname <- 'frtn_m1'
-    }
-    
-    con <- db.local()
-    qr <- paste("SELECT date,fname,",dbname," 'frtn'
-                FROM Reg_FactorRtn where date>=",rdate2int(begT),
-                " and date<=",rdate2int(endT))
-    re <- dbGetQuery(con,qr)
-    re <- transform(re,date=intdate2r(date))
-    dbDisconnect(con)
-  }else{
-    re <- reg_results$fRtn
-    re <- dplyr::select(re,-Tstat)
-    re <- dplyr::filter(re,date>=begT,date<=endT)
-  }
-  
-  return(re)
-}
-
-
-
-
-#' @rdname f_rtn_cov
+#' @rdname f_rtn_cov_delta
 #' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
 #' 
 #' @export
@@ -1114,49 +1120,10 @@ getfCov <- function(RebDates,fNames,dure=months(1),
 
 
 
-
-#' @rdname f_rtn_cov
-#' 
-#' @export
-getResidual <- function(TS,dure,reg_results){
-  if(missing(reg_results)){
-    con <- db.local()
-    TS$date_from <- trday.offset(TS$date,dure*-1)
-    TS <- transform(TS,date=rdate2int(date),date_from=rdate2int(date_from))
-    if(dure==lubridate::days(1)){
-      dbname <- 'res_d1'
-    }else if(dure==lubridate::weeks(1)){
-      dbname <- 'res_w1'
-    }else if(dure==lubridate::weeks(2)){
-      dbname <- 'res_w2'
-    }else if(dure==months(1)){
-      dbname <- 'res_m1'
-    }
-    dbWriteTable(con,name="yrf_tmp",value=TS,row.names = FALSE,overwrite = TRUE)
-    qr <- paste("SELECT y.date,y.stockID,",dbname," 'res'
-                FROM yrf_tmp y LEFT JOIN Reg_Residual u
-                ON y.date_from=u.date and y.stockID=u.stockID")
-    re <- dbGetQuery(con,qr)
-    re$date <- intdate2r(re$date)
-    dbDisconnect(con)
-  }else if(datasrc=='regResult'){
-    
-  }
-  
-  return(re)
-}
-
-
-
-
-
-
-
-#' @rdname f_rtn_cov
+#' @rdname f_rtn_cov_delta
 #'
 #' @export
-calDelta <- function(TS,dure,datasrc=c('local','regResult'),reg_results,nwin=250){
-  datasrc <- match.arg(datasrc)
+getDelta <- function(TS,dure,reg_results,nwin=250){
   dates <- dplyr::distinct(TS,date)
   dates$date_tmp1 <- trday.offset(dates$date,dure*-1)
   if(dure==lubridate::days(1)){
@@ -1170,7 +1137,7 @@ calDelta <- function(TS,dure,datasrc=c('local','regResult'),reg_results,nwin=250
   }
   
   
-  if(datasrc=='local'){
+  if(missing(reg_results)){
     con <- db.local()
     dates$date_tmp2 <- trday.nearby(dates$date_tmp1,-(nwin-1))
     
@@ -1195,7 +1162,10 @@ calDelta <- function(TS,dure,datasrc=c('local','regResult'),reg_results,nwin=250
     Delta <- Delta[,c('date','stockID','var')]
     Delta <- dplyr::left_join(TS,Delta,by = c("date", "stockID"))
     
-  }else if(datasrc=='regResult'){
+  }else{
+    
+    
+    
     
   }
   
@@ -1410,6 +1380,177 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
 }
 
 
+OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
+                   target=c('return','balance'),
+                   bmk,sectorAttr=defaultSectorAttr(),
+                   factorExp=buildFactorExp(),wgtSet=buildWgtSet(),boxConstr,
+                   addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
+  target <- match.arg(target)
+  optWay <- match.arg(optWay)
+  
+  if(optWay == "Matlab"){
+    R.matlab::Matlab$startServer()
+    matlab <- R.matlab::Matlab()
+    open(matlab)
+  }
+  
+  fnames <- guess_factorNames(TSF)
+  if(missing(alphaf)){
+    alphaf <- fnames
+  }
+  dates <- unique(TSF$date)
+  port <- data.frame()
+  for(i in dates){
+    cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
+    
+    #get one period raw data
+    tmp.TSF <- TSF[TSF$date==i,]
+    #add sector factor
+    if(!is.null(sectorAttr)){
+      tmp.TSF <- gf.sector(tmp.TSF,sectorAttr)
+      tmp.TSF <- dplyr::select(tmp.TSF,-sector)
+    }
+    
+    #get factor return and factor covariance
+    if('date' %in% colnames(fRtn)){
+      tmp.fRtn <- fRtn[fRtn$date==i,-1]
+    }else{
+      tmp.fRtn <- fRtn
+    }
+    rownames(tmp.fRtn) <- tmp.fRtn$fname
+    
+    
+    #get factor exposure up down limit
+    if(missing(bmk)){
+      totwgt <- getfExpLimit(factorExp,TSF=tmp.TSF)
+    }else{
+      bmkdata <- getbmkfExp(tmp.TSF,bmk)
+      totwgt <- getfExpLimit(factorExp,bmk=bmkdata)
+    }
+    totwgt <- totwgt[,-1]
+    rownames(totwgt) <- totwgt$fname
+    
+    
+    
+    # get risk matrix
+    if(!missing(boxConstr)){
+      tmpdata <- getnewTSFtotwgt(tmp.TSF,totwgt,boxConstr)
+      tmp.TSF <- tmpdata$TSF
+      totwgt <- tmpdata$totwgt
+    }
+    
+    #remove unqualified TS
+    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
+    if(addEvent==TRUE){
+      tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
+    }
+    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
+    
+    riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
+    rownames(riskmat) <- tmp.TSF$stockID
+    
+    #get alpha matrix
+    alphamat <- as.matrix(tmp.TSF[,alphaf])
+    rownames(alphamat) <- tmp.TSF$stockID
+    dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
+    if(addEvent){
+      # add event return
+    }
+    wgtLimit <- getStockWgtLimit(tmp.TS,wgtSet,sectorAttr)
+    
+    if(target=='balance'){
+      if('date' %in% colnames(fCov)){
+        tmp.fCov <- fCov[fCov$date==i,-1]
+      }else{
+        tmp.fCov <- fCov
+      }
+      rownames(tmp.fCov) <- colnames(tmp.fCov)
+      
+      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
+      Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
+      Dmat <- (Dmat+t(Dmat))/2
+      # tmp <- Matrix::nearPD(Dmat)
+      # Dmat <- tmp$mat
+      # Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      nstock <- dim(Dmat)[1]
+      
+      if(optWay == "solve.QP"){
+        Amat <- cbind(riskmat,-1*riskmat)
+        Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
+        bvec <- c(1,totwgt$min,-1*totwgt$max,wgtLimit$min,-1*wgtLimit$max)
+        system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
+        
+      }else if(optWay == "ipop"){
+        f.ipop <- as.matrix(-dvec, ncol = 1)
+        A.ipop <- t(cbind(1,riskmat))
+        b.ipop <- c(1,totwgt$min)
+        dif.ipop <- totwgt$max - totwgt$min
+        r.ipop <- c(0, dif.ipop)
+        lb.ipop <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
+        ub.ipop <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
+        system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
+                                              A = A.ipop, b = b.ipop, r = r.ipop,
+                                              l = lb.ipop, u = ub.ipop,
+                                              maxiter = 3000))
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
+        
+      }else if(optWay == "Matlab"){
+        H.matlab <- Dmat
+        f.matlab <- as.matrix(-dvec, ncol = 1)
+        A.matlab <- t(cbind(-1*riskmat, riskmat))
+        b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
+        Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
+        beq.matlab <- 1
+        lb.matlab <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
+        ub.matlab <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
+        system.time({
+          R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
+                                Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
+          R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
+          R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
+          res.tmp <- R.matlab::getVariable(matlab, "res")
+          res.matlab <- res.tmp$res
+        })
+        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
+      }
+      
+      tmp <- tmp[tmp$wgt>0.0005,]
+      colnames(tmp) <-c( "date","stockID","wgt")
+      tmp <- transform(tmp,wgt=wgt/sum(wgt))
+      
+    }else{
+      require(PortfolioAnalytics)
+      pspec <- portfolio.spec(assets=colnames(dvec))
+      pspec <- add.constraint(portfolio=pspec, type="full_investment")
+      pspec <- add.constraint(portfolio=pspec,type="box",min=wgtLimit$min,max=wgtLimit$max)
+      
+      pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
+                              B=riskmat,lower=totwgt$min, upper=totwgt$max)
+      pspec <- add.objective(portfolio=pspec,type='return',name='mean')
+      dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
+      opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
+                                       optimize_method="ROI",
+                                       trace=TRUE)
+      
+      tmp <- data.frame(date=i,stockID=names(opt_maxret$weights),wgt=opt_maxret$weights)
+      tmp <- tmp[tmp$wgt>0.0005,]
+      tmp$wgt <- tmp$wgt/sum(tmp$wgt)
+      
+    }
+    port <- rbind(port,tmp)
+  }# for dates end
+  
+  if(optWay == "Matlab"){
+    close(matlab)
+  }
+  port$date <- as.Date(port$date,origin = '1970-01-01')
+  port$stockID <- as.character(port$stockID)
+  return(port)
+}
+
+
+
 
 
 #' OptWgt_settingFuncs
@@ -1541,12 +1682,13 @@ getfExpLimit <- function(factorExp,bmk,TSF){
       tmp.result1 <- expand.grid(date=unique(TSF$date),fname=fnames.f,
                             KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
       tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      if(sum(is.na(tmp.result1))>0){
-        tmp <- unique(tmp.result1[is.na(tmp.result1$min),'fname'])
-        warning(paste('miss ',tmp,' exposure setting!'))
-        tmp.result1[is.na(tmp.result1$min),'min'] <- -0.01
-        tmp.result1[is.na(tmp.result1$max),'max'] <- 100
-      }
+      tmp.result1 <- na.omit(tmp.result1)
+      # if(sum(is.na(tmp.result1))>0){
+      #   tmp <- unique(tmp.result1[is.na(tmp.result1$min),'fname'])
+      #   warning(paste('miss ',tmp,' exposure setting!'))
+      #   tmp.result1[is.na(tmp.result1$min),'min'] <- -0.01
+      #   tmp.result1[is.na(tmp.result1$max),'max'] <- 100
+      # }
     }
     
     
@@ -1562,13 +1704,8 @@ getfExpLimit <- function(factorExp,bmk,TSF){
         tmp.result2 <- transform(tmp.result2,
                                      min=ifelse(is.na(min),tmp.min,min),
                                      max=ifelse(is.na(max),tmp.max,max))
-      }else{
-        warning('miss sectorall argument!')
-        tmp.result2 <- transform(tmp.result2,
-                                     min=0,
-                                     max=0.2)
-        
       }
+      tmp.result2 <- na.omit(tmp.result2)
       
     }
     result <- rbind(tmp.result1,tmp.result2)
@@ -1577,8 +1714,7 @@ getfExpLimit <- function(factorExp,bmk,TSF){
     tmp.result1 <- subset(bmk,fname %in% factorExp$fname)
     if(nrow(tmp.result1)>0){
       tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      tmp.result1 <- transform(tmp.result1,min=ifelse(substr(fname,1,2)=='ES',fexp*(1+min),fexp+min),
-                               max=ifelse(substr(fname,1,2)=='ES',fexp*(1+max),fexp+max))
+      tmp.result1 <- transform(tmp.result1,min=fexp+min,max=fexp+max)
     }
     
     tmp.result2 <- subset(bmk,!(fname %in% factorExp$fname))
@@ -1587,24 +1723,14 @@ getfExpLimit <- function(factorExp,bmk,TSF){
       if(nrow(tmp.result2.sec)>0){
         if(any(factorExp$fname=='sectorall')){
           tmp.result2.sec <- transform(tmp.result2.sec,
-                                       min=fexp*(1+factorExp[factorExp$fname=='sectorall','min']),
-                                       max=fexp*(1+factorExp[factorExp$fname=='sectorall','max']))
-        }else{
-          warning('miss sectorall argument!')
-          tmp.result2.sec <- transform(tmp.result2.sec,
-                                       min=fexp*(1-0.05),
-                                       max=fexp*(1+0.05))
+                                       min=fexp+factorExp[factorExp$fname=='sectorall','min'],
+                                       max=fexp+factorExp[factorExp$fname=='sectorall','max'])
         }
       }
-      
       tmp.result2.f <- subset(tmp.result2,substr(fname,1,2)!='ES')
-      if(nrow(tmp.result2.f)>0){
-        warning(paste('miss ',unique(tmp.result2.f$fname),' exposure setting!'))
-        tmp.result2.f <- transform(tmp.result2.f,
-                                   min=-0.01,
-                                   max=100)
-      }
+
       tmp.result2 <- rbind(tmp.result2.sec,tmp.result2.f)
+      tmp.result2 <- na.omit(tmp.result2)
     }
     
     result <- rbind(tmp.result1,tmp.result2)
@@ -1894,8 +2020,8 @@ chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
 #' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
 #' alphaLists <- c(tmp,alphaLists)
 #' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
-#' RA_tables <- getPAData(port,c(alphaLists,riskLists))
-#' RA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
+#' RA_tables <- getRAData(port,c(alphaLists,riskLists))
+#' RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   # get active wgt, if necessary
   if(!missing(bmk)){
