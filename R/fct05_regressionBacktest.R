@@ -956,7 +956,7 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 #' @rdname f_rtn_cov_delta
 #' 
 #' @export
-getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),
+getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','EMA','forcast'),
                     nwin=24,reg_results){
   rtntype <- match.arg(rtntype)
   
@@ -966,20 +966,68 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
     re <- getRawfRtn(reg_results=reg_results)
   }
   
-  if(missing(fNames)){
-    fNames <- unique(re$fname)
+  if(missing(fname)){
+    fname <- unique(re$fname)
   }
-  tmp <- setdiff(fNames,unique(re$fname))
+  tmp <- setdiff(fname,unique(re$fname))
   if(length(tmp)>0){
     warning(paste('missing factor:',paste(tmp,collapse=',')),call. = FALSE)
   }
   
-  re <- subset(re,fname %in% fNames)
+  re <- re[re$fname %in% fname,]
+  
+  result <- data.frame()
+  
+  if(rolling){
+    
+    
+  }else{
+    if(missing(RebDates)){
+      
+      if(rtntype=='mean'){
+        
+        tmp <- re %>% dplyr::group_by(fname) %>% 
+          dplyr::summarise(frtn = mean(frtn,na.rm = TRUE)) %>% dplyr::ungroup()
+        result <- rbind(result,tmp)
+      }else if(rtntype=='forcast'){
+        re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
+        
+        require(prophet)
+        for(j in 2:ncol(re)){
+          df <- re[,c(1,j)]
+          colnames(df) <- c('ds','y')
+          m <- prophet::prophet(df,n.changepoints = 0,weekly.seasonality = FALSE)
+          tmp.date <- trday.offset(max(df$ds),dure)
+          future <- data.frame(ds=c(df$ds,tmp.date))
+          forecast <- predict(m, future)
+          #plot(m, forecast)
+          #prophet_plot_components(m, forecast)
+          tmp <- data.frame(date=tail(forecast$ds,1),
+                                   fname=colnames(re)[j],
+                                   frtn=tail(forecast$yhat,1))
+          result <- rbind(result,tmp)
+        }
+      }else if(rtntype=='EMA'){
+        re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
+        re <- tail(re,nwin+10)
+        for(j in 2:ncol(re)){
+          tmp <- TTR::EMA(re[,j],nwin)
+        }
+          dplyr::mutate()
+      }
+
+    }else{
+      for(i in RebDates){
+        
+        
+      }
+      
+    }
+  }
   
   
   if(type=='mean'){
-    result <- re %>% group_by(fname) %>% 
-      summarise(frtn = mean(frtn,na.rm = TRUE))
+
     
   }else if(type=='rollmean'){
     tmp.begT <- trday.offset(min(RebDates),dure*-1)
@@ -1039,6 +1087,8 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
     result <- transform(result,fname=as.character(fname))
     result <- dplyr::arrange(result,date,dplyr::desc(frtn))
   }
+  result <- transform(result,fname=as.character(fname))
+  result <- dplyr::arrange(result,date,dplyr::desc(frtn))
   result <- as.data.frame(result)
   return(result)
 }
