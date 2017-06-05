@@ -901,9 +901,9 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' @name f_rtn_cov_delta
 #' @rdname f_rtn_cov_delta
 #' @param RebDates is date set
-#' @param fNames is factor names, can be missing.
+#' @param fname is factor names, can be missing.
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param type is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.
+#' @param rtntype is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.
 #' @param nwin is rolling windows forward.
 #' @param reg_results see examples in \code{\link{reg.TSFR}}
 #' @return a data frame of factors' return .
@@ -956,9 +956,169 @@ getRawfRtn <- function(begT,endT,dure,reg_results){
 #' @rdname f_rtn_cov_delta
 #' 
 #' @export
-getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','EMA','forcast'),
+getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),
                     nwin=24,reg_results){
   rtntype <- match.arg(rtntype)
+  
+  if(missing(reg_results)){
+    rtndata <- getRawfRtn(dure=dure)
+  }else{
+    rtndata <- getRawfRtn(reg_results=reg_results)
+  }
+  
+  if(missing(fname)){
+    fname <- unique(rtndata$fname)
+  }else{
+    missf <- setdiff(fname,unique(rtndata$fname))
+    if(length(missf)>0){
+      warning(paste('missing factor:',paste(missf,collapse=',')),call. = FALSE)
+    }
+    rtndata <- rtndata[rtndata$fname %in% fname,]
+  }
+  rtndata$tmpdate <- trday.offset(rtndata$date,dure)
+  rtndata <- reshape2::dcast(rtndata,date+tmpdate~fname,value.var = 'frtn')
+  
+  
+  if(missing(RebDates)){
+    RebDates <- trday.offset(max(rtndata$date),dure)
+  }
+  
+  result <- data.frame()
+
+
+  for(i in RebDates){
+    tmp.rtndata <- rtndata %>% dplyr::filter(tmpdate<=i) %>% dplyr::select(-date,-tmpdate)
+    if(rolling){
+      tmp.rtndata <- tail(tmp.rtndata,nwin)
+    }
+    
+    if(rtntype=='mean'){
+      tmp <- colMeans(tmp.rtndata)
+      tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
+                         fname=names(tmp),
+                         frtn=unname(tmp))
+      result <- rbind(result,tmp)
+    }else if(rtntype=='forcast'){
+      for(j in 1:ncol(tmp.rtndata)){
+        myts <- ts(data= tmp.rtndata[,j])
+        fit <- forecast::ets(myts)
+        fit.forcast <- forecast::forecast(fit, 1)
+        tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
+                          fname=colnames(tmp.rtndata)[j],
+                          frtn=as.numeric(fit.forcast$mean))
+        result <- rbind(result,tmp)
+      }
+    }
+    
+  }
+  result <- transform(result,fname=as.character(fname))
+  return(result)
+}
+
+
+#' @rdname f_rtn_cov_delta
+#' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
+#' 
+#' @export
+getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,
+                    covtype=c('shrink','simple'),
+                    nwin=24,reg_results){
+  covtype <- match.arg(covtype)
+  
+  if(missing(reg_results)){
+    rtndata <- getRawfRtn(dure=dure)
+  }else{
+    rtndata <- getRawfRtn(reg_results=reg_results)
+  }
+  
+  if(missing(fname)){
+    fname <- unique(rtndata$fname)
+  }else{
+    missf <- setdiff(fname,unique(rtndata$fname))
+    if(length(missf)>0){
+      warning(paste('missing factor:',paste(missf,collapse=',')),call. = FALSE)
+    }
+    rtndata <- rtndata[rtndata$fname %in% fname,]
+  }
+  rtndata$tmpdate <- trday.offset(rtndata$date,dure)
+  rtndata <- reshape2::dcast(rtndata,date+tmpdate~fname,value.var = 'frtn')
+  
+  
+  if(missing(RebDates)){
+    RebDates <- trday.offset(max(rtndata$date),dure)
+  }
+  
+  result <- data.frame()
+  
+  
+  for(i in RebDates){
+    tmp.rtndata <- rtndata %>% dplyr::filter(tmpdate<=i) %>% dplyr::select(-date,-tmpdate)
+    if(rolling){
+      tmp.rtndata <- tail(tmp.rtndata,nwin)
+    }
+    
+    if(rtntype=='mean'){
+      tmp <- colMeans(tmp.rtndata)
+      tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
+                        fname=names(tmp),
+                        frtn=unname(tmp))
+      result <- rbind(result,tmp)
+    }else if(rtntype=='forcast'){
+      for(j in 1:ncol(tmp.rtndata)){
+        myts <- ts(data= tmp.rtndata[,j])
+        fit <- forecast::ets(myts)
+        fit.forcast <- forecast::forecast(fit, 1)
+        tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
+                          fname=colnames(tmp.rtndata)[j],
+                          frtn=as.numeric(fit.forcast$mean))
+        result <- rbind(result,tmp)
+      }
+    }
+    
+  }
+  result <- transform(result,fname=as.character(fname))
+  return(result)
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
+  
   
   if(missing(reg_results)){
     re <- getRawfRtn(dure=dure)
@@ -968,148 +1128,6 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
   
   if(missing(fname)){
     fname <- unique(re$fname)
-  }
-  tmp <- setdiff(fname,unique(re$fname))
-  if(length(tmp)>0){
-    warning(paste('missing factor:',paste(tmp,collapse=',')),call. = FALSE)
-  }
-  
-  re <- re[re$fname %in% fname,]
-  
-  result <- data.frame()
-  
-  if(rolling){
-    
-    
-  }else{
-    if(missing(RebDates)){
-      
-      if(rtntype=='mean'){
-        
-        tmp <- re %>% dplyr::group_by(fname) %>% 
-          dplyr::summarise(frtn = mean(frtn,na.rm = TRUE)) %>% dplyr::ungroup()
-        result <- rbind(result,tmp)
-      }else if(rtntype=='forcast'){
-        re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
-        
-        require(prophet)
-        for(j in 2:ncol(re)){
-          df <- re[,c(1,j)]
-          colnames(df) <- c('ds','y')
-          m <- prophet::prophet(df,n.changepoints = 0,weekly.seasonality = FALSE)
-          tmp.date <- trday.offset(max(df$ds),dure)
-          future <- data.frame(ds=c(df$ds,tmp.date))
-          forecast <- predict(m, future)
-          #plot(m, forecast)
-          #prophet_plot_components(m, forecast)
-          tmp <- data.frame(date=tail(forecast$ds,1),
-                                   fname=colnames(re)[j],
-                                   frtn=tail(forecast$yhat,1))
-          result <- rbind(result,tmp)
-        }
-      }else if(rtntype=='EMA'){
-        re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
-        re <- tail(re,nwin+10)
-        for(j in 2:ncol(re)){
-          tmp <- TTR::EMA(re[,j],nwin)
-        }
-          dplyr::mutate()
-      }
-
-    }else{
-      for(i in RebDates){
-        
-        
-      }
-      
-    }
-  }
-  
-  
-  if(type=='mean'){
-
-    
-  }else if(type=='rollmean'){
-    tmp.begT <- trday.offset(min(RebDates),dure*-1)
-    tmp.date <- trday.offset(min(re$date),nwin*-1)
-    if(tmp.begT<tmp.date){
-      warning('Data too short for training period!',call. = FALSE)
-    }
-    
-    TF <- expand.grid(date=RebDates,fname=intersect(fNames,unique(re$fname)),stringsAsFactors = FALSE)
-    TF <- dplyr::arrange(TF,date,fname)
-    tmp <- dplyr::mutate(TF,endT=trday.offset(date,dure*-1),
-                         begT=trday.offset(endT,nwin))
-    tmp$fname <- factor(tmp$fname)
-    tmp <- tmp %>% dplyr::rowwise() %>% 
-      do(data.frame(tmpdate=getRebDates(.$begT, .$endT,'day'),
-                    date=.$date,fname=.$fname))
-    class(tmp) <- c( "tbl_df", "data.frame")
-    tmp$fname <- as.character(tmp$fname)
-    re <- dplyr::rename(re,tmpdate=date)
-    re <- dplyr::left_join(tmp,re,by=c('tmpdate','fname'))
-    re <- re %>% group_by(date,fname) %>% 
-      summarise(frtn = mean(frtn,na.rm = TRUE))
-    result <- dplyr::left_join(TF,re,by=c('date','fname'))
-    result <- na.omit(result)
-  }else if(type=='forcast'){
-    require(prophet)
-    re <- reshape2::dcast(re,date~fname,value.var = 'frtn')
-    period <- xts::periodicity(re$date)[[7]]
-    result <- data.frame()
-    
-    for(j in 2:ncol(re)){
-      df <- re[,c(1,j)]
-      colnames(df) <- c('ds','y')
-      for(i in RebDates){
-        i <- as.Date(i,origin='1970-01-01')
-        tmp.begT <- trday.offset(i,dure*-1)
-        tmp.date <- trday.offset(min(df$ds),nwin*-1)
-        if(tmp.begT<tmp.date){
-          warning('Data too short for training period!',call. = FALSE)
-          next
-        }
-        tmp.df <- subset(df,ds<=tmp.begT)
-        
-        m <- prophet::prophet(tmp.df,n.changepoints = 0,weekly.seasonality = FALSE)
-        tmp.date <- getRebDates(tmp.begT,i,rebFreq = period)
-        future <- data.frame(ds=unique(c(tmp.df$ds,tmp.date)))
-        forecast <- predict(m, future)
-        #plot(m, forecast)
-        #prophet_plot_components(m, forecast)
-        tmp.result <- data.frame(date=i,
-                                 fname=colnames(re)[j],
-                                 frtn=forecast[forecast$ds==i,'yhat'])
-        result <- rbind(result,tmp.result)
-      }
-      
-    }
-    result <- transform(result,fname=as.character(fname))
-    result <- dplyr::arrange(result,date,dplyr::desc(frtn))
-  }
-  result <- transform(result,fname=as.character(fname))
-  result <- dplyr::arrange(result,date,dplyr::desc(frtn))
-  result <- as.data.frame(result)
-  return(result)
-}
-
-
-#' @rdname f_rtn_cov_delta
-#' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
-#' 
-#' @export
-getfCov <- function(RebDates,fNames,dure=months(1),
-                    covtype=c('shrink','simple','roll-simple','roll-shrink'),
-                    nwin,reg_results){
-  covtype <- match.arg(covtype)
-  
-  if(missing(reg_results)){
-    re <- getRawfRtn(dure=dure)
-  }else{
-    re <- getRawfRtn(reg_results=reg_results)
-  }
-  if(missing(fNames)){
-    fNames <- unique(re$fname)
   }
   tmp <- setdiff(fNames,unique(re$fname))
   if(length(tmp)>0){

@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-06-01" />
+<meta name="date" content="2017-06-05" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-06-01</em></h4>
+<h4 class="date"><em>2017-06-05</em></h4>
 
 
 
@@ -311,10 +311,10 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 <div id="portfolio-optimization" class="section level2">
 <h2>portfolio optimization</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set alpha factor</span>
-alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">'volatility_'</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">'G_MLL_Q'</span>)
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">'volatility_'</span>,<span class="st">&quot;PB_mrq_&quot;</span>)
 
 <span class="co"># get factor return</span>
-fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,<span class="dt">type =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
+fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(<span class="dt">rtntype =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
 <span class="co"># get factor covariance</span>
 fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(RebDates,<span class="dt">covtype=</span><span class="st">'shrink'</span>,<span class="dt">reg_results =</span> reg_results)
 
@@ -345,6 +345,8 @@ TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,Fact
 
 <span class="co"># simplest way:no benchmark,maximize return</span>
 <span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">factorExp =</span> fexp))
+
+<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'balance'</span>,<span class="dt">factorExp =</span> fexp,<span class="dt">optWay =</span> <span class="st">'solve.QP'</span>))
 
 
 <span class="co">#build weight setting</span>

@@ -61,10 +61,10 @@ kable(ftbale)
 
 ## ----portOpt-------------------------------------------------------------
 #  # set alpha factor
-#  alphaf <- c('liquidity_','ROE_ttm','volatility_',"PB_mrq_",'G_MLL_Q')
+#  alphaf <- c('liquidity_','ROE_ttm','volatility_',"PB_mrq_")
 #  
 #  # get factor return
-#  fRtn <- getfRtn(RebDates,type = 'mean',reg_results = reg_results)
+#  fRtn <- getfRtn(rtntype = 'mean',reg_results = reg_results)
 #  # get factor covariance
 #  fCov <- getfCov(RebDates,covtype='shrink',reg_results = reg_results)
 #  
@@ -95,6 +95,8 @@ kable(ftbale)
 #  
 #  # simplest way:no benchmark,maximize return
 #  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',factorExp = fexp))
+#  
+#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',factorExp = fexp,optWay = 'solve.QP'))
 #  
 #  
 #  #build weight setting
