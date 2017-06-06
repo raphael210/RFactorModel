@@ -900,53 +900,83 @@ MC.table.fCorr <- function(TSF,Nbin){
 #' calculate factor return, factor covariance and residual variance.
 #' @name f_rtn_cov_delta
 #' @rdname f_rtn_cov_delta
-#' @param RebDates is date set
+#' @param RebDates is date set, can be missing.
 #' @param fname is factor names, can be missing.
 #' @param dure a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.
-#' @param rtntype is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.
+#' @param rolling default value is \code{FALSE}, if value is \code{TRUE} means the data period is \code{nwin} forward.
+#' @param rtntype is method to caculate factor return,\bold{mean} means average of historical data,\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[forecast]{ets}}.
+#' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
 #' @param nwin is rolling windows forward.
 #' @param reg_results see examples in \code{\link{reg.TSFR}}
 #' @return a data frame of factors' return .
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-#' fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
-#' fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
-#' fCov <- getfCov(RebDates,fNames,reg_results=reg_results)
+#' fname <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
+#' fRtn <- getfRtn(RebDates,fname,reg_results=reg_results)
+#' fCov <- getfCov(RebDates,fname,reg_results=reg_results)
+#' Delta <- getDelta(RebDates,dure=months(1),rolling=FALSE,nwin=24,reg_results)
+#' rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results)
 #' @export
-f_rtn_cov_delta <- function(reg_results) {
+f_rtn_cov_delta <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),
+                            covtype=c('shrink','simple'),nwin=24,reg_results) {
+  rtntype <- match.arg(rtntype)
+  covtype <- match.arg(covtype)
   
+  fRtn <- getfRtn(RebDates,fname,dure=dure,rolling=rolling,rtntype=rtntype,
+                      nwin=nwin,reg_results)
+  fCov <- getfCov(RebDates,fname,dure=dure,rolling=rolling,covtype=covtype,
+                              nwin=nwin,reg_results)
+  Delta <- getDelta(RebDates,dure=dure,rolling=rolling,nwin=nwin,reg_results)
+  
+  re <- list(fRtn=fRtn,fCov=fCov,Delta=Delta)
+  return(re)
 }
 
 
 
 
 # inner function
-getRawfRtn <- function(begT,endT,dure,reg_results){
+get_frtn_res <- function(begT,endT,dure,reg_results,outtype=c('frtn','res')){
   if(missing(begT)) begT <- as.Date('1990-01-01')
   if(missing(endT)) endT <- as.Date('2100-01-01')
+  outtype <- match.arg(outtype)
   
   if(missing(reg_results)){
     if(dure==lubridate::days(1)){
-      dbname <- 'frtn_d1'
+      dbname <- 'd1'
     }else if(dure==lubridate::weeks(1)){
-      dbname <- 'frtn_w1'
+      dbname <- 'w1'
     }else if(dure==lubridate::weeks(2)){
-      dbname <- 'frtn_w2'
+      dbname <- 'w2'
     }else if(dure==months(1)){
-      dbname <- 'frtn_m1'
+      dbname <- 'm1'
     }
+    dbname <- paste(outtype,dbname,sep = '_')
     
     con <- db.local()
-    qr <- paste("SELECT date,fname,",dbname," 'frtn'
+    if(outtype=='frtn'){
+      qr <- paste("SELECT date,fname,",dbname," 'frtn'
                 FROM Reg_FactorRtn where date>=",rdate2int(begT),
-                " and date<=",rdate2int(endT))
+                  " and date<=",rdate2int(endT))
+    }else if(outtype=='res'){
+      qr <- paste("SELECT date,stockID,",dbname," 'res'
+                FROM Reg_Residual where date>=",rdate2int(begT),
+                  " and date<=",rdate2int(endT))
+    }
+
     re <- dbGetQuery(con,qr)
     re <- transform(re,date=intdate2r(date))
     dbDisconnect(con)
   }else{
-    re <- reg_results$fRtn
-    re <- dplyr::select(re,-Tstat)
-    re <- dplyr::filter(re,date>=begT,date<=endT)
+    if(outtype=='frtn'){
+      re <- reg_results$fRtn
+      re <- dplyr::select(re,-Tstat)
+      re <- dplyr::filter(re,date>=begT,date<=endT)
+    }else if(outtype=='res'){
+      re <- reg_results$res
+      re <- dplyr::filter(re,date>=begT,date<=endT)
+    }
+
   }
   
   return(re)
@@ -961,9 +991,9 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
   rtntype <- match.arg(rtntype)
   
   if(missing(reg_results)){
-    rtndata <- getRawfRtn(dure=dure)
+    rtndata <- get_frtn_res(dure=dure)
   }else{
-    rtndata <- getRawfRtn(reg_results=reg_results)
+    rtndata <- get_frtn_res(reg_results=reg_results)
   }
   
   if(missing(fname)){
@@ -978,13 +1008,13 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
   rtndata$tmpdate <- trday.offset(rtndata$date,dure)
   rtndata <- reshape2::dcast(rtndata,date+tmpdate~fname,value.var = 'frtn')
   
-  
+  missingtag <- 0
   if(missing(RebDates)){
     RebDates <- trday.offset(max(rtndata$date),dure)
+    missingtag <- 1
   }
   
   result <- data.frame()
-
 
   for(i in RebDates){
     tmp.rtndata <- rtndata %>% dplyr::filter(tmpdate<=i) %>% dplyr::select(-date,-tmpdate)
@@ -1012,23 +1042,24 @@ getfRtn <- function(RebDates,fname,dure=months(1),rolling=FALSE,rtntype=c('mean'
     
   }
   result <- transform(result,fname=as.character(fname))
+  if(missingtag){
+    result$date <- NULL
+  }
   return(result)
 }
 
 
 #' @rdname f_rtn_cov_delta
-#' @param covtype means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.
 #' 
 #' @export
-getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,
-                    covtype=c('shrink','simple'),
+getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,covtype=c('shrink','simple'),
                     nwin=24,reg_results){
   covtype <- match.arg(covtype)
   
   if(missing(reg_results)){
-    rtndata <- getRawfRtn(dure=dure)
+    rtndata <- get_frtn_res(dure=dure)
   }else{
-    rtndata <- getRawfRtn(reg_results=reg_results)
+    rtndata <- get_frtn_res(reg_results=reg_results)
   }
   
   if(missing(fname)){
@@ -1043,13 +1074,13 @@ getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,
   rtndata$tmpdate <- trday.offset(rtndata$date,dure)
   rtndata <- reshape2::dcast(rtndata,date+tmpdate~fname,value.var = 'frtn')
   
-  
+  missingtag <- 0
   if(missing(RebDates)){
     RebDates <- trday.offset(max(rtndata$date),dure)
+    missingtag <- 1
   }
   
   result <- data.frame()
-  
   
   for(i in RebDates){
     tmp.rtndata <- rtndata %>% dplyr::filter(tmpdate<=i) %>% dplyr::select(-date,-tmpdate)
@@ -1057,130 +1088,21 @@ getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,
       tmp.rtndata <- tail(tmp.rtndata,nwin)
     }
     
-    if(rtntype=='mean'){
-      tmp <- colMeans(tmp.rtndata)
-      tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
-                        fname=names(tmp),
-                        frtn=unname(tmp))
-      result <- rbind(result,tmp)
-    }else if(rtntype=='forcast'){
-      for(j in 1:ncol(tmp.rtndata)){
-        myts <- ts(data= tmp.rtndata[,j])
-        fit <- forecast::ets(myts)
-        fit.forcast <- forecast::forecast(fit, 1)
-        tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),
-                          fname=colnames(tmp.rtndata)[j],
-                          frtn=as.numeric(fit.forcast$mean))
-        result <- rbind(result,tmp)
-      }
-    }
-    
-  }
-  result <- transform(result,fname=as.character(fname))
-  return(result)
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  if(missing(reg_results)){
-    re <- getRawfRtn(dure=dure)
-  }else{
-    re <- getRawfRtn(reg_results=reg_results)
-  }
-  
-  if(missing(fname)){
-    fname <- unique(re$fname)
-  }
-  tmp <- setdiff(fNames,unique(re$fname))
-  if(length(tmp)>0){
-    warning(paste('missing factor:',paste(tmp,collapse=',')),call. = FALSE)
-  }
-  
-  re <- subset(re,fname %in% fNames)
-  re <- reshape2::dcast(re,date~fname,mean,value.var = 'frtn')
-
-  if(covtype %in% c('shrink','simple')){
     if(covtype=='simple'){
-      re <- xts::xts(re[,-1],order.by = re[,1])
-      result <- data.frame(cov(re))
+      tmp <- cov(tmp.rtndata)
+      tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),tmp)
+      result <- rbind(result,tmp)
     }else if(covtype=='shrink'){
-      re <- as.matrix(re[,-1])
-      result <- data.frame(nlshrink::nlshrink_cov(re))
-      colnames(result) <- colnames(re)
-      rownames(result) <- colnames(re)
-    }
-    
-    
-  }else if(covtype %in% c('roll-simple','roll-shrink')){
-    result <- data.frame()
-    for(i in RebDates){
-      i <- as.Date(i,origin='1970-01-01')
-      tmp.endT <- trday.offset(i,dure*-1)
-      if(missing(nwin)){
-        tmp.begT <- as.Date('1900-01-01')
-      }else{
-        tmp.begT <- trday.offset(tmp.endT,nwin)
-      }
-      tmp.re <- subset(re,date<tmp.endT & date>=tmp.begT)
+      tmp <- data.frame(nlshrink::nlshrink_cov(as.matrix(tmp.rtndata)))
+      colnames(tmp) <- colnames(tmp.rtndata)
+      tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),tmp)
+      result <- rbind(result,tmp)
 
-      
-      if(covtype=='roll-simple'){
-        tmp.re <- xts::xts(tmp.re[,-1],order.by = tmp.re[,1])
-        if(nrow(tmp.re)<ncol(tmp.re)){
-          warning('Data too short for training period!',call. = FALSE)
-          next
-        }
-        result <- rbind(result,data.frame(date=i,cov(tmp.re)))
-      }else if(covtype=='roll-shrink'){
-        tmp.re <- as.matrix(tmp.re[,-1])
-        if(nrow(tmp.re)<2*ncol(tmp.re)){
-          warning('Data too short for training period!',call. = FALSE)
-          next
-        }
-        tmp <- data.frame(nlshrink::nlshrink_cov(tmp.re))
-        colnames(tmp) <- colnames(tmp.re)
-        result <- rbind(result,data.frame(date=i,tmp))
-      }
     }
-    rownames(result) <- NULL
+    
+  }
+  if(missingtag){
+    result$date <- NULL
   }
   return(result)
 }
@@ -1191,53 +1113,48 @@ getfCov <- function(RebDates,fname,dure=months(1),rolling=FALSE,
 #' @rdname f_rtn_cov_delta
 #'
 #' @export
-getDelta <- function(TS,dure,reg_results,nwin=250){
-  dates <- dplyr::distinct(TS,date)
-  dates$date_tmp1 <- trday.offset(dates$date,dure*-1)
-  if(dure==lubridate::days(1)){
-    dbname <- 'res_d1'
-  }else if(dure==lubridate::weeks(1)){
-    dbname <- 'res_w1'
-  }else if(dure==lubridate::weeks(2)){
-    dbname <- 'res_w2'
-  }else if(dure==months(1)){
-    dbname <- 'res_m1'
-  }
-  
+getDelta <- function(RebDates,dure=months(1),rolling=FALSE,nwin=24,reg_results){
   
   if(missing(reg_results)){
-    con <- db.local()
-    dates$date_tmp2 <- trday.nearby(dates$date_tmp1,-(nwin-1))
-    
-    qr <- paste("SELECT date,stockID,",dbname," 'res'
-                FROM Reg_Residual where date>=",rdate2int(min(dates$date_tmp2)),
-                " and date<=",rdate2int(max(dates$date_tmp1)))
-    data <- dbGetQuery(con,qr)
-    dbDisconnect(con)
-    data$date <- intdate2r(data$date)
-    
-    Delta <- data.frame()
-    for(i in 1:nrow(dates)){
-      tmp.data <- dplyr::filter(data,date>=dates$date_tmp2[i],date<=dates$date_tmp1[i])
-      by_stock <- dplyr::group_by(tmp.data,stockID)
-      tmp.delta <- dplyr::summarise(by_stock,
-                                    n = n(),
-                                    var = var(res))
-      tmp.delta$date <- dates$date[i]
-      Delta <- rbind(Delta,tmp.delta)
-    }
-    Delta <- dplyr::filter(Delta,n>=20)
-    Delta <- Delta[,c('date','stockID','var')]
-    Delta <- dplyr::left_join(TS,Delta,by = c("date", "stockID"))
-    
+    resdata <- get_frtn_res(dure=dure,outtype = 'res')
   }else{
-    
-    
-    
-    
+    resdata <- get_frtn_res(reg_results=reg_results,outtype = 'res')
+  }
+  resdata$tmpdate <- trday.offset(resdata$date,dure)
+  if(rolling){
+    resdata <- reshape2::dcast(resdata,date+tmpdate~stockID,value.var = 'res')
   }
   
-  return(Delta)
+  missingtag <- 0
+  if(missing(RebDates)){
+    RebDates <- trday.offset(max(resdata$date),dure)
+    missingtag <- 1
+  }
+  
+  result <- data.frame()
+  for(i in RebDates){
+    tmp.resdata <- resdata %>% dplyr::filter(tmpdate<=i) %>% dplyr::select(-date,-tmpdate)
+    if(rolling){
+      tmp.resdata <- tail(tmp.resdata,nwin)
+      tmp.resdata <- reshape2::melt(tmp.resdata,variable.name = "stockID", na.rm = TRUE,value.name = "res")
+    }
+    tmp <- tmp.resdata %>% dplyr::group_by(stockID) %>% dplyr::summarise(n =n(),var = var(res))
+    
+    if(rolling){
+      tmp <- tmp %>% dplyr::filter(n>=nwin/3) %>% dplyr::select(-n)
+    }else{
+      tmp <- tmp %>% dplyr::filter(n>=3) %>% dplyr::select(-n)
+    }
+
+    tmp <- data.frame(date=as.Date(i,origin='1970-01-01'),tmp)
+    result <- rbind(result,tmp)
+    
+  }
+  result <- transform(result,stockID=as.character(stockID))
+  if(missingtag){
+    result$date <- NULL
+  }
+  return(result)
 }
 
 

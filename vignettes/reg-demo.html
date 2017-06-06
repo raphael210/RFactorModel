@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-06-05" />
+<meta name="date" content="2017-06-06" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-06-05</em></h4>
+<h4 class="date"><em>2017-06-06</em></h4>
 
 
 
@@ -316,7 +316,7 @@ alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">
 <span class="co"># get factor return</span>
 fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(<span class="dt">rtntype =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
 <span class="co"># get factor covariance</span>
-fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(RebDates,<span class="dt">covtype=</span><span class="st">'shrink'</span>,<span class="dt">reg_results =</span> reg_results)
+fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(<span class="dt">covtype=</span><span class="st">'shrink'</span>,<span class="dt">reg_results =</span> reg_results)
 
 <span class="co"># # Date Alignment</span>
 <span class="co"># tmp.date1 &lt;- max(min(fRtn$date),min(fCov$date))</span>

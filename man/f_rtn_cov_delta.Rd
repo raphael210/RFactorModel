@@ -7,7 +7,9 @@
 \alias{getDelta}
 \title{factor return,covariance and delta}
 \usage{
-f_rtn_cov_delta(reg_results)
+f_rtn_cov_delta(RebDates, fname, dure = months(1), rolling = FALSE,
+  rtntype = c("mean", "forcast"), covtype = c("shrink", "simple"),
+  nwin = 24, reg_results)
 
 getfRtn(RebDates, fname, dure = months(1), rolling = FALSE,
   rtntype = c("mean", "forcast"), nwin = 24, reg_results)
@@ -15,22 +17,25 @@ getfRtn(RebDates, fname, dure = months(1), rolling = FALSE,
 getfCov(RebDates, fname, dure = months(1), rolling = FALSE,
   covtype = c("shrink", "simple"), nwin = 24, reg_results)
 
-getDelta(TS, dure, reg_results, nwin = 250)
+getDelta(RebDates, dure = months(1), rolling = FALSE, nwin = 24,
+  reg_results)
 }
 \arguments{
-\item{reg_results}{see examples in \code{\link{reg.TSFR}}}
-
-\item{RebDates}{is date set}
+\item{RebDates}{is date set, can be missing.}
 
 \item{fname}{is factor names, can be missing.}
 
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
-\item{rtntype}{is method to caculate factor return,\bold{mean} means average of total historical data,\bold{rollmean} means rolling mean of historical data,rolling window depends \bold{\code{nwin}},\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[prophet]{prophet}}.}
+\item{rolling}{default value is \code{FALSE}, if value is \code{TRUE} means the data period is \code{nwin} forward.}
+
+\item{rtntype}{is method to caculate factor return,\bold{mean} means average of historical data,\bold{forcast} means forcast factor return based on historical data,it may take a while,the forcast method come from package \code{\link[forecast]{ets}}.}
+
+\item{covtype}{means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.}
 
 \item{nwin}{is rolling windows forward.}
 
-\item{covtype}{means type of caculating covariance,\bold{shrink} can see example in \code{\link[nlshrink]{nlshrink_cov}},simple see \code{\link{cov}}.}
+\item{reg_results}{see examples in \code{\link{reg.TSFR}}}
 }
 \value{
 a data frame of factors' return .
@@ -40,7 +45,9 @@ calculate factor return, factor covariance and residual variance.
 }
 \examples{
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-fNames <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
-fRtn <- getfRtn(RebDates,fNames,reg_results=reg_results)
-fCov <- getfCov(RebDates,fNames,reg_results=reg_results)
+fname <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
+fRtn <- getfRtn(RebDates,fname,reg_results=reg_results)
+fCov <- getfCov(RebDates,fname,reg_results=reg_results)
+Delta <- getDelta(RebDates,dure=months(1),rolling=FALSE,nwin=24,reg_results)
+rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results)
 }
