@@ -272,6 +272,63 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 
 
 
+#' factorlists recommend
+#' 
+#' @param indexID is index ID.
+#' @export
+#' @examples 
+#' ##################get the recommended factorLists of last 12 months########## 
+#' begT <- Sys.Date()-lubridate::years(1)
+#' endT <- Sys.Date()-1
+#' indexID <- 'EI000905'
+#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT)
+#' ##################get the recommended factorLists of last 4 weeks########## 
+#' begT <- Sys.Date()-months(1)
+#' endT <- Sys.Date()-1
+#' indexID <- 'EI000985'
+#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT,rebFreq = "week")
+reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar=1,forder){
+  RebDates <- getRebDates(begT,endT,rebFreq)
+  
+  TS <- getTS(RebDates,indexID)
+  factorIDs <- c("F000001","F000003","F000004","F000006","F000007","F000008","F000009","F000010","F000011","F000012","F000013","F000014","F000015","F000016","F000017","F000018")
+  tmp <- buildFactorLists_lcfs(factorIDs,factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+  FactorLists <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                    factorPar=list(),
+                    factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_MLL_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_OCF_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.G_scissor_Q",
+                    factorPar=list(),
+                    factorDir=1),
+    buildFactorList(factorFun="gf.ROE_ttm",
+                    factorPar=list(),
+                    factorDir=1),
+    factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+  FactorLists <- c(tmp,FactorLists)
+  TSF <- getMultiFactor(TS,FactorLists)
+  TSFR <- na.omit(getTSR(TSF))
+  
+  #factor select 
+  re <- reg.factor_select(TSFR,sectorAttr = NULL,forder)
+  result <- re$result
+  result <- result[c(TRUE,result$rsqPct[-1]>rsqBar),]
+  TSFR <- TSFR[,c("date","date_end","stockID",result$fname,"periodrtn")]
+  FactorLists <- FactorLists[sapply(FactorLists,function(x) x$factorName %in% result$fname)]
+  re <- list(FactorLists=FactorLists,result=result,TSFR=TSFR)
+  return(re)
+}
+
+
+
 
 
 
@@ -589,65 +646,6 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
 
 
 
-#' factorlists recommend
-#' 
-#' @param indexID is index ID.
-#' @export
-#' @examples 
-#' ##################get the recommended factorLists of last 12 months########## 
-#' begT <- Sys.Date()-lubridate::years(1)
-#' endT <- Sys.Date()-1
-#' indexID <- 'EI000905'
-#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT)
-#' ##################get the recommended factorLists of last 4 weeks########## 
-#' begT <- Sys.Date()-months(1)
-#' endT <- Sys.Date()-1
-#' indexID <- 'EI000985'
-#' FactorLists <- reg.factorlists_recommend(indexID,begT,endT,rebFreq = "week")
-reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar=1){
-  RebDates <- getRebDates(begT,endT,rebFreq)
-  
-  TS <- getTS(RebDates,indexID)
-  factorIDs <- c("F000001","F000003","F000004","F000006","F000007","F000008","F000009","F000010","F000011","F000012","F000013","F000014","F000015","F000016","F000017","F000018")
-  tmp <- buildFactorLists_lcfs(factorIDs,factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
-  FactorLists <- buildFactorLists(
-    buildFactorList(factorFun="gf.ln_mkt_cap",
-                    factorPar=list(),
-                    factorDir=-1),
-    buildFactorList(factorFun="gf.NP_YOY",
-                    factorPar=list(),
-                    factorDir=1),
-    buildFactorList(factorFun="gf.G_MLL_Q",
-                    factorPar=list(),
-                    factorDir=1),
-    buildFactorList(factorFun="gf.G_OCF_Q",
-                    factorPar=list(),
-                    factorDir=1),
-    buildFactorList(factorFun="gf.G_scissor_Q",
-                    factorPar=list(),
-                    factorDir=1),
-    buildFactorList(factorFun="gf.ROE_ttm",
-                    factorPar=list(),
-                    factorDir=1),
-    factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
-  FactorLists <- c(tmp,FactorLists)
-  TSF <- getMultiFactor(TS,FactorLists)
-  TSFR <- getTSR(TSF)
-  TSFR <- na.omit(TSFR)
-  
-  #factor select 
-  re <- reg.factor_select(TSFR,sectorAttr = NULL)
-  result <- re$result
-  result <- result[c(TRUE,result$rsqPct[-1]>rsqBar),]
-  TSFR <- re$TSFR
-  TSFR <- TSFR[,c("date","date_end","stockID",result$fname,"periodrtn")]
-  FactorLists <- FactorLists[sapply(FactorLists,function(x) x$factorName %in% result$fname)]
-  re <- list(FactorLists=FactorLists,result=result,TSFR=TSFR)
-  return(re)
-}
-
-
-
 
 
 # ---------------------  ~~ Backtesting results --------------
@@ -774,11 +772,45 @@ chart.reg.rsquare <- function(reg_results){
 #' @export
 MC.chart.regCorr <- function(reg_results){
   fRtn <- reg_results$fRtn
-
+  
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
-  fRtn <- as.matrix(fRtn[,-1])
-  fRtn.cor <- cor(fRtn)
-  corrplot::corrplot(fRtn.cor,method = 'number')
+  fRtn.cor <- cor(as.matrix(fRtn[,-1]))
+  ggplot.corplot(fRtn.cor)
+  
+}
+
+#' ggplot.corplot
+#' 
+#' @param corr is correlation matrix or a list of correlation matrix ,see \code{\link[stats]{cor}}.
+#' 
+#' @export
+ggplot.corplot <- function(corr) {
+
+  subfun <- function(corr){
+    corr <- round(corr,digits = 2)
+    corr[upper.tri(corr)] <- NA
+    corr <- reshape2::melt(corr, na.rm = TRUE)
+    colnames(corr) <- c("fname","fnamecor",'value')
+    return(corr)
+  }
+  
+  if(is.matrix(corr)){
+    cordf <- subfun(corr)
+    ggplot(data=cordf,aes(fname,fnamecor,fill=value))+geom_tile()+
+      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
+      geom_text(aes(fname,fnamecor, label = value), color = "black")+
+      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
+    
+  }else{
+    N <- floor(sqrt(length(corr)))
+    cordf <- plyr::ldply(corr,subfun,.id = 'date')
+    
+    ggplot(data=cordf,aes(fname,fnamecor,fill=value))+geom_tile()+
+      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
+      geom_text(aes(fname,fnamecor, label = value), color = "black")+facet_wrap(~ date,ncol=N)+
+      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
+    
+  }
 
 }
 
@@ -798,54 +830,8 @@ MC.chart.regCorr <- function(reg_results){
 #' MC.chart.fCorr(TSF,Nbin='year')
 #' @export
 MC.chart.fCorr <- function(TSF,Nbin){
-  
-  # fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
-  fnames <- guess_factorNames(TSF)
-  TSF_by <- dplyr::group_by(TSF[,c('date',fnames)],date)
-  
-  cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
-  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
-  cordata <- reshape2::melt(cordata,id=c('date','fname'),
-                        variable.name='fnamecor',factorsAsStrings=FALSE)
-  cordata <- transform(cordata,fname=as.character(fname),
-                       fnamecor=as.character(fnamecor))
-  
-  subfun <- function(df){
-    df <- dplyr::arrange(df,fname,fnamecor)
-    df <- reshape2::dcast(df,fname~fnamecor)
-    rownames(df) <- df$fname
-    df <- as.matrix(df[,-1])
-    df[upper.tri(df)] <- NA
-    df <- reshape2::melt(df, na.rm = TRUE)
-    colnames(df) <- c("fname","fnamecor",'value')
-    return(df)
-  }
-  
-  if(missing(Nbin)){
-    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- subfun(cordata_by)
-
-    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-  }else{
-    cordata$date <- cut.Date2(cordata$date,Nbin)
-    N <- length(unique(cordata$date))
-    N <- floor(sqrt(N))
-    cordata_by <- dplyr::group_by(cordata,date,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- split(cordata_by[,-1],cordata_by$date)
-    cordata_by <- plyr::ldply(cordata_by,subfun,.id = 'date')
-    
-    cordata_by$value <- round(cordata_by$value,2)
-    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+facet_wrap(~ date,ncol=N)+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-  }
-  
+  corr <- MC.table.fCorr(TSF,Nbin)
+  ggplot.corplot(corr)
 }
 
 

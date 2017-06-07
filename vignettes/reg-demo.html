@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-06-06" />
+<meta name="date" content="2017-06-07" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-06-06</em></h4>
+<h4 class="date"><em>2017-06-07</em></h4>
 
 
 
@@ -263,25 +263,34 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 </table>
 <p>Get recommended factor lists by regression.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># get recommended factorlists last year based on regression</span>
-begT &lt;-<span class="st"> </span><span class="kw">trday.nearest</span>(<span class="kw">Sys.Date</span>()-<span class="kw">months</span>(<span class="dv">5</span>))
+begT &lt;-<span class="st"> </span><span class="kw">trday.nearest</span>(<span class="kw">Sys.Date</span>()-<span class="kw">months</span>(<span class="dv">6</span>))
 endT &lt;-<span class="st"> </span><span class="kw">trday.nearest</span>(<span class="kw">Sys.Date</span>()-<span class="dv">1</span>)
 indexID &lt;-<span class="st"> 'EI000985'</span>
-re &lt;-<span class="st"> </span><span class="kw">reg.factorlists_recommend</span>(indexID,begT,endT)
+re &lt;-<span class="st"> </span><span class="kw">reg.factorlists_recommend</span>(indexID,begT,endT,<span class="dt">forder =</span> <span class="kw">c</span>(<span class="st">'ln_mkt_cap_'</span>,<span class="st">'PB_mrq_'</span>,<span class="st">'pct_chg_per_60_'</span>,<span class="st">'liquidity_'</span>))
 FactorLists &lt;-<span class="st"> </span>re$FactorLists
-TSFR &lt;-<span class="st"> </span>re$TSFR
 <span class="co"># recommend result</span>
 <span class="kw">kable</span>(re$result)</code></pre></div>
 <p>Show factors’ correlation and statistic result.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">TSF &lt;-<span class="st"> </span>dplyr::<span class="kw">select</span>(TSFR, -date_end, -periodrtn)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">begT &lt;-<span class="st"> </span><span class="kw">trday.nearest</span>(<span class="kw">Sys.Date</span>()-lubridate::<span class="kw">years</span>(<span class="dv">6</span>))
+endT &lt;-<span class="st"> </span><span class="kw">trday.nearest</span>(<span class="kw">Sys.Date</span>()-<span class="dv">1</span>)
+RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
+TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,indexID)
+
+<span class="co"># remove high correlated or large proportion of missing factors</span>
+dropf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'F_ROE_1'</span>,<span class="st">'float_cap_'</span>,<span class="st">'disposition_'</span>)
+FactorLists &lt;-<span class="st"> </span>FactorLists[<span class="kw">sapply</span>(FactorLists,function(x) !(x$factorName %in%<span class="st"> </span>dropf))]
+
+TSF &lt;-<span class="st"> </span><span class="kw">na.omit</span>(<span class="kw">getMultiFactor</span>(TS,FactorLists))
+
 <span class="kw">MF.chart.Fct_box</span>(TSF)
 <span class="kw">MF.chart.Fct_corr</span>(TSF)
 <span class="kw">MF.chart.Fct_density</span>(TSF)
 
-<span class="co"># remove strange factors</span>
-dropf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'F_ROE_1'</span>,<span class="st">'float_cap_'</span>,<span class="st">'disposition_'</span>,<span class="st">'G_SCF_Q'</span>)
-FactorLists &lt;-<span class="st"> </span>FactorLists[<span class="kw">sapply</span>(FactorLists,function(x) !(x$factorName %in%<span class="st"> </span>dropf))]
-TSF[,dropf] &lt;-<span class="st"> </span><span class="ot">NULL</span>
-TSFR[,dropf] &lt;-<span class="st"> </span><span class="ot">NULL</span></code></pre></div>
+
+<span class="co">#dealing with factor correlation</span>
+TSF &lt;-<span class="st"> </span><span class="kw">factor_orthogon_single</span>(TSF,<span class="dt">y=</span><span class="st">'ILLIQ'</span>,<span class="dt">x =</span> <span class="st">'ln_mkt_cap_'</span>,<span class="dt">sectorAttr =</span> <span class="ot">NULL</span>)
+TSF &lt;-<span class="st"> </span><span class="kw">factor_orthogon_single</span>(TSF,<span class="dt">y=</span><span class="st">'volatility_'</span>,<span class="dt">x =</span> <span class="st">'liquidity_'</span>,<span class="dt">sectorAttr =</span> <span class="ot">NULL</span>)
+TSFR &lt;-<span class="st"> </span><span class="kw">na.omit</span>(<span class="kw">getTSR</span>(TSF))</code></pre></div>
 <p>Build and update local database’s regression result tables.</p>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># build local database's regression tables</span>
 <span class="kw">system.time</span>(<span class="kw">lcdb.build.RegTables</span>(<span class="dt">FactorLists=</span>FactorLists))

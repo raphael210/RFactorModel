@@ -5,7 +5,7 @@
 \title{factorlists recommend}
 \usage{
 reg.factorlists_recommend(indexID, begT, endT, rebFreq = "month",
-  rsqBar = 1)
+  rsqBar = 1, forder)
 }
 \arguments{
 \item{indexID}{is index ID.}

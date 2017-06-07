@@ -13,26 +13,36 @@ kable(ftbale)
 
 ## ----getfactorlist-------------------------------------------------------
 #  # get recommended factorlists last year based on regression
-#  begT <- trday.nearest(Sys.Date()-months(5))
+#  begT <- trday.nearest(Sys.Date()-months(6))
 #  endT <- trday.nearest(Sys.Date()-1)
 #  indexID <- 'EI000985'
-#  re <- reg.factorlists_recommend(indexID,begT,endT)
+#  re <- reg.factorlists_recommend(indexID,begT,endT,forder = c('ln_mkt_cap_','PB_mrq_','pct_chg_per_60_','liquidity_'))
 #  FactorLists <- re$FactorLists
-#  TSFR <- re$TSFR
 #  # recommend result
 #  kable(re$result)
 
 ## ----showfactorstat------------------------------------------------------
-#  TSF <- dplyr::select(TSFR, -date_end, -periodrtn)
+#  begT <- trday.nearest(Sys.Date()-lubridate::years(6))
+#  endT <- trday.nearest(Sys.Date()-1)
+#  RebDates <- getRebDates(begT,endT)
+#  TS <- getTS(RebDates,indexID)
+#  
+#  # remove high correlated or large proportion of missing factors
+#  dropf <- c('F_ROE_1','float_cap_','disposition_')
+#  FactorLists <- FactorLists[sapply(FactorLists,function(x) !(x$factorName %in% dropf))]
+#  
+#  TSF <- na.omit(getMultiFactor(TS,FactorLists))
+#  
 #  MF.chart.Fct_box(TSF)
 #  MF.chart.Fct_corr(TSF)
 #  MF.chart.Fct_density(TSF)
 #  
-#  # remove strange factors
-#  dropf <- c('F_ROE_1','float_cap_','disposition_','G_SCF_Q')
-#  FactorLists <- FactorLists[sapply(FactorLists,function(x) !(x$factorName %in% dropf))]
-#  TSF[,dropf] <- NULL
-#  TSFR[,dropf] <- NULL
+#  
+#  #dealing with factor correlation
+#  TSF <- factor_orthogon_single(TSF,y='ILLIQ',x = 'ln_mkt_cap_',sectorAttr = NULL)
+#  TSF <- factor_orthogon_single(TSF,y='volatility_',x = 'liquidity_',sectorAttr = NULL)
+#  TSFR <- na.omit(getTSR(TSF))
+#  
 
 ## ----getlists_buildlocaltables-------------------------------------------
 #  # build local database's regression tables
