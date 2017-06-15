@@ -1698,10 +1698,7 @@ getfExpLimit <- function(factorExp,bmk,TSF){
                                        max=fexp+factorExp[factorExp$fname=='sectorall','max'])
         }
       }
-      tmp.result2.f <- subset(tmp.result2,substr(fname,1,2)!='ES')
-
-      tmp.result2 <- rbind(tmp.result2.sec,tmp.result2.f)
-      tmp.result2 <- na.omit(tmp.result2)
+      tmp.result2 <- na.omit(tmp.result2.sec)
     }
     
     result <- rbind(tmp.result1,tmp.result2)
