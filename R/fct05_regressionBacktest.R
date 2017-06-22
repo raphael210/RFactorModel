@@ -192,7 +192,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
     warning('NAs in TSFR!')
     TSFR <- na.omit(TSFR)  # omit the NAs 
   }
-  factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'))
+  factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore')
   
   if(!is.null(sectorAttr)){
     if(identical(sectorAttr,"existing")){
@@ -291,7 +291,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
   RebDates <- getRebDates(begT,endT,rebFreq)
   
   TS <- getTS(RebDates,indexID)
-  factorIDs <- c("F000001","F000003","F000004","F000006","F000007","F000008","F000009","F000010","F000011","F000012","F000013","F000014","F000015","F000016","F000017","F000018")
+  factorIDs <- CT_FactorLists()$factorID
   tmp <- buildFactorLists_lcfs(factorIDs,factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
   FactorLists <- buildFactorLists(
     buildFactorList(factorFun="gf.ln_mkt_cap",
@@ -1349,6 +1349,7 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
   port$stockID <- as.character(port$stockID)
   return(port)
 }
+
 
 
 OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
