@@ -631,7 +631,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
     }
     rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
     coef <- models %>% broom::tidy(mod)
-    resd <- models %>% broom::augment(mod)
+    suppressWarnings(resd <- models %>% broom::augment(mod))
     resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
   }
   rsq <- as.data.frame(rsq)
@@ -1269,10 +1269,9 @@ OptWgt <- function(TSF,alphaf,fRtn,fCov,
       
       Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
       Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      Dmat <- (Dmat+t(Dmat))/2
-      # tmp <- Matrix::nearPD(Dmat)
-      # Dmat <- tmp$mat
-      # Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      tmp <- Matrix::nearPD(Dmat)
+      Dmat <- tmp$mat
+      Dmat <- matrix(Dmat,nrow = nrow(Dmat))
       nstock <- dim(Dmat)[1]
       
       if(optWay == "solve.QP"){
@@ -1440,10 +1439,11 @@ OptWgtNEW <- function(TSF,alphaf,fRtn,fCov,
       
       Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
       Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      Dmat <- (Dmat+t(Dmat))/2
-      # tmp <- Matrix::nearPD(Dmat)
-      # Dmat <- tmp$mat
-      # Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      if(any(eigen(Dmat,only.values = T)[[1]]<=0)){
+        tmp <- Matrix::nearPD(Dmat)
+        Dmat <- tmp$mat
+        Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      }
       nstock <- dim(Dmat)[1]
       
       if(optWay == "solve.QP"){
