@@ -1460,8 +1460,10 @@ getbmkfExp <- function(TSF,bmk){
     result <- rbind(result,tmp)
   }
   result$date <- as.Date(result$date,origin='1970-01-01')
-  tmp <- dplyr::filter(result,substr(fname,1,2)=='ES',fexp==0)
-  result <- dplyr::setdiff(result,tmp)
+  tmp <- dplyr::filter(result,substr(fname,1,2)=='ES',fexp>0)
+  tmp$fexp <- tmp$fexp/sum(tmp$fexp)
+  result <- dplyr::filter(result,substr(fname,1,2)!='ES')
+  result <- rbind(result,tmp)
   result$fname <- as.character(result$fname)
   return(result)
 }

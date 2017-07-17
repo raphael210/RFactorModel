@@ -207,7 +207,29 @@ setConstr_fctExp_style <- function(constr,FactorLists,min,max,relative){
 }
 
 
+#' opt_object
+#' 
+#' build, set, add, clear objects
+#' 
+#' @name opt_object
+#' @param constr
+#' @return a list contain the constrains 
+#' @export
+#' @rdname opt_object
+#' @examples 
+#' obj <- object_default()
+object_default <- function(){
+  obj <- list()
 
+  obj$return <- emptydf
+  obj$risk <- data.frame(ID = character(0), 
+                            min = numeric(0), 
+                            max = numeric(0), 
+                            relative=integer(0),
+                            stringsAsFactors = FALSE)
+
+  return(obj)
+}
 
 
 

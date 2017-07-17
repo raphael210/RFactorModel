@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-06-07" />
+<meta name="date" content="2017-07-14" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-06-07</em></h4>
+<h4 class="date"><em>2017-07-14</em></h4>
 
 
 
@@ -320,12 +320,12 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 <div id="portfolio-optimization" class="section level2">
 <h2>portfolio optimization</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set alpha factor</span>
-alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">'volatility_'</span>,<span class="st">&quot;PB_mrq_&quot;</span>)
+alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">'liquidity_'</span>,<span class="st">'ROE_ttm'</span>,<span class="st">&quot;PB_mrq_&quot;</span>,<span class="st">'NP_YOY'</span>,<span class="st">'F_NP_chg_w13'</span>)
 
 <span class="co"># get factor return</span>
-fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(<span class="dt">rtntype =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
+fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(<span class="dt">fname =</span> alphaf,<span class="dt">rtntype =</span> <span class="st">'mean'</span>,<span class="dt">reg_results =</span> reg_results)
 <span class="co"># get factor covariance</span>
-fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(<span class="dt">covtype=</span><span class="st">'shrink'</span>,<span class="dt">reg_results =</span> reg_results)
+fCov &lt;-<span class="st"> </span><span class="kw">getfCov</span>(<span class="dt">fname =</span> alphaf,<span class="dt">covtype=</span><span class="st">'shrink'</span>,<span class="dt">reg_results =</span> reg_results)
 
 <span class="co"># # Date Alignment</span>
 <span class="co"># tmp.date1 &lt;- max(min(fRtn$date),min(fCov$date))</span>
@@ -341,8 +341,10 @@ fexp &lt;-<span class="st"> </span><span class="kw">buildFactorExp</span>(<span 
                         <span class="dt">ln_mkt_cap_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>, <span class="fl">0.01</span>),
                         <span class="dt">PB_mrq_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
                         <span class="dt">ROE_ttm=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                        <span class="dt">volatility_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
-                        <span class="dt">pct_chg_per_60_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="fl">0.01</span>))
+                        <span class="dt">volatility_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="fl">0.01</span>),
+                        <span class="dt">pct_chg_per_60_=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="fl">0.01</span>),
+                        <span class="dt">NP_YOY=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>),
+                        <span class="dt">F_NP_chg_w13=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,<span class="dv">100</span>))
 
 
 <span class="co">#get newest optimized portfolio</span>

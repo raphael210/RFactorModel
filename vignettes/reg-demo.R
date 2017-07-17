@@ -71,12 +71,12 @@ kable(ftbale)
 
 ## ----portOpt-------------------------------------------------------------
 #  # set alpha factor
-#  alphaf <- c('liquidity_','ROE_ttm','volatility_',"PB_mrq_")
+#  alphaf <- c('liquidity_','ROE_ttm',"PB_mrq_",'NP_YOY','F_NP_chg_w13')
 #  
 #  # get factor return
-#  fRtn <- getfRtn(rtntype = 'mean',reg_results = reg_results)
+#  fRtn <- getfRtn(fname = alphaf,rtntype = 'mean',reg_results = reg_results)
 #  # get factor covariance
-#  fCov <- getfCov(covtype='shrink',reg_results = reg_results)
+#  fCov <- getfCov(fname = alphaf,covtype='shrink',reg_results = reg_results)
 #  
 #  # # Date Alignment
 #  # tmp.date1 <- max(min(fRtn$date),min(fCov$date))
@@ -92,8 +92,10 @@ kable(ftbale)
 #                          ln_mkt_cap_=c(-0.01, 0.01),
 #                          PB_mrq_=c(-0.01,100),
 #                          ROE_ttm=c(-0.01,100),
-#                          volatility_=c(-0.01,100),
-#                          pct_chg_per_60_=c(-0.01,0.01))
+#                          volatility_=c(-0.01,0.01),
+#                          pct_chg_per_60_=c(-0.01,0.01),
+#                          NP_YOY=c(-0.01,100),
+#                          F_NP_chg_w13=c(-0.01,100))
 #  
 #  
 #  #get newest optimized portfolio
