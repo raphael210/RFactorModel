@@ -212,26 +212,49 @@ setConstr_fctExp_style <- function(constr,FactorLists,min,max,relative){
 #' build, set, add, clear objects
 #' 
 #' @name opt_object
-#' @param constr
-#' @return a list contain the constrains 
+#' @param obj
+#' @return a list contain the objects 
 #' @export
 #' @rdname opt_object
 #' @examples 
 #' obj <- object_default()
+#' obj <- addObj_risk(obj)
 object_default <- function(){
   obj <- list()
-
-  obj$return <- emptydf
-  obj$risk <- data.frame(ID = character(0), 
-                            min = numeric(0), 
-                            max = numeric(0), 
-                            relative=integer(0),
-                            stringsAsFactors = FALSE)
-
+  obj$return <- data.frame(method='mean',
+                           stringsAsFactors = FALSE)
+  obj$risk <- data.frame(method = character(0),
+                         risk_aversion=integer(0),
+                         stringsAsFactors = FALSE)
   return(obj)
 }
 
+#' @export
+#' @rdname opt_object
+#' @examples
+#' clearObj(obj,"return")
+clearObj <- function(obj,item){
+  obj[[item]] <- obj[[item]][0,]
+  return(obj)
+}
 
+#' @rdname opt_object
+#' @export
+addObj_return <- function(obj,method=c('mean','event')){
+  method <- match.arg(method)
+  obj$return <- data.frame(method=method,
+                           stringsAsFactors = FALSE)
+  return(obj)
+}
+#' @rdname opt_object
+#' @export
+addObj_risk <- function(obj,method=c('solve.QP','ipop','matlab'),risk_aversion=1){
+  method <- match.arg(method)
+  obj$risk <- data.frame(method = method,
+                         risk_aversion=risk_aversion,
+                         stringsAsFactors = FALSE)
+  return(obj)
+}
 
 # ---  get constrain result of matrixs and vectors in a single-period ------
 get_constrMat_group <- function(TSF2, univFilter, cons){
@@ -487,8 +510,7 @@ get_exp_rtn <- function(TSF){
 #' @param exp_rtn
 #' @param bmk
 #' @param constr
-#' @param target
-#' @param optWay
+#' @param obj
 #' @return a port
 #' @export
 #' @examples 
@@ -516,11 +538,7 @@ getPort_opt <- function(TSF,alphaf,
                         exp_rtn="exp_rtn",
                         bmk=NULL,
                         constr=constr_default(),
-                        addEvent=FALSE,
-                        target=c('return','balance'),
-                        optWay=c('ipop','solve.QP','Matlab')){
-  target <- match.arg(target)
-  optWay <- match.arg(optWay)
+                        obj=object_default()){
   
   if(optWay == "Matlab"){
     R.matlab::Matlab$startServer()
