@@ -3,16 +3,28 @@
 \name{opt_object}
 \alias{opt_object}
 \alias{object_default}
+\alias{clearObj}
+\alias{addObj_return}
+\alias{addObj_risk}
 \title{opt_object}
 \usage{
 object_default()
+
+clearObj(obj, item)
+
+addObj_return(obj, method = c("mean", "event"))
+
+addObj_risk(obj, method = c("solve.QP", "ipop", "matlab", "rmosek"),
+  risk_aversion = 1)
 }
 \value{
-a list contain the constrains
+a list contain the objects
 }
 \description{
 build, set, add, clear objects
 }
 \examples{
 obj <- object_default()
+obj <- addObj_risk(obj)
+clearObj(obj,"return")
 }

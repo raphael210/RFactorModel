@@ -7,8 +7,7 @@
 getPort_opt(TSF, alphaf, fRtn = data.frame(fname = alphaf, frtn =
   rep(1/length(alphaf), length(alphaf)), stringsAsFactors = FALSE), fCov,
   exp_rtn = "exp_rtn", bmk = NULL, constr = constr_default(),
-  addEvent = FALSE, target = c("return", "balance"), optWay = c("ipop",
-  "solve.QP", "Matlab"))
+  obj = object_default())
 }
 \value{
 a port
@@ -21,7 +20,7 @@ TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
 TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorStd = "sectorNe",factorNA = "median"))
 TSF <- renameCol(TSF,"factorscore","combfct")
 # constrain setting
-constr <- constr_default()
+constr <- constr_default(box_each = c(0,0.02))
 constr <- addConstr_box(constr,each = c(0,0.02))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
 conslist <- buildFactorLists_lcfs("F000002_1",factorStd = "norm",factorNA = "median")
@@ -35,4 +34,39 @@ port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2)
 constr3 <- setConstr_position(constr_default(),position = c(0,0),relative = 0)
 constr3 <- setConstr_box(constr3,each=c(-0.05,0.05),relative=0)
 port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3)
+
+
+
+
+RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-06-30'))
+TS <- getTS(RebDates,indexID = 'EI000906')
+factorIDs <- c("F000002","F000006","F000008")
+tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+FactorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.NP_YOY",
+                  factorPar=list(),
+                  factorDir=1),
+  factorStd="norm",factorNA = "median")
+FactorLists <- c(tmp,FactorLists)
+TSF <- getMultiFactor(TS,FactorLists)
+TSFR <- getTSR(TSF)
+re <- reg.TSFR(TSFR)
+rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
+fRtn <- rtn_cov_delta$fRtn
+fCov <- rtn_cov_delta$fCov
+constr <- constr_default(box_each = c(0,0.02))
+constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
+constr <- addConstr_fctExp_style(constr,FactorLists,-0.1,c(0.1,100,1,100),relative = 0)
+TSFs <- filter(TSF,date==max(date))
+TS <- TS.getTech_ts(TSFs[,1:2],'base(12017)',varname = 'ipo')
+TS <- gf.PE_ttm(TS,fillna = FALSE)
+TS <- rename(TS,pe_ttm=factorscore)
+TS <- gf.PB_mrq(TS,fillna = FALSE)
+TS <- filter(TS,(date-intdate2r(ipo))>730,pe_ttm>0,factorscore>0)
+TSFs <- left_join(TS[,1:2],TSFs,by=c('date','stockID'))
+
+port_opt4 <- getPort_opt(TSFs,fRtn = fRtn,bmk="EI000300",constr = constr)
+obj <- object_default()
+obj <- addObj_risk(obj)
+port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
 }
