@@ -4,10 +4,14 @@
 \alias{getPort_opt}
 \title{getPort_opt}
 \usage{
-getPort_opt(TSF, alphaf, fRtn = data.frame(fname = alphaf, frtn =
-  rep(1/length(alphaf), length(alphaf)), stringsAsFactors = FALSE), fCov,
-  exp_rtn = "exp_rtn", bmk = NULL, constr = constr_default(),
-  obj = object_default())
+getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
+  constr = constr_default(), obj = object_default(), init_port = NULL,
+  delta = NULL)
+}
+\arguments{
+\item{init_port}{if \code{\bold{turnover}} constraint is included,then \code{\bold{init_port}} is required.}
+
+\item{delta}{if \code{\bold{trackingerror}} constraint is included,then \code{\bold{delta}} is required.}
 }
 \value{
 a port
@@ -41,13 +45,7 @@ port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3)
 RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-06-30'))
 TS <- getTS(RebDates,indexID = 'EI000906')
 factorIDs <- c("F000002","F000006","F000008")
-tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-FactorLists <- buildFactorLists(
-  buildFactorList(factorFun="gf.NP_YOY",
-                  factorPar=list(),
-                  factorDir=1),
-  factorStd="norm",factorNA = "median")
-FactorLists <- c(tmp,FactorLists)
+FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
 TSF <- getMultiFactor(TS,FactorLists)
 TSFR <- getTSR(TSF)
 re <- reg.TSFR(TSFR)
@@ -56,7 +54,7 @@ fRtn <- rtn_cov_delta$fRtn
 fCov <- rtn_cov_delta$fCov
 constr <- constr_default(box_each = c(0,0.02))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-constr <- addConstr_fctExp_style(constr,FactorLists,-0.1,c(0.1,100,1,100),relative = 0)
+constr <- addConstr_fctExp_style(constr,FactorLists,-0.1,c(0.1,100,1),relative = 0)
 TSFs <- filter(TSF,date==max(date))
 TS <- TS.getTech_ts(TSFs[,1:2],'base(12017)',varname = 'ipo')
 TS <- gf.PE_ttm(TS,fillna = FALSE)
@@ -69,4 +67,9 @@ port_opt4 <- getPort_opt(TSFs,fRtn = fRtn,bmk="EI000300",constr = constr)
 obj <- object_default()
 obj <- addObj_risk(obj)
 port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
+
+# add turnover constraint
+constr <- addConstr_turnover(constr)
+init_port <- getIndexCompWgt(indexID = 'EI000906',endT = TSFs$date[1])
+
 }

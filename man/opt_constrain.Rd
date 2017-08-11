@@ -9,11 +9,15 @@
 \alias{addConstr_group}
 \alias{addConstr_box}
 \alias{addConstr_position}
+\alias{addConstr_turnover}
+\alias{addConstr_trackingerror}
 \alias{setConstr_group}
 \alias{setConstr_box}
 \alias{setConstr_fctExp_sector}
 \alias{setConstr_position}
 \alias{setConstr_fctExp_style}
+\alias{setConstr_turnover}
+\alias{setConstr_trackingerror}
 \title{opt_constrain}
 \usage{
 constr_default(position = c(1, 1), box_each = c(0, 1))
@@ -31,6 +35,10 @@ addConstr_box(constr, each, ..., relative = 0)
 
 addConstr_position(constr, position, relative = 0)
 
+addConstr_turnover(constr, turnover_target = 0.5)
+
+addConstr_trackingerror(constr, trackingerror_ann = 0.08)
+
 setConstr_group(constr, ..., relative)
 
 setConstr_box(constr, each, ..., relative)
@@ -42,6 +50,10 @@ setConstr_position(constr, position, relative,
   sectorAttr = defaultSectorAttr())
 
 setConstr_fctExp_style(constr, FactorLists, min, max, relative)
+
+setConstr_turnover(constr, turnover_target)
+
+setConstr_trackingerror(constr, trackingerror_ann)
 }
 \arguments{
 \item{relative}{integer of 0,1,2}
@@ -70,4 +82,6 @@ addConstr_group(constr,ES33220000=c(-0.1, 0.1),relative = 1)
 addConstr_box(constr,each=c(0,0.02),EQ601318=c(0.05,0.15))
 addConstr_box(constr,EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
 addConstr_position(constr,position=c(0.8,1))
+addConstr_turnover(constr,turnover_target=0.5)
+addConstr_trackingerror(constr,trackingerror_ann=0.08)
 }
