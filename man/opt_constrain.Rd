@@ -35,9 +35,11 @@ addConstr_box(constr, each, ..., relative = 0)
 
 addConstr_position(constr, position, relative = 0)
 
-addConstr_turnover(constr, turnover_target = 0.5)
+addConstr_turnover(constr, turnover_target = 0.5, method = c("rmosek",
+  "matlab"))
 
-addConstr_trackingerror(constr, trackingerror_ann = 0.08)
+addConstr_trackingerror(constr, trackingerror_ann = 0.08,
+  method = c("matlab"))
 
 setConstr_group(constr, ..., relative)
 
@@ -51,9 +53,9 @@ setConstr_position(constr, position, relative,
 
 setConstr_fctExp_style(constr, FactorLists, min, max, relative)
 
-setConstr_turnover(constr, turnover_target)
+setConstr_turnover(constr, turnover_target, ...)
 
-setConstr_trackingerror(constr, trackingerror_ann)
+setConstr_trackingerror(constr, trackingerror_ann, ...)
 }
 \arguments{
 \item{relative}{integer of 0,1,2}

@@ -35,9 +35,11 @@ constr_default <- function(position=c(1,1), box_each=c(0,1)){
                                 factorlist = list())
   constr$turnover <- data.frame(ID = character(0), 
                                 target = numeric(0),
+                                method=character(0), 
                                 stringsAsFactors = FALSE)
   constr$trackingerror <- data.frame(ID = character(0), 
                                 target = numeric(0),
+                                method=character(0), 
                                 stringsAsFactors = FALSE)
   constr <- addConstr_position(constr, position = position, relative = 0)
   constr <- addConstr_box(constr, each = box_each, relative = 0)
@@ -173,8 +175,9 @@ addConstr_position <- function(constr,position,relative=0){
 #' @rdname opt_constrain
 #' @examples
 #' addConstr_turnover(constr,turnover_target=0.5)
-addConstr_turnover <- function(constr,turnover_target=0.5){
-  cons <- data.frame(ID="turnover",target=turnover_target,stringsAsFactors = FALSE)
+addConstr_turnover <- function(constr,turnover_target=0.5,method=c('rmosek','matlab')){
+  method <- match.arg(method)
+  cons <- data.frame(ID="turnover",target=turnover_target,method=method,stringsAsFactors = FALSE)
   constr$turnover <- rbind(constr$turnover,cons)
   return(constr)
 }
@@ -182,8 +185,9 @@ addConstr_turnover <- function(constr,turnover_target=0.5){
 #' @rdname opt_constrain
 #' @examples
 #' addConstr_trackingerror(constr,trackingerror_ann=0.08)
-addConstr_trackingerror <- function(constr,trackingerror_ann=0.08){
-  cons <- data.frame(ID="trackingerror",target=trackingerror_ann,stringsAsFactors = FALSE)
+addConstr_trackingerror <- function(constr,trackingerror_ann=0.08,method=c('matlab')){
+  method <- match.arg(method)
+  cons <- data.frame(ID="trackingerror",target=trackingerror_ann,method=method,stringsAsFactors = FALSE)
   constr$trackingerror <- rbind(constr$trackingerror,cons)
   return(constr)
 }
@@ -232,17 +236,17 @@ setConstr_fctExp_style <- function(constr,FactorLists,min,max,relative){
 #' @export
 #' @rdname opt_constrain
 #' @examples
-setConstr_turnover <- function(constr,turnover_target){
+setConstr_turnover <- function(constr,turnover_target,...){
   constr <- clearConstr(constr,"turnover")
-  constr <- addConstr_turnover(constr,turnover_target)
+  constr <- addConstr_turnover(constr,turnover_target,...)
   return(constr)
 }
 #' @export
 #' @rdname opt_constrain
 #' @examples
-setConstr_trackingerror <- function(constr,trackingerror_ann){
+setConstr_trackingerror <- function(constr,trackingerror_ann,...){
   constr <- clearConstr(constr,"trackingerror")
-  constr <- addConstr_trackingerror(constr,trackingerror_ann)
+  constr <- addConstr_trackingerror(constr,trackingerror_ann,...)
   return(constr)
 }
 
@@ -288,7 +292,7 @@ addObj_return <- function(obj,method=c('mean','event')){
 }
 #' @rdname opt_object
 #' @export
-addObj_risk <- function(obj,method=c('solve.QP','ipop','matlab','rmosek'),risk_aversion=1){
+addObj_risk <- function(obj,method=c('solve.QP','rmosek'),risk_aversion=1){
   method <- match.arg(method)
   obj$risk <- data.frame(method = method,
                          risk_aversion=risk_aversion,
@@ -595,7 +599,8 @@ get_exp_rtn <- function(TSF){
 #' rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
 #' fRtn <- rtn_cov_delta$fRtn
 #' fCov <- rtn_cov_delta$fCov
-#' constr <- constr_default(box_each = c(0,0.02))
+#' constr <- constr_default(box_each = c(0,0.01))
+#' constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.05))
 #' constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
 #' constr <- addConstr_fctExp_style(constr,FactorLists,-0.1,c(0.1,100,1),relative = 0)
 #' TSFs <- filter(TSF,date==max(date))
@@ -617,7 +622,8 @@ get_exp_rtn <- function(TSF){
 #' port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,init_port=init_port)
 #' 
 #' constr <- addConstr_trackingerror(constr)
-#' 
+#' delta <- rtn_cov_delta$Delta
+#' port_opt7 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,delta=delta)
 getPort_opt <- function(TSF,
                         fRtn,
                         fCov,
@@ -625,8 +631,8 @@ getPort_opt <- function(TSF,
                         bmk=NULL,
                         constr=constr_default(),
                         obj=object_default(),
-                        init_port = NULL,
-                        delta=NULL){
+                        init_port,
+                        delta){
   
   fnames <- guess_factorNames(TSF)
 
@@ -678,13 +684,20 @@ getPort_opt <- function(TSF,
     }
   }
   
-  if(dim(constr$trackingerror)[1]>0 | dim(constr$turnover)[1]>0 | obj$risk[,'method']=='matlab'){
+  # open matlab api
+  openmatlab <- FALSE
+  if(dim(constr$trackingerror)[1]>0 ){
+    if(constr$trackingerror[,'method']=='matlab') openmatlab <- TRUE
+  }
+  if(dim(constr$turnover)[1]>0){
+    if(constr$turnover[,'method']=='matlab') openmatlab <- TRUE
+  }
+  if(openmatlab){
     require(R.matlab)
     R.matlab::Matlab$startServer()
     matlab <- R.matlab::Matlab()
     open(matlab)
   }
-  
   
   # looping.....
   dates <- unique(TSF$date)
@@ -718,7 +731,6 @@ getPort_opt <- function(TSF,
       }
     }
 
-    
     # get 'Amat' & 'bvec'
     mat_group <- get_constrMat_group(TSF2_, univFilter, cons = constr$group)
     mat_box <- get_constrMat_box(TSF2_, univFilter, cons = constr$box)
@@ -733,11 +745,13 @@ getPort_opt <- function(TSF,
       if(!is.null(mat_group$Amat)){
         group_range <- t(mat_group$Amat) %*% mat_box$bvec
         for(j in 1:nrow(group_range)){
+          jumptag <- FALSE
           if(max(group_range[j,'min'],mat_group$bvec[j,'min'])>min(group_range[j,'max'],mat_group$bvec[j,'max'])){
             warning(paste('group',rownames(group_range)[j],'constrain unqualified!'))
-            next
+            jumptag <- TRUE
           }
         }
+        if(jumptag) next
       }
       
       #check position constrain
@@ -752,17 +766,34 @@ getPort_opt <- function(TSF,
       #check fctExp_sector constrain
       if(!is.null(mat_fctExp_sector$Amat)){
         sector_range <- t(mat_fctExp_sector$Amat) %*% mat_box$bvec
+        jumptag <- FALSE
         for(j in 1:nrow(sector_range)){
           if(max(sector_range[j,'min'],mat_fctExp_sector$bvec[j,'min'])>min(sector_range[j,'max'],mat_fctExp_sector$bvec[j,'max'])){
             warning(paste('sector',rownames(sector_range)[j],'constrain unqualified!'))
-            next
+            jumptag <- TRUE
           }
         }
+        if(jumptag) next
       }
+      
+      #check whether position constr and sector constr conflict
+      if(!is.null(mat_position$Amat) & !is.null(mat_fctExp_sector$Amat)){
+        sector_range <- matrix(colSums(mat_fctExp_sector$bvec),ncol = 2)
+        colnames(sector_range) <- c('min','max')
+        jumptag <- FALSE
+
+        if(max(sector_range[,'min'],mat_position$bvec[,'min'])>min(sector_range[,'max'],mat_position$bvec[,'max'])+1e-3){
+          warning(paste('position constrain and sector constrain conflict!'))
+          jumptag <- TRUE
+        }
+        if(jumptag) next
+      }
+      
+      
     }
     
     
-    if(dim(constr$turnover)[1]>0 | dim(obj$risk)[1]>0){
+    if(!missing(fCov)){
       if('date' %in% colnames(fCov)){
         fCov_ <- fCov[fCov$date==i,-1]
       }else{
@@ -772,228 +803,75 @@ getPort_opt <- function(TSF,
       
       Fcovmat <- as.matrix(fCov_[fnames,fnames])
       Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      # Dmat <- (Dmat+t(Dmat))/2
-      if(any(eigen(Dmat,only.values = T)[[1]]<=0)){
-        tmp <- Matrix::nearPD(Dmat)
-        Dmat <- tmp$mat
-        Dmat <- matrix(Dmat,nrow = nrow(Dmat))
+      
+      #turn Dmat to positive definite matrix 
+      tmp <- eigen(Dmat)
+      tmpvalues <- tmp$values
+      tmpvectors <- tmp$vectors
+      if(any(tmpvalues<0)){
+        tmpvalues[tmpvalues<1e-6] <- 1e-6
+        Dmat <- tmpvectors %*% diag(tmpvalues) %*% t(tmpvectors)
       }
     }
 
-    
-    
     if(dim(constr$trackingerror)[1]>0){
-      system.time({
-        R.matlab::setFunction(matlab, " function w=opt_turnover(MU,COV,N,A_leq,b_leq,LB,UB,W0,delta)  \
-                    cvx_begin                                                     \
-                        variable w(N)                                             \
-                        minimize(-MU'*w+w'*COV*w)                          \
-                        subject to                                                \
-                          A_leq*w<=b_leq                                          \
-                          LB<=w<=UB                                               \
-                          norm(w-W0,1)<=delta                                    \
-                    cvx_end                                                       \
-                  ")
-        
-        MU.matlab <-  matrix(dvec, ncol = 1)
-        COV.matlab <-  Dmat * obj$risk[,'risk_aversion']
-        N.matlab <- length(univ)
-        A.matlab <- matrix(t(cbind(mat_position$Amat*-1,mat_position$Amat,
-                                   mat_group$Amat*-1,mat_group$Amat,
-                                   mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
-                                   mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat)),ncol = N.matlab)
-        b.matlab <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
-                             mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
-                             mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
-                             mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
-        lb.matlab <- matrix(data = mat_box$bvec[,'min'], ncol = 1)
-        ub.matlab <- matrix(data = mat_box$bvec[,'max'], ncol = 1)
-        delta.matlab <- constr$turnover[,'target']
-        
-        R.matlab::setVariable(matlab, 
-                              MU=MU.matlab,
-                              COV=COV.matlab,
-                              N=N.matlab,
-                              A_leq=A.matlab,
-                              b_leq=b.matlab,
-                              LB = lb.matlab, 
-                              UB = ub.matlab,
-                              W0 = init_wgt,
-                              delta=delta.matlab)
-        R.matlab::evaluate(matlab, "w = opt_turnover(MU,COV,N,A_leq,b_leq,LB,UB,W0,delta);")
-        res.tmp <- R.matlab::getVariable(matlab, "w")
-      })
+      if('date' %in% colnames(delta)){
+        delta_ <- delta[delta$date==i,-1]
+      }else{
+        delta_ <- delta
+      }
+      delta_mat <- data.frame(stockID=univ,stringsAsFactors = FALSE)
+      delta_mat <- dplyr::left_join(delta_mat,delta_,by='stockID')
+      delta_mat <- delta_mat %>% dplyr::mutate(var= ifelse(is.na(var), median(var, na.rm=TRUE), var))
+      delta_mat <- diag(delta_mat$var)
+      Dmat <- Dmat+delta_mat
       
-
-      
-      
+      wgt_ <- try(solver_trackingerror(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr),silent = TRUE)
       
     }else if(dim(constr$turnover)[1]>0){
 
-      if(i!=dates[1]){
-        init_port <- port[port$date==max(port$date),c('stockID','wgt')]
-      }
-      TSF2_ <- dplyr::left_join(TSF2_,init_port,by='stockID')
-      TSF2_$wgt <- TSF2_$wgt-TSF2_$wgt_bmk
-      init_wgt <- matrix(TSF2_[univFilter,'wgt'],ncol = 1)
-      
-      require(Rmosek)
-      COV <- rbind(cbind(Dmat,-1*Dmat),
-                   cbind(-1*Dmat,Dmat))
-      
-      if(any(eigen(COV,only.values = T)[[1]]<=0)){
-        tmp <- Matrix::nearPD(COV)
-        COV <- tmp$mat
-        COV <- matrix(COV,nrow = nrow(COV))
-      }
-      N <- length(univ)
-      
-      F.mosek <-  Matrix::chol(COV)
-      f.mosek <- c(-dvec+2* obj$risk[,'risk_aversion']*Dmat %*% init_wgt,
-                   dvec-2* obj$risk[,'risk_aversion']*Dmat %*% init_wgt)
-      A1 <- t(cbind(mat_position$Amat*-1,mat_position$Amat,
-                         mat_group$Amat*-1,mat_group$Amat,
-                         mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
-                         mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat))
-      A.mosek <- rbind(cbind(A1,-1*A1),1)
-      b1 <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
-                          mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
-                          mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
-                          mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
-      b.mosek <- c(b1-A1%*%init_wgt,constr$turnover[,'target'])
-      
-      C1 <- rbind(cbind(diag(1,N),diag(-1,N)),
-                  cbind(diag(-1,N),diag(1,N)))
-      d1 <- c(mat_box$bvec[,'max']-init_wgt,
-              -(mat_box$bvec[,'min']-init_wgt))
-      A.mosek <- rbind(A.mosek,C1)
-      b.mosek <- c(b.mosek,d1)
-      lb.mosek <- rep(0,2*N)
-      ub.mosek <- rep(1,2*N)
-      prob <- mosek_qptoprob(F =F.mosek , f=f.mosek, A=A.mosek, b=b.mosek, lb=lb.mosek, ub=ub.mosek)
-      try(r <- mosek(prob))
-      port_ <- data.frame(date=i,stockID=univ,
-                          wgt=r$sol$itr$xx[1:N]-r$sol$itr$xx[(N+1):(2*N)]+init_wgt, 
-                          stringsAsFactors = FALSE)
-      port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
-      
-    }else{
-      if(dim(obj$risk)[1]>0){
-        
-        if(obj$risk[,'method'] == "solve.QP"){
-          Amat <- cbind(mat_position$Amat,mat_position$Amat*-1,
-                        mat_box$Amat,mat_box$Amat*-1,
-                        mat_group$Amat,mat_group$Amat*-1,
-                        mat_fctExp_sector$Amat,mat_fctExp_sector$Amat*-1,
-                        mat_fctExp_style$Amat,mat_fctExp_style$Amat*-1)
-          bvec <- c(mat_position$bvec[,'min'],mat_position$bvec[,'max']*-1,
-                    mat_box$bvec[,'min'],mat_box$bvec[,'max']*-1,
-                    mat_group$bvec[,'min'],mat_group$bvec[,'max']*-1,
-                    mat_fctExp_sector$bvec[,'min'],mat_fctExp_sector$bvec[,'max']*-1,
-                    mat_fctExp_style$bvec[,'min'],mat_fctExp_style$bvec[,'max']*-1)
-          try(res <- quadprog::solve.QP(Dmat * obj$risk[,'risk_aversion'],dvec,Amat,bvec))
-          port_ <- data.frame(date=i,stockID=univ,wgt=res$solution, stringsAsFactors = FALSE)
-          port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
-          
-          
-        }else if(obj$risk[,'method'] == "ipop"){
-          c.ipop <- matrix(-dvec, ncol = 1)
-          A.ipop <- t(cbind(mat_position$Amat,mat_group$Amat,mat_fctExp_sector$Amat,mat_fctExp_style$Amat))
-          bvec <- rbind(mat_position$bvec,mat_group$bvec,mat_fctExp_sector$bvec,mat_fctExp_style$bvec)
-          b.ipop <- matrix(bvec[,'min'], ncol = 1)
-          r.ipop <- matrix(bvec[,'max']-bvec[,'min'], ncol = 1)
-          
-          lb.ipop <- matrix(data = mat_box$bvec[,'min'], ncol = 1)
-          ub.ipop <- matrix(data = mat_box$bvec[,'max'], ncol = 1)
-          try(res.ipop <- kernlab::ipop(c = c.ipop, H = Dmat * obj$risk[,'risk_aversion'],
-                                        A = A.ipop, b = b.ipop, r = r.ipop,
-                                        l = lb.ipop, u = ub.ipop,
-                                        maxiter = 3000))
-          port_ <- data.frame(date=i,stockID=univ,wgt=res.ipop@primal, stringsAsFactors = FALSE)
-          port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
-        }else if(obj$risk[,'method'] == "matlab"){
-          H.matlab <- Dmat * obj$risk[,'risk_aversion']
-          f.matlab <- matrix(-dvec, ncol = 1)
-          A.matlab <- t(cbind(mat_position$Amat*-1,mat_position$Amat,
-                              mat_group$Amat*-1,mat_group$Amat,
-                              mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
-                              mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat))
-          b.matlab <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
-                               mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
-                               mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
-                               mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
-          lb.matlab <- matrix(data = mat_box$bvec[,'min'], ncol = 1)
-          ub.matlab <- matrix(data = mat_box$bvec[,'max'], ncol = 1)
-          
-          system.time({
-            R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
-                                  lb = lb.matlab, ub = ub.matlab)
-            R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
-            R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,[],[],lb,ub,[],optionn);")
-            res.tmp <- R.matlab::getVariable(matlab, "res")
-            res.matlab <- res.tmp$res
-          })
-          
-          port_ <- data.frame(date=i,stockID=univ,wgt=res.matlab, stringsAsFactors = FALSE)
-          port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
-        }else if(obj$risk[,'method'] == "rmosek"){
-          require(Rmosek)
-          F.mosek <-  Matrix::chol(Dmat * obj$risk[,'risk_aversion'])
-          f.mosek <- -dvec
-          A.mosek <- t(cbind(mat_position$Amat*-1,mat_position$Amat,
-                             mat_group$Amat*-1,mat_group$Amat,
-                             mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
-                             mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat))
-          b.mosek <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
-                              mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
-                              mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
-                              mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
-          
-          lb.mosek <- mat_box$bvec[,'min']
-          ub.mosek <- mat_box$bvec[,'max']
-          prob <- mosek_qptoprob(F =F.mosek , f=f.mosek, A=A.mosek, b=b.mosek, lb=lb.mosek, ub=ub.mosek)
-          try(r <- mosek(prob))
-          port_ <- data.frame(date=i,stockID=univ,wgt=r$sol$itr$xx[1:length(univ)], stringsAsFactors = FALSE)
-          port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
+      if(i==dates[1] & missing(init_port)){
+        if(dim(obj$risk)[1]>0){
+          wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj),silent = TRUE)
+        }else{
+          dvec <- xts::xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
+          wgt_ <- try(solver_lin_maxrtn(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style),silent = TRUE)
         }
-        
-        port_ <- port_[abs(port_$wgt)>0.0005,]
-        colnames(port_) <-c("date","stockID","wgt")
-        if(constr$position[,'min']==1 &  constr$position[,'max']==1){
-          port_$wgt <- port_$wgt/sum(port_$wgt)  
-        }
-        
-        
+
       }else{
-        require(PortfolioAnalytics)
-        pspec <- portfolio.spec(assets=univ)
-        pspec <- add.constraint(portfolio=pspec, type="weight_sum", min_sum=mat_position$bvec[,"min"], max_sum=mat_position$bvec[,"max"])
-        pspec <- add.constraint(portfolio=pspec,type="box",min=mat_box$bvec[,"min"],max=mat_box$bvec[,"max"])
-        Amat <- cbind(mat_group$Amat,mat_fctExp_sector$Amat,mat_fctExp_style$Amat)
-        bvec <- rbind(mat_group$bvec,mat_fctExp_sector$bvec,mat_fctExp_style$bvec)
-        pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
-                                B=Amat,lower=bvec[,"min"],upper=bvec[,"max"])
-        pspec <- add.objective(portfolio=pspec,type='return',name='mean')
-        dvec <- as.xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
-        opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
-                                         optimize_method="ROI",
-                                         trace=TRUE)
-        
-        port_ <- data.frame(date=i,stockID=univ,wgt=opt_maxret$weights, stringsAsFactors = FALSE)
-        port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
-        port_ <- port_[abs(port_$wgt)>0.0005,]
-        if(constr$position[,'min']==1 &  constr$position[,'max']==1){
-          port_$wgt <- port_$wgt/sum(port_$wgt)  
+        if(i!=dates[1]){
+          init_port <- port[port$date==max(port$date),c('stockID','wgt')]
         }
+        TSF2_ <- dplyr::left_join(TSF2_,init_port,by='stockID')
+        TSF2_$wgt <- TSF2_$wgt-TSF2_$wgt_bmk
+        init_wgt <- matrix(TSF2_[univFilter,'wgt'],ncol = 1)
+        
+        wgt_ <- try(solver_turnover(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt),silent = TRUE)
       }
+
+      
+    }else if(dim(obj$risk)[1]>0){
+      wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj),silent = TRUE)
+
+    }else{
+      dvec <- xts::xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
+      wgt_ <- try(solver_lin_maxrtn(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style),silent = TRUE)
       
     }
     
-
+    if(!inherits(wgt_, "try-error")){
+      port_ <- data.frame(date=i,stockID=univ,wgt=wgt_, stringsAsFactors = FALSE)
+      port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
+    }else next
+    
+    port_ <- port_[abs(port_$wgt)>0.0005,]
+    if(constr$position[,'min']==1 &  constr$position[,'max']==1){
+      port_$wgt <- port_$wgt/sum(port_$wgt)  
+    }
     port <- rbind(port,port_)
   }# for dates end
   
-  if(dim(constr$trackingerror)[1]>0 | obj$risk[,'method']=='matlab'){
+  if(openmatlab){
     close(matlab)
   }
 
@@ -1002,3 +880,228 @@ getPort_opt <- function(TSF,
   return(port)
 }
 
+
+
+#self defined optimizer
+solver_lin_maxrtn <- function(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style){
+  require(PortfolioAnalytics)
+  pspec <- portfolio.spec(assets=univ)
+  pspec <- add.constraint(portfolio=pspec, type="weight_sum", min_sum=mat_position$bvec[,"min"], max_sum=mat_position$bvec[,"max"])
+  pspec <- add.constraint(portfolio=pspec,type="box",min=mat_box$bvec[,"min"],max=mat_box$bvec[,"max"])
+  Amat <- cbind(mat_group$Amat,mat_fctExp_sector$Amat,mat_fctExp_style$Amat)
+  bvec <- rbind(mat_group$bvec,mat_fctExp_sector$bvec,mat_fctExp_style$bvec)
+  pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
+                          B=Amat,lower=bvec[,"min"],upper=bvec[,"max"])
+  pspec <- add.objective(portfolio=pspec,type='return',name='mean')
+  res <- optimize.portfolio(R=dvec, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+  return(res$weights)
+}
+
+solver_QP_balance <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj){
+  
+  stocknum <- dim(Dmat)[1]
+  if(stocknum>1000) obj$risk[,'method'] <- "rmosek"
+  
+  if(obj$risk[,'method'] == "solve.QP"){
+
+    Amat_bvec <- amat_bvec_process(dir='ge',mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style)
+    
+    
+    Amat <- cbind(mat_position$Amat,mat_position$Amat*-1,
+                  mat_box$Amat,mat_box$Amat*-1,
+                  mat_group$Amat,mat_group$Amat*-1,
+                  mat_fctExp_sector$Amat,mat_fctExp_sector$Amat*-1,
+                  mat_fctExp_style$Amat,mat_fctExp_style$Amat*-1)
+    bvec <- c(mat_position$bvec[,'min'],mat_position$bvec[,'max']*-1,
+              mat_box$bvec[,'min'],mat_box$bvec[,'max']*-1,
+              mat_group$bvec[,'min'],mat_group$bvec[,'max']*-1,
+              mat_fctExp_sector$bvec[,'min'],mat_fctExp_sector$bvec[,'max']*-1,
+              mat_fctExp_style$bvec[,'min'],mat_fctExp_style$bvec[,'max']*-1)
+    res <- quadprog::solve.QP(Dmat * obj$risk[,'risk_aversion'],dvec,Amat,bvec)
+    return(res$solution)
+    
+  }else if(obj$risk[,'method'] == "rmosek"){
+    F.mosek <-  Matrix::chol(Dmat * obj$risk[,'risk_aversion'])
+    f.mosek <- -dvec
+    A.mosek <- t(cbind(mat_position$Amat*-1,mat_position$Amat,
+                       mat_group$Amat*-1,mat_group$Amat,
+                       mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
+                       mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat))
+    b.mosek <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
+                        mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
+                        mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
+                        mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
+    
+    lb.mosek <- mat_box$bvec[,'min']
+    ub.mosek <- mat_box$bvec[,'max']
+    prob <- Rmosek::mosek_qptoprob(F =F.mosek , f=f.mosek, A=A.mosek, b=b.mosek, lb=lb.mosek, ub=ub.mosek)
+    res <- Rmosek::mosek(prob)
+    return(r$sol$itr$xx[1:stocknum])
+  }
+}
+
+
+solver_turnover <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt){
+  
+  if(constr$turnover[,'method']=='rmosek'){
+    COV <- rbind(cbind(Dmat,-1*Dmat),
+                 cbind(-1*Dmat,Dmat))
+    tmp <- eigen(COV)
+    tmpvalues <- tmp$values
+    tmpvectors <- tmp$vectors
+    if(any(tmpvalues<0)){
+      tmpvalues[tmpvalues<1e-6] <- 1e-6
+      COV <- tmpvectors %*% diag(tmpvalues) %*% t(tmpvectors)
+    }
+    
+    
+    N <- length(univ)
+    
+    F.mosek <-  Matrix::chol(COV)
+    f.mosek <- c(-dvec+2* obj$risk[,'risk_aversion']*Dmat %*% init_wgt,
+                 dvec-2* obj$risk[,'risk_aversion']*Dmat %*% init_wgt)
+    A1 <- t(cbind(mat_position$Amat*-1,mat_position$Amat,
+                  mat_group$Amat*-1,mat_group$Amat,
+                  mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
+                  mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat))
+    A.mosek <- rbind(cbind(A1,-1*A1),1)
+    b1 <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
+                   mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
+                   mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
+                   mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
+    b.mosek <- c(b1-A1%*%init_wgt,constr$turnover[,'target'])
+    
+    C1 <- rbind(cbind(diag(1,N),diag(-1,N)),
+                cbind(diag(-1,N),diag(1,N)))
+    d1 <- c(mat_box$bvec[,'max']-init_wgt,
+            -(mat_box$bvec[,'min']-init_wgt))
+    A.mosek <- rbind(A.mosek,C1)
+    b.mosek <- c(b.mosek,d1)
+    lb.mosek <- rep(0,2*N)
+    ub.mosek <- rep(1,2*N)
+    prob <- Rmosek::mosek_qptoprob(F =F.mosek , f=f.mosek, A=A.mosek, b=b.mosek, lb=lb.mosek, ub=ub.mosek)
+    r <- Rmosek::mosek(prob)
+    return(r$sol$itr$xx[1:N]-r$sol$itr$xx[(N+1):(2*N)]+init_wgt)
+
+  }else if(constr$turnover[,'method']=='matlab'){
+    MU.matlab <-  matrix(dvec, ncol = 1)
+    COV.matlab <-  Dmat * obj$risk[,'risk_aversion']
+    A.matlab <- matrix(t(cbind(mat_position$Amat*-1,mat_position$Amat,
+                               mat_group$Amat*-1,mat_group$Amat,
+                               mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
+                               mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat)),ncol = N.matlab)
+    b.matlab <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
+                         mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
+                         mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
+                         mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
+    lb.matlab <- matrix(data = mat_box$bvec[,'min'], ncol = 1)
+    ub.matlab <- matrix(data = mat_box$bvec[,'max'], ncol = 1)
+    delta.matlab <- constr$turnover[,'target']
+    
+    R.matlab::setVariable(matlab, 
+                          MU=MU.matlab,
+                          COV=COV.matlab,
+                          A_leq=A.matlab,
+                          b_leq=b.matlab,
+                          LB = lb.matlab, 
+                          UB = ub.matlab,
+                          W0 = init_wgt,
+                          delta=delta.matlab)
+    R.matlab::evaluate(matlab, "N=length(MU);
+                       cvx_begin 
+                       variable w(N)                                             
+                       minimize(-MU'*w+w'*COV*w)                          
+                       subject to                                                
+                       A_leq*w<=b_leq                                          
+                       LB<=w<=UB                                               
+                       norm(w-W0,1)<=delta                                  
+                       cvx_end")
+    res <- R.matlab::getVariable(matlab, "w")
+    return(res$w)
+  }
+}
+
+solver_trackingerror <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr){
+  if(constr$trackingerror[,'method']=='matlab'){
+    eigdmt <- eigen(Dmat)
+    Mmat <- diag(sqrt(eigdmt$values)) %*% t(eigdmt$vectors)
+    
+    MU.matlab <-  matrix(dvec, ncol = 1)
+    N.matlab <- length(univ)
+    A.matlab <- matrix(t(cbind(mat_position$Amat*-1,mat_position$Amat,
+                               mat_group$Amat*-1,mat_group$Amat,
+                               mat_fctExp_sector$Amat*-1,mat_fctExp_sector$Amat,
+                               mat_fctExp_style$Amat*-1,mat_fctExp_style$Amat)),ncol = N.matlab)
+    b.matlab <- matrix(c(mat_position$bvec[,'min']*-1,mat_position$bvec[,'max'],
+                         mat_group$bvec[,'min']*-1,mat_group$bvec[,'max'],
+                         mat_fctExp_sector$bvec[,'min']*-1,mat_fctExp_sector$bvec[,'max'],
+                         mat_fctExp_style$bvec[,'min']*-1,mat_fctExp_style$bvec[,'max']),ncol=1)
+    lb.matlab <- matrix(data = mat_box$bvec[,'min'], ncol = 1)
+    ub.matlab <- matrix(data = mat_box$bvec[,'max'], ncol = 1)
+    target.matlab <- constr$trackingerror[,'target']
+    R.matlab::setVariable(matlab, 
+                          MU=MU.matlab,
+                          A_leq=A.matlab,
+                          b_leq=b.matlab,
+                          LB = lb.matlab, 
+                          UB = ub.matlab,
+                          TransMatrix=Mmat,
+                          TargetTE=constr$trackingerror[,'target'])
+    R.matlab::evaluate(matlab, "N=length(MU);
+                       cvx_begin 
+                       variable w(N)                                             
+                       minimize(-MU'*w)                          
+                       subject to                                                
+                       A_leq*w<=b_leq                                          
+                       LB<=w<=UB                                               
+                       norm(TransMatrix*w)<=TargetTE/sqrt(12)                                  
+                       cvx_end")
+    res <- R.matlab::getVariable(matlab, "w")
+    return(res$w) 
+    
+  }else{
+    
+  }
+}
+
+
+
+amat_bvec_process <- function(dir=c('ge','le','gl'),...){
+  dir <- match.arg(dir)
+  
+  rawdata <- list(...)
+  for(i in 1:length(rawdata)){
+    if(i==1){
+      amat <- rawdata[[i]]$Amat
+      bvec <- 
+    }else{
+      amat <- cbind(amat,rawdata[[i]]$Amat)
+      bvec <- cbind(bvec,rawdata[[i]]$bvec)
+    }
+    
+  }
+  
+  
+  eqnum <- 0
+  if(!is.null(mat_position$bvec)){
+    if(mat_position$bvec[,'min']==mat_position$bvec[,'max']){
+      Amat <- mat_position$Amat
+      bvec <- c(mat_position$bvec[,'min'])
+      eqnum <- eqnum+1
+    }else{
+      Amat <- cbind(mat_position$Amat,mat_position$Amat*-1)
+      bvec <- c(mat_position$bvec[,'min'],mat_position$bvec[,'max']*-1)
+    }
+  }
+  
+  if(!is.null(mat_fctExp_sector$bvec)){
+    if(all(mat_fctExp_sector$bvec[,'min']==mat_fctExp_sector$bvec[,'max'])){
+      
+    }else{
+      
+    }
+    
+  }
+  
+  
+}

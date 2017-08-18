@@ -5,8 +5,7 @@
 \title{getPort_opt}
 \usage{
 getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
-  constr = constr_default(), obj = object_default(), init_port = NULL,
-  delta = NULL)
+  constr = constr_default(), obj = object_default(), init_port, delta)
 }
 \arguments{
 \item{init_port}{if \code{\bold{turnover}} constraint is included,then \code{\bold{init_port}} is required.}
@@ -52,7 +51,8 @@ re <- reg.TSFR(TSFR)
 rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
 fRtn <- rtn_cov_delta$fRtn
 fCov <- rtn_cov_delta$fCov
-constr <- constr_default(box_each = c(0,0.02))
+constr <- constr_default(box_each = c(0,0.01))
+constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.05))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
 constr <- addConstr_fctExp_style(constr,FactorLists,-0.1,c(0.1,100,1),relative = 0)
 TSFs <- filter(TSF,date==max(date))
@@ -71,5 +71,9 @@ port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = cons
 # add turnover constraint
 constr <- addConstr_turnover(constr)
 init_port <- getIndexCompWgt(indexID = 'EI000906',endT = TSFs$date[1])
+port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,init_port=init_port)
 
+constr <- addConstr_trackingerror(constr)
+delta <- rtn_cov_delta$Delta
+port_opt7 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,delta=delta)
 }
