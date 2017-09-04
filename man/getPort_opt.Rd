@@ -64,8 +64,7 @@ port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = cons
 
 # add turnover constraint
 constr <- addConstr_turnover(constr)
-init_port <- getIndexCompWgt(indexID = 'EI000906',endT = TSFs$date[1])
-port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,init_port=init_port)
+port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj)
 
 constr <- addConstr_trackingerror(constr)
 delta <- rtn_cov_delta$Delta
