@@ -15,6 +15,6 @@ tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
 alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
 alphaLists <- c(tmp,alphaLists)
 riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
-RA_tables <- getPAData(port,c(alphaLists,riskLists))
-RA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
+RA_tables <- getRAData(port,c(alphaLists,riskLists))
+RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 }
