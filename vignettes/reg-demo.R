@@ -13,8 +13,8 @@ kable(ftbale)
 
 ## ----getfactorlist-------------------------------------------------------
 #  # get recommended factorlists last year based on regression
-#  begT <- trday.nearest(Sys.Date()-months(6))
-#  endT <- trday.nearest(Sys.Date()-1)
+#  begT <- as.Date('2016-12-31')
+#  endT <- as.Date('2017-08-31')
 #  indexID <- 'EI000985'
 #  re <- reg.factorlists_recommend(indexID,begT,endT,forder = c('ln_mkt_cap_','PB_mrq_','pct_chg_per_60_','liquidity_'))
 #  FactorLists <- re$FactorLists
@@ -22,13 +22,13 @@ kable(ftbale)
 #  kable(re$result)
 
 ## ----showfactorstat------------------------------------------------------
-#  begT <- trday.nearest(Sys.Date()-lubridate::years(6))
-#  endT <- trday.nearest(Sys.Date()-1)
+#  begT <- as.Date('2014-12-31')
+#  endT <- as.Date('2017-08-31')
 #  RebDates <- getRebDates(begT,endT)
 #  TS <- getTS(RebDates,indexID)
 #  
 #  # remove high correlated or large proportion of missing factors
-#  dropf <- c('F_ROE_1','float_cap_','disposition_')
+#  dropf <- c('float_cap_')
 #  FactorLists <- FactorLists[sapply(FactorLists,function(x) !(x$factorName %in% dropf))]
 #  
 #  TSF <- na.omit(getMultiFactor(TS,FactorLists))
@@ -70,64 +70,54 @@ kable(ftbale)
 #  table.reg.fRtn(reg_results)
 
 ## ----portOpt-------------------------------------------------------------
-#  # set alpha factor
-#  alphaf <- c('liquidity_','ROE_ttm',"PB_mrq_",'NP_YOY','F_NP_chg_w13')
-#  
-#  # get factor return
-#  fRtn <- getfRtn(fname = alphaf,rtntype = 'mean',reg_results = reg_results)
-#  # get factor covariance
-#  fCov <- getfCov(fname = alphaf,covtype='shrink',reg_results = reg_results)
-#  
-#  # # Date Alignment
-#  # tmp.date1 <- max(min(fRtn$date),min(fCov$date))
-#  # tmp.date2 <- min(max(fRtn$date),max(fCov$date))
-#  # fRtn <- subset(fRtn,date>=tmp.date1,date<=tmp.date2)
-#  # fCov <- subset(fCov,date>=tmp.date1,date<=tmp.date2)
-#  # TSF <- subset(TSF,date>=tmp.date1,date<=tmp.date2)
-#  
-#  ## portfolio demo
-#  # set factor's exposure
-#  fexp <- buildFactorExp(sectorall = c(0,0.1),
-#                          liquidity_ = c(-0.01, 100),
-#                          ln_mkt_cap_=c(-0.01, 0.01),
-#                          PB_mrq_=c(-0.01,100),
-#                          ROE_ttm=c(-0.01,100),
-#                          volatility_=c(-0.01,0.01),
-#                          pct_chg_per_60_=c(-0.01,0.01),
-#                          NP_YOY=c(-0.01,100),
-#                          F_NP_chg_w13=c(-0.01,100))
-#  
-#  
-#  #get newest optimized portfolio
-#  TS <- getTS(endT,indexID)
-#  TS <- rm_suspend(TS)
-#  TS <- is_st(TS)
-#  TS <- TS[!(TS$is_st),c('date','stockID')]
+#  RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-07-31'))
+#  TS <- getTS(RebDates,indexID = 'EI000906')
+#  tmp <- buildFactorLists(buildFactorList(factorFun = 'gf.NP_YOY',factorDir = 1,factorStd="sectorNe",factorNA = "median",factorOutlier = 'boxplot'))
+#  factorIDs <- c("F000006","F000008","F000013")
+#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="sectorNe",factorNA = "median",factorOutlier = 'boxplot')
+#  FactorLists <- c(tmp,FactorLists)
 #  TSF <- getMultiFactor(TS,FactorLists)
+#  TSFR <- getTSR(TSF)
+#  re <- reg.TSFR(TSFR)
+#  rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
+#  fRtn <- rtn_cov_delta$fRtn
+#  fCov <- rtn_cov_delta$fCov
+#  constr <- constr_default(box_each = c(0,0.01))
+#  constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.03))
+#  constr <- addConstr_group(constr,EI000300=c(0.8,0.8))
+#  constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
+#  conslist <- buildFactorLists_lcfs("F000002",factorStd = "sectorNe",factorNA = "median",factorOutlier = 'boxplot')
+#  constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1,relative = 0)
 #  
-#  # simplest way:no benchmark,maximize return
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',factorExp = fexp))
+#  #max return
+#  port_opt4 <- getPort_opt(TSF,fRtn = fRtn,bmk="EI000300",constr = constr)
 #  
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',factorExp = fexp,optWay = 'solve.QP'))
+#  #max return minus risk
+#  obj <- object_default()
+#  obj <- addObj_risk(obj)
+#  port_opt5 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
 #  
+#  # add turnover constraint
+#  constr <- addConstr_turnover(constr)
+#  port_opt6 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
 #  
-#  #build weight setting
-#  wgtSet <- buildWgtSet(ES33480000=c(0,0.05),ES33490000=c(0,0.03))
+#  # add trackingerror constraint
+#  constr <- clearConstr(constr,'turnover')
+#  constr <- addConstr_trackingerror(constr)
+#  delta <- rtn_cov_delta$Delta
+#  port_opt7 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj,delta=delta)
 #  
-#  #build box constrain
-#  boxConstr <- buildBoxConstr(EI000906=c(0.7,0.8))
-#  # with benchmark,maximize return, box constrain
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,target = 'return',bmk = 'EI000906',factorExp = fexp,wgtSet = wgtSet))
-#  
-#  # with benchmark,risk return balance
-#  system.time(port_opt <- OptWgt(TSF,alphaf,fRtn,fCov,target = 'balance',bmk = 'EI000906',factorExp = fexp,boxConstr = boxConstr))
 #  
 #  
 #  
 #  # port backtest and return summary
-#  portrtn <- port.backtest(port_opt,fee.buy = 0.001)
-#  benchrtn <- getrtn.bmk(portrtn, bmk = "EI000905")
-#  allrtn <- addrtn.hedge(portrtn,benchrtn)
+#  rtn1 <- port.backtest(port_opt4,fee.buy = 0.001)
+#  rtn2 <- port.backtest(port_opt5,fee.buy = 0.001)
+#  rtn3 <- port.backtest(port_opt6,fee.buy = 0.001)
+#  rtn4 <- port.backtest(port_opt7,fee.buy = 0.001)
+#  allrtn <- merge(rtn1,rtn2)
+#  allrtn <- merge(allrtn,rtn3)
+#  allrtn <- merge(allrtn,rtn4)
 #  ggplot.WealthIndex(allrtn)
 #  rtn.summary(allrtn)
 #  rtn.periods(allrtn)

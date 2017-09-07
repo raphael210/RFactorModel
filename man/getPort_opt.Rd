@@ -8,9 +8,9 @@ getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
   constr = constr_default(), obj = object_default(), init_port, delta)
 }
 \arguments{
-\item{init_port}{if \code{\bold{turnover}} constraint is included,then \code{\bold{init_port}} is required.}
+\item{init_port}{}
 
-\item{delta}{if \code{\bold{trackingerror}} constraint is included,then \code{\bold{delta}} is required.}
+\item{delta}{}
 }
 \value{
 a port
@@ -26,47 +26,15 @@ TSF <- renameCol(TSF,"factorscore","combfct")
 constr <- constr_default(box_each = c(0,0.02))
 constr <- addConstr_box(constr,each = c(0,0.02))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-conslist <- buildFactorLists_lcfs("F000002_1",factorStd = "norm",factorNA = "median")
+conslist <- buildFactorLists_lcfs("F000002",factorStd = "norm",factorNA = "median")
 # with bmk
 constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
-port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr)
+port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'combfct')
 # without bmk
 constr2 <- setConstr_fctExp_sector(constr,each = c(0,0.1),relative = 0)
-port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2)
+port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2,exp_rtn = 'combfct')
 # long-short port
 constr3 <- setConstr_position(constr_default(),position = c(0,0),relative = 0)
 constr3 <- setConstr_box(constr3,each=c(-0.05,0.05),relative=0)
-port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3)
-
-
-
-
-RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-06-30'))
-TS <- getTS(RebDates,indexID = 'EI000906')
-factorIDs <- c("F000002","F000006","F000008")
-FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-TSF <- getMultiFactor(TS,FactorLists)
-TSFR <- getTSR(TSF)
-re <- reg.TSFR(TSFR)
-rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
-fRtn <- rtn_cov_delta$fRtn
-fCov <- rtn_cov_delta$fCov
-constr <- constr_default(box_each = c(0,0.01))
-constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.05))
-constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-constr <- addConstr_fctExp_style(constr,FactorLists,c(-2,-0.1,-0.1),c(0.1,100,1),relative = 0)
-TSFs <- filter(TSF,date \%in\% sample(RebDates,5))
-
-port_opt4 <- getPort_opt(TSFs,fRtn = fRtn,bmk="EI000300",constr = constr)
-obj <- object_default()
-obj <- addObj_risk(obj)
-port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
-
-# add turnover constraint
-constr <- addConstr_turnover(constr)
-port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj)
-
-constr <- addConstr_trackingerror(constr)
-delta <- rtn_cov_delta$Delta
-port_opt7 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,delta=delta)
+port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3,exp_rtn = 'combfct')
 }

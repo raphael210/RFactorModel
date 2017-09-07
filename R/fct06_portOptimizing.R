@@ -562,8 +562,8 @@ get_exp_rtn <- function(TSF){
 #' @param bmk
 #' @param constr
 #' @param obj
-#' @param init_port if \code{\bold{turnover}} constraint is included,then \code{\bold{init_port}} is required. 
-#' @param delta if \code{\bold{trackingerror}} constraint is included,then \code{\bold{delta}} is required. 
+#' @param init_port 
+#' @param delta 
 #' @return a port
 #' @export
 #' @examples 
@@ -574,49 +574,17 @@ get_exp_rtn <- function(TSF){
 #' constr <- constr_default(box_each = c(0,0.02))
 #' constr <- addConstr_box(constr,each = c(0,0.02))
 #' constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-#' conslist <- buildFactorLists_lcfs("F000002_1",factorStd = "norm",factorNA = "median")
+#' conslist <- buildFactorLists_lcfs("F000002",factorStd = "norm",factorNA = "median")
 #' # with bmk
 #' constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
-#' port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr)
+#' port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'combfct')
 #' # without bmk
 #' constr2 <- setConstr_fctExp_sector(constr,each = c(0,0.1),relative = 0)
-#' port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2)
+#' port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2,exp_rtn = 'combfct')
 #' # long-short port
 #' constr3 <- setConstr_position(constr_default(),position = c(0,0),relative = 0)
 #' constr3 <- setConstr_box(constr3,each=c(-0.05,0.05),relative=0)
-#' port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3)
-#' 
-#' 
-#' 
-#' 
-#' RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-06-30'))
-#' TS <- getTS(RebDates,indexID = 'EI000906')
-#' factorIDs <- c("F000002","F000006","F000008")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
-#' TSF <- getMultiFactor(TS,FactorLists)
-#' TSFR <- getTSR(TSF)
-#' re <- reg.TSFR(TSFR)
-#' rtn_cov_delta <- f_rtn_cov_delta(reg_results=re)
-#' fRtn <- rtn_cov_delta$fRtn
-#' fCov <- rtn_cov_delta$fCov
-#' constr <- constr_default(box_each = c(0,0.01))
-#' constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.05))
-#' constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-#' constr <- addConstr_fctExp_style(constr,FactorLists,c(-2,-0.1,-0.1),c(0.1,100,1),relative = 0)
-#' TSFs <- filter(TSF,date %in% sample(RebDates,5))
-#' 
-#' port_opt4 <- getPort_opt(TSFs,fRtn = fRtn,bmk="EI000300",constr = constr)
-#' obj <- object_default()
-#' obj <- addObj_risk(obj)
-#' port_opt5 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
-#' 
-#' # add turnover constraint
-#' constr <- addConstr_turnover(constr)
-#' port_opt6 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj)
-#' 
-#' constr <- addConstr_trackingerror(constr)
-#' delta <- rtn_cov_delta$Delta
-#' port_opt7 <- getPort_opt(TSFs,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr,obj = obj,delta=delta)
+#' port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3,exp_rtn = 'combfct')
 getPort_opt <- function(TSF,
                         fRtn,
                         fCov,
@@ -664,11 +632,11 @@ getPort_opt <- function(TSF,
       TS_ <- data.frame(date=as.Date(i,origin = '1970-01-01'),
                         stockID=c(TSF_$stockID,init_port[!(init_port$stockID %in% TSF_$stockID),'stockID']),stringsAsFactors = FALSE)
       TSF_ <- dplyr::left_join(TS_,TSF_,by=c('date','stockID'))
-      TSF_[is.na(TSF_)] <- 0
       TSF_ <- dplyr::left_join(TSF_,init_port,by='stockID')
-      TSF_[is.na(TSF_$wgt),'wgt'] <- 0
+      TSF_[is.na(TSF_)] <- 0
       TSF_ <- dplyr::rename(TSF_,init_wgt=wgt)
       
+      #remove suspended stock
       TSF_ <- is_suspend(TSF_)
       TSF_ <- TSF_[TSF_$sus==FALSE | TSF_$init_wgt>0,]
       TSF_[TSF_$sus==FALSE,'init_wgt'] <- 0
@@ -679,6 +647,11 @@ getPort_opt <- function(TSF,
       constr <- TSF2_constr$constr
       univFilter <- TSF2_$stockID %in% TSF_$stockID
       univ <- TSF2_[univFilter,"stockID"]
+      
+      init_wgt <- dplyr::left_join(TSF2_[,c('stockID','wgt_bmk')],init_port,by='stockID')
+      init_wgt[is.na(init_wgt$wgt),'wgt'] <- 0
+      init_wgt$wgt <- init_wgt$wgt-init_wgt$wgt_bmk
+      init_wgt <- matrix(init_wgt[univFilter,'wgt'],ncol = 1)
       
     }else{
       if(dim(constr$turnover)[1]>0 && nrow(init_port)==0){
@@ -693,8 +666,6 @@ getPort_opt <- function(TSF,
         univ <- TSF2_[univFilter,"stockID"]
     }
       
-
-
     
     # get 'dvec'
     if(dim(obj$return)[1]==0){
@@ -750,7 +721,7 @@ getPort_opt <- function(TSF,
       next
     }
     
-    
+    # control tracking error
     if(dim(constr$trackingerror)[1]>0){
       if('date' %in% colnames(delta)){
         delta_ <- delta[delta$date==i,-1]
@@ -763,40 +734,43 @@ getPort_opt <- function(TSF,
       delta_mat <- diag(delta_mat$var)
       Dmat <- Dmat+delta_mat
       
-      wgt_ <- try(solver_trackingerror(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,matlab),silent = TRUE)
-      
-    }else if(dim(constr$turnover)[1]>0){
-
-      if(nrow(init_port)==0){
-        if(dim(obj$risk)[1]>0){
-          wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj),silent = TRUE)
-        }else{
-          dvec <- xts::xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
-          wgt_ <- try(solver_lin_maxrtn(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style),silent = TRUE)
-        }
-
+      if(dim(constr$turnover)[1]>0 && nrow(init_port)>0){
+        wgt_ <- try(solver_trackingerror(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,matlab=matlab,init_wgt=init_wgt),silent = TRUE)
       }else{
-        TSF2_ <- dplyr::left_join(TSF2_,init_port,by='stockID')
-        TSF2_[is.na(TSF2_$wgt),'wgt'] <- 0
-        TSF2_$wgt <- TSF2_$wgt-TSF2_$wgt_bmk
-        init_wgt <- matrix(TSF2_[univFilter,'wgt'],ncol = 1)
-        
-        if(dim(obj$risk)[1]==0){
-          Dmat <- NULL
-        }
-        if(openmatlab){
-          wgt_ <- try(solver_turnover(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt,matlab),silent = TRUE)
-        }else{
-          wgt_ <- try(solver_turnover(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt),silent = TRUE)
-        }
-        
+        wgt_ <- try(solver_trackingerror(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,matlab=matlab),silent = TRUE)
       }
-
       
+      
+    }else if(dim(constr$turnover)[1]>0 && nrow(init_port)>0){
+      # control turnover
+      if(dim(obj$risk)[1]==0){
+        Dmat <- NULL
+      }
+      if(openmatlab){
+        wgt_ <- try(solver_turnover(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt,matlab),silent = TRUE)
+      }else{
+        wgt_ <- try(solver_turnover(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,init_wgt),silent = TRUE)
+      }
+      
+      # if(inherits(wgt_, "try-error")){
+      #   if(dim(obj$risk)[1]>0){
+      #     #solve quadprog optimization
+      #     wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj),silent = TRUE)
+      #     
+      #   }else{
+      #     #solve linear optimization
+      #     dvec <- xts::xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
+      #     wgt_ <- try(solver_lin_maxrtn(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style),silent = TRUE)
+      #     
+      #   }
+      # }
+
     }else if(dim(obj$risk)[1]>0){
+      #solve quadprog optimization
       wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj),silent = TRUE)
 
     }else{
+      #solve linear optimization
       dvec <- xts::xts(matrix(dvec,nrow=1),order.by = as.Date(i,origin = '1970-01-01'))
       wgt_ <- try(solver_lin_maxrtn(univ,dvec,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style),silent = TRUE)
       
@@ -808,7 +782,7 @@ getPort_opt <- function(TSF,
     }else next
     
     port_ <- port_[abs(port_$wgt)>0.001,]
-    if(constr$position[,'min']==1 &  constr$position[,'max']==1){
+    if(constr$position[,'min']==1 &&  constr$position[,'max']==1){
       port_$wgt <- port_$wgt/sum(port_$wgt)  
     }
     port <- rbind(port,port_)
@@ -952,7 +926,7 @@ solver_turnover <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_
     
     evalformula <- paste(evalformula,"subject to ;   A_leq*w<=b_leq ;     LB<=w<=UB ;    norm(w-W0,1)<=delta ;")
     
-    if(is.null(Amat_bvec$amat_eq)){
+    if(!is.null(Amat_bvec$amat_eq)){
       R.matlab::setVariable(matlab, 
                             A_eq=t(Amat_bvec$amat_eq),
                             b_eq=Amat_bvec$bvec_eq)
@@ -968,9 +942,10 @@ solver_turnover <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_
 }
 
 solver_trackingerror <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fctExp_sector,mat_fctExp_style,obj,constr,...){
+  dotlits <- list(...)
+  
   if(constr$trackingerror[,'method']=='matlab'){
-    matlab <- list(...)[[1]]
-    
+    matlab <- dotlits[['matlab']]
     eigdmt <- eigen(Dmat)
     Mmat <- diag(sqrt(eigdmt$values)) %*% t(eigdmt$vectors)
     
@@ -986,12 +961,20 @@ solver_trackingerror <- function(dvec,Dmat,mat_position,mat_box,mat_group,mat_fc
     
     evalformula <- "N=length(MU) ;cvx_begin ;cvx_solver mosek ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
                        norm(TransMatrix*w)<=TargetTE/sqrt(12) ;"                            
-
+    
     if(!is.null(Amat_bvec$amat_eq)){
       R.matlab::setVariable(matlab, 
                             A_eq=t(Amat_bvec$amat_eq),
                             b_eq=Amat_bvec$bvec_eq)
       evalformula <- paste(evalformula,"  A_eq*w==b_eq ;")
+    }
+    
+    #with turnover constrain
+    if(nrow(constr$turnover)>0){
+      init_wgt <- dotlits[['init_wgt']]
+      R.matlab::setVariable(matlab,W0 = init_wgt,
+                            delta=constr$turnover[,'target'])
+      evalformula <- paste(evalformula," norm(w-W0,1)<=delta ;")
     }
 
     evalformula <- paste(evalformula,"  cvx_end ;")
@@ -1159,7 +1142,9 @@ constr_data_prepare <- function(TSF,bmk,constr){
   
   if('init_wgt' %in% colnames(TSF)){
     tmp <- na.omit(TSF2[TSF2$init_wgt>0,c('stockID','init_wgt')])
-    constr$box <- rbind(constr$box,data.frame(ID=tmp$stockID,min=tmp$init_wgt,max=tmp$init_wgt,relative=c(0)))
+    if(nrow(tmp)>0){
+      constr$box <- rbind(constr$box,data.frame(ID=tmp$stockID,min=tmp$init_wgt,max=tmp$init_wgt,relative=c(0)))
+    } 
     TSF2 <- dplyr::select(TSF2,-init_wgt)
     return(list(TSF2=TSF2,constr=constr))
   }else{
