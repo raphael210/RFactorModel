@@ -81,11 +81,9 @@ TSF <- Model.TSF(modelPar)
 # -- get the TSF object by TS
 TS <- Model.TS(modelPar)
 TSF <- Model.TSF_byTS(modelPar,TS)
-TSF2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TS)
 # -- get the TSFR object by TSR
 TSR <- Model.TSR(modelPar)
 TSFR <- Model.TSF_byTS(modelPar,TSR)
-TSFR2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TSR)
 # -- get the TSFR object
 TSFR <- Model.TSFR(modelPar)
 # -- get the TSFs list

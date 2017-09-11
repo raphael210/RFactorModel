@@ -10,10 +10,10 @@
 \alias{getPB}
 \title{portfolio building and backtesting}
 \usage{
-getPort(TSF, topN = NA, topQ = NA, factorNA = "median",
-  pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(), force_in = 0,
-  buffer_keep = 0, buffer_rate = 0, init_port = NULL, backtestPar,
-  dir = c("long", "short"))
+getPort(TSF, topN = NA, topQ = NA, pick.sectorNe = FALSE,
+  sectorAttr = defaultSectorAttr(), force_in = 0, buffer_keep = 0,
+  buffer_rate = 0, init_port = NULL, backtestPar, dir = c("long",
+  "short"))
 
 addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
   "ffvsqrt"), wgt.sectorNe = FALSE, wgtbmk = "EI000300",
@@ -22,22 +22,21 @@ addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
 port.substitute(port, TSF, wgt.max = NA, sectorAttr = defaultSectorAttr(),
   backtestPar, dir = c("long", "short"))
 
-getPort_throughout(TSF, topN = NA, topQ = NA, factorNA = "median",
-  pick.sectorNe = FALSE, force_in = 0, buffer_keep = 0, buffer_rate = 0,
-  init_port = NULL, wgtType = "eq", wgt.sectorNe = FALSE,
-  wgtbmk = "EI000300", wgt.max = NA, sectorAttr = defaultSectorAttr(),
-  backtestPar, dir = c("long", "short"))
+getPort_throughout(TSF, topN = NA, topQ = NA, pick.sectorNe = FALSE,
+  force_in = 0, buffer_keep = 0, buffer_rate = 0, init_port = NULL,
+  wgtType = "eq", wgt.sectorNe = FALSE, wgtbmk = "EI000300",
+  wgt.max = NA, sectorAttr = defaultSectorAttr(), backtestPar,
+  dir = c("long", "short"))
 
 port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
   backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
   "simple"))
 
-getPB(TSF, topN = NA, topQ = NA, factorNA = "median",
-  pick.sectorNe = FALSE, force_in = 0, buffer_keep = 0, buffer_rate = 0,
-  init_port = NULL, wgtType = "eq", wgt.sectorNe = FALSE,
-  wgtbmk = "EI000300", wgt.max = NA, holdingEndT = Sys.Date(),
-  fee.buy = 0, fee.sell = fee.buy, sectorAttr = defaultSectorAttr(),
-  backtestPar, dir = c("long", "short"))
+getPB(TSF, topN = NA, topQ = NA, pick.sectorNe = FALSE, force_in = 0,
+  buffer_keep = 0, buffer_rate = 0, init_port = NULL, wgtType = "eq",
+  wgt.sectorNe = FALSE, wgtbmk = "EI000300", wgt.max = NA,
+  holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = fee.buy,
+  sectorAttr = defaultSectorAttr(), backtestPar, dir = c("long", "short"))
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object or a \bold{TSFR} object}
@@ -138,7 +137,7 @@ port.list <- apply(groups,1,function(x)getPort(TSFR,,x))
 ts <- getTS(as.Date(c("2016-03-31","2016-04-29")),indexID = "EI000016")
 tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
 pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
-factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorStd = "norm", factorNA = "na")
+factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorRefine=refinePar_default("robust"))
 pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,pick.sectorNe = T,sectorAttr = list(list(factorList),list(2)))
 # -- with buffer_rate
 pt3 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =F)

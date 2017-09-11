@@ -45,7 +45,7 @@ kable(ftbale)
 #  # regression's rsquare table
 #  table.reg.rsquare(reg_results)
 #  # correlation plot of factor's return
-#  MC.chart.regCorr(reg_results)
+#  MC.chart.reg.corr(reg_results)
 #  # pure factor's wealth index
 #  chart.reg.fRtnWealthIndex(reg_results,facet = T)
 #  # barplot of pure factor's return
@@ -99,16 +99,7 @@ kable(ftbale)
 #  
 #  #get factor wgt
 #  factorIDs <- c("F000006","F000008","F000013","F000017")
-#  tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
-#  FactorLists <- buildFactorLists(
-#    buildFactorList(factorFun="gf.NP_YOY",
-#                    factorPar=list(),
-#                    factorDir=1),
-#      buildFactorList(factorFun="gf.ln_mkt_cap",
-#                    factorPar=list(),
-#                    factorDir=1),
-#    factorStd="norm",factorNA = "median")
-#  FactorLists <- c(tmp,FactorLists)
+#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
 #  MPs <- getMPs_FactorLists(FactorLists, modelPar)
 #  TSFRs <- Model.TSFRs(MPs)
 #  wgt <- MC.wgt.CAPM(TSFRs,wgtmin = 0.05,wgtmax = 0.3)

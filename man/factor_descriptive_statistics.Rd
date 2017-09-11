@@ -60,10 +60,13 @@ re2 <- MF.table.Fct_descr(mTSF)
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000985')
 factorIDs <- c("F000006","F000008","F000012")
-FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
+FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
 mTSF <- getMultiFactor(TS,FactorLists = FactorLists)
 MF.chart.Fct_corr(mTSF)
 MF.chart.Fct_corr(mTSF,Nbin='year')
 MF.table.Fct_corr(mTSF)
 MF.table.Fct_corr(mTSF,Nbin='year')
+}
+\author{
+Aming.Tao
 }
