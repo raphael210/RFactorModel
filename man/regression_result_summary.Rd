@@ -7,7 +7,7 @@
 \alias{chart.reg.fRtnWealthIndex}
 \alias{chart.reg.fRtnBar}
 \alias{chart.reg.rsquare}
-\alias{MC.chart.regCorr}
+\alias{MC.chart.reg.corr}
 \title{regression_result_summary}
 \usage{
 table.reg.rsquare(reg_results)
@@ -20,7 +20,7 @@ chart.reg.fRtnBar(reg_results)
 
 chart.reg.rsquare(reg_results)
 
-MC.chart.regCorr(reg_results)
+MC.chart.reg.corr(reg_results)
 }
 \arguments{
 \item{reg_results}{is regression_result}

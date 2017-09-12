@@ -15,7 +15,6 @@
 #' @param TSF a \bold{TSF} object or a \bold{TSFR} object
 #' @param topN an integer vector with 2 or 1 elements, giving the rank range of the assets to be selected into the portfolio. If containing only 1 element, the the top rank of 1 will be added automatically.
 #' @param topQ a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.
-#' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
 #' @param force_in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.
@@ -52,7 +51,7 @@
 #' ts <- getTS(as.Date(c("2016-03-31","2016-04-29")),indexID = "EI000016")
 #' tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
 #' pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
-#' factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorStd = "norm", factorNA = "na")
+#' factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorRefine=refinePar_default("robust"))
 #' pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,pick.sectorNe = T,sectorAttr = list(list(factorList),list(2)))
 #' # -- with buffer_rate
 #' pt3 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =F)
@@ -60,7 +59,6 @@
 #' pt5 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 #' pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
 getPort <- function(TSF, topN=NA, topQ=NA, 
-                    factorNA="median",
                     pick.sectorNe=FALSE, sectorAttr=defaultSectorAttr(),
                     force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                     backtestPar,
@@ -69,7 +67,6 @@ getPort <- function(TSF, topN=NA, topQ=NA,
   if(!missing(backtestPar)){
     topN <- getbacktestPar.longshort(backtestPar,"topN")
     topQ <- getbacktestPar.longshort(backtestPar,"topQ")
-    factorNA <- getbacktestPar.longshort(backtestPar,"factorNA")
     pick.sectorNe <- getbacktestPar.longshort(backtestPar,"pick.sectorNe")
     sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorAttr")
     force_in <- getbacktestPar.longshort(backtestPar,"force_in")
@@ -78,7 +75,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
     init_port <- getbacktestPar.longshort(backtestPar,"init_port")
   }
   check.TSF(TSF)
-  TSF <- factor.na(TSF,factorNA)
+  TSF <- factor_na(TSF,method="median")
   
   if(TRUE){# remove stocks due to suspending or over limit
     TSF <- rm_suspend(TSF,nearby = 1L)
@@ -209,7 +206,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
       port <- rbind(port,new_port)
     }
   } 
-  
+  port <- dplyr::arrange(port,date,rnk)
   port <- as.data.frame(port)
   return(port)
 }
@@ -376,7 +373,6 @@ port.substitute <- function(port,TSF,
 getPort_throughout <- function (TSF,
                                 # getPort
                                 topN=NA, topQ=NA, 
-                                factorNA="median",
                                 pick.sectorNe=FALSE, 
                                 force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                                 # addwgt2port
@@ -392,7 +388,6 @@ getPort_throughout <- function (TSF,
   dir <- match.arg(dir)
   Port <- getPort(TSF, 
                   topN=topN, topQ=topQ,
-                  factorNA=factorNA,
                   pick.sectorNe=pick.sectorNe,
                   force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)
@@ -517,7 +512,6 @@ port.backtest <- function(port,
 getPB <- function (TSF,
                    # getPort
                    topN=NA, topQ=NA, 
-                   factorNA="median",
                    pick.sectorNe=FALSE, 
                    force_in=0, buffer_keep=0, buffer_rate=0, init_port=NULL,
                    # addwgt2port
@@ -535,7 +529,6 @@ getPB <- function (TSF,
   dir <- match.arg(dir)
   Port <- getPort(TSF, 
                   topN=topN, topQ=topQ,
-                  factorNA=factorNA,
                   pick.sectorNe=pick.sectorNe,
                   force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)

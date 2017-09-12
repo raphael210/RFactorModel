@@ -4,7 +4,7 @@
 # ---------------------  backtesting with 'regression' method -------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
-
+# ---------------------  ~~ database update  --------------
 #' lcdb_regtables
 #' 
 #' build and update local database's regression result tables
@@ -146,7 +146,7 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 
 
 
-
+# ---------------------  ~~ Backtesting  --------------
 
 
 #' regression_result
@@ -169,12 +169,12 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000002","F000006","F000008")
-#' tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
 #' FactorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'   factorStd="norm",factorNA = "median")
+#'   factorRefine=refinePar_default("robust"))
 #' FactorLists <- c(tmp,FactorLists)
 #' re <- reg.TS(TS)
 #' re <- reg.TS(TS,FactorLists)
@@ -199,14 +199,15 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
       secNames <- unique(TSFR$sector)
       factorNames <- setdiff(factorNames,secNames)
     }else{
-      TSFR <- gf.sector(TSFR,sectorAttr)
+      TSFR <- gf_sector(TSFR,sectorAttr)
     }
   }
   
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf_lcfs",factorPar=list(factorID='F000001'),factorStd = 'none',factorNA = "median")
+        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf_lcfs",factorPar=list(factorID='F000001'),
+                      factorRefine=setrefinePar(refinePar_default(type="none",sectorAttr = NULL),na_method="median"))
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
         TSFR <- merge.x(TSFR,TSw,by =c("date","stockID"))
@@ -292,7 +293,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
   
   TS <- getTS(RebDates,indexID)
   factorIDs <- CT_FactorLists()$factorID
-  tmp <- buildFactorLists_lcfs(factorIDs,factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+  tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
   FactorLists <- buildFactorLists(
     buildFactorList(factorFun="gf.ln_mkt_cap",
                     factorPar=list(),
@@ -312,7 +313,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
     buildFactorList(factorFun="gf.ROE_ttm",
                     factorPar=list(),
                     factorDir=1),
-    factorStd = 'sectorNe',factorOutlier='boxplot',factorNA='median')
+    factorRefine=refinePar_default("robust"))
   FactorLists <- c(tmp,FactorLists)
   TSF <- getMultiFactor(TS,FactorLists)
   TSFR <- na.omit(getTSR(TSF))
@@ -347,7 +348,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
 #' TS <- getTS(RebDates,indexID = 'EI000905')
 #' factorIDs <- c("F000006","F000008","F000012","F000015",
 #' "F000016")
-#' tmp <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "median")
+#' tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
 #' factorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
@@ -358,7 +359,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
 #'   buildFactorList(factorFun="gf.G_MLL_Q",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'   factorStd="norm",factorNA = "median")
+#'   buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust")))
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' ----------------------VIF----------------------
@@ -376,13 +377,13 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
   result <- data.frame()
   if(!is.null(sectorAttr)){
-    TSFR <- gf.sector(TSFR,sectorAttr = sectorAttr)
+    TSFR <- gf_sector(TSFR,sectorAttr = sectorAttr)
     secNames <- unique(TSFR$sector)
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID",secNames,'sector',"periodrtn")],sectorAttr = 'existing')[[4]]
     result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = TRUE), 
                          frtn=NA,fttest=NA,pttest=NA,tag='risk')
     TSF <- TSFR[,c('date','stockID',fname,secNames,'sector')]
-  }else{
+  } else {
     TSF <- TSFR[,c('date','stockID',fname)]
   }
   
@@ -488,7 +489,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
   fname <- guess_factorNames(TSF,is_factorname = "factorscore")
   if(!is.null(sectorAttr) & !identical(sectorAttr,"existing")){
-    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
+    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
   
   result <- data.frame()
@@ -529,7 +530,7 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
     x <- setdiff(fname,y)
   }
   if(!is.null(sectorAttr) & !identical(sectorAttr,"existing")){
-    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
+    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
 
   if(is.null(sectorAttr)){
@@ -559,7 +560,7 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
     forder <- fname[forder]
   }
   if(!is.null(sectorAttr) & !identical(sectorAttr,"existing")){
-    TSF <- gf.sector(TSF,sectorAttr = sectorAttr)
+    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
   if(!is.null(sectorAttr)){ # forder[1]
@@ -770,114 +771,18 @@ chart.reg.rsquare <- function(reg_results){
 #' @rdname regression_result_summary
 #' 
 #' @export
-MC.chart.regCorr <- function(reg_results){
+MC.chart.reg.corr <- function(reg_results){
   fRtn <- reg_results$fRtn
   
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
   fRtn.cor <- cor(as.matrix(fRtn[,-1]))
-  ggplot.corplot(fRtn.cor)
+  ggplot.corr(fRtn.cor)
   
 }
 
-#' ggplot.corplot
-#' 
-#' @param corr is correlation matrix or a list of correlation matrix ,see \code{\link[stats]{cor}}.
-#' 
-#' @export
-ggplot.corplot <- function(corr) {
-
-  subfun <- function(corr){
-    corr <- round(corr,digits = 2)
-    corr[upper.tri(corr)] <- NA
-    corr <- reshape2::melt(corr, na.rm = TRUE)
-    colnames(corr) <- c("fname","fnamecor",'value')
-    return(corr)
-  }
-  
-  if(is.matrix(corr)){
-    cordf <- subfun(corr)
-    ggplot(data=cordf,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-    
-  }else{
-    N <- floor(sqrt(length(corr)))
-    cordf <- plyr::ldply(corr,subfun,.id = 'date')
-    
-    ggplot(data=cordf,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+facet_wrap(~ date,ncol=N)+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-    
-  }
-
-}
 
 
-#' raw_factor_correlation
-#' 
-#' @name raw_factor_correlation
-#' @param TSF is a \bold{TSF} object.
-#' @param Nbin the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.
-#' @examples
-#' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
-#' TS <- getTS(RebDates,indexID = 'EI000985')
-#' factorIDs <- c("F000006","F000008","F000012")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
-#' TSF <- getMultiFactor(TS,FactorLists = FactorLists)
-#' MC.chart.fCorr(TSF)
-#' MC.chart.fCorr(TSF,Nbin='year')
-#' @export
-MC.chart.fCorr <- function(TSF,Nbin){
-  corr <- MC.table.fCorr(TSF,Nbin)
-  ggplot.corplot(corr)
-}
 
-
-#' MC.table.fCorr
-#' 
-#' @rdname raw_factor_correlation
-#' @examples 
-#' #-------------------------------------------------------#
-#' MC.table.fCorr(TSF)
-#' MC.table.fCorr(TSF,Nbin='year')
-#' @export
-MC.table.fCorr <- function(TSF,Nbin){
-  
-  # fnames <- setdiff(colnames(TSF),c('date','stockID','date_end','periodrtn'))
-  fnames <- guess_factorNames(TSF)
-  TSF_by <- dplyr::group_by(TSF[,c('date',fnames)],date)
-  
-  cordata <- TSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
-  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
-  cordata <- reshape2::melt(cordata,id=c('date','fname'),
-                            variable.name='fnamecor',factorsAsStrings=FALSE)
-  cordata <- transform(cordata,fname=as.character(fname),
-                       fnamecor=as.character(fnamecor))
-  
-  if(missing(Nbin)){
-    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- dplyr::arrange(cordata_by,fname,fnamecor)
-    cordata_by <- reshape2::dcast(cordata_by,fname~fnamecor)
-    rownames(cordata_by) <- cordata_by$fname
-    cordata_by <- as.matrix(cordata_by[,-1])
-  }else{
-    cordata$tmp <- cut.Date2(cordata$date,Nbin)
-    cordata_by <- dplyr::group_by(cordata,tmp,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- dplyr::arrange(cordata_by,tmp,fname,fnamecor)
-    cordata_by <- reshape2::dcast(cordata_by,tmp+fname~fnamecor)
-    cordata_by <- split(cordata_by[,-1],cordata_by$tmp)
-    cordata_by <- plyr::llply(cordata_by,function(df){
-      rownames(df) <- df$fname
-      df <- as.matrix(df[,-1])
-      return(df)
-    })
-  }
-  return(cordata_by)
-}
 
 
 
@@ -1160,444 +1065,6 @@ biasTest <- function(reg_results,portID){
 }
 
 
-# ---------------------  ~~ Get optimal port --------------
-
-
-
-
-
-
-#' OptWgt
-#'
-#' optimize portfolio weight.
-#' @author Andrew Dow
-#' @param TSF is multiple factors' \bold{TSF} object
-#' @param alphaf is alpha factors' name, can be missing.
-#' @param fRtn see \code{\link{getfRtn}}
-#' @param fCov is the covariance matrix.
-#' @param bmk is the benckmark for optimization,can be missing.
-#' @return a \bold{port} object.
-#' @examples 
-#' 
-#' 
-#' @export
-OptWgt <- function(TSF,alphaf,fRtn,fCov,
-                      target=c('return','balance'),
-                      bmk,sectorAttr=defaultSectorAttr(),
-                      factorExp=buildFactorExp(),wgtSet=buildWgtSet(),boxConstr,
-                      addEvent=FALSE,optWay=c('ipop','solve.QP','Matlab')){
-  target <- match.arg(target)
-  optWay <- match.arg(optWay)
-  
-  if(optWay == "Matlab"){
-    R.matlab::Matlab$startServer()
-    matlab <- R.matlab::Matlab()
-    open(matlab)
-  }
-  
-  fnames <- guess_factorNames(TSF)
-  if(missing(alphaf)){
-    alphaf <- fnames
-  }
-  dates <- unique(TSF$date)
-  port <- data.frame()
-  for(i in dates){
-    cat(rdate2int(as.Date(i,origin = '1970-01-01')), "...\n")
-    
-    #get one period raw data
-    tmp.TSF <- TSF[TSF$date==i,]
-    #add sector factor
-    if(!is.null(sectorAttr)){
-      tmp.TSF <- gf.sector(tmp.TSF,sectorAttr)
-      tmp.TSF <- dplyr::select(tmp.TSF,-sector)
-    }
-    
-    #get factor return and factor covariance
-    if('date' %in% colnames(fRtn)){
-      tmp.fRtn <- fRtn[fRtn$date==i,-1]
-    }else{
-      tmp.fRtn <- fRtn
-    }
-    rownames(tmp.fRtn) <- tmp.fRtn$fname
-    
-
-    #get factor exposure up down limit
-    if(missing(bmk)){
-      totwgt <- getfExpLimit(factorExp,TSF=tmp.TSF)
-    }else{
-      bmkdata <- getbmkfExp(tmp.TSF,bmk)
-      totwgt <- getfExpLimit(factorExp,bmk=bmkdata)
-    }
-    totwgt <- totwgt[,-1]
-    rownames(totwgt) <- totwgt$fname
-    
-    
-    
-    # get risk matrix
-    if(!missing(boxConstr)){
-      tmpdata <- getnewTSFtotwgt(tmp.TSF,totwgt,boxConstr)
-      tmp.TSF <- tmpdata$TSF
-      totwgt <- tmpdata$totwgt
-    }
-    
-    #remove unqualified TS
-    tmp.TS <- rm_suspend(tmp.TSF[,c('date','stockID')])
-    if(addEvent==TRUE){
-      tmp.TS <- quantbox::rmNegativeEvents(tmp.TS)
-    }
-    tmp.TSF <- tmp.TSF[tmp.TSF$stockID %in% tmp.TS$stockID,]
-    
-    riskmat <- as.matrix(tmp.TSF[,totwgt$fname])
-    rownames(riskmat) <- tmp.TSF$stockID
-    
-    #get alpha matrix
-    alphamat <- as.matrix(tmp.TSF[,alphaf])
-    rownames(alphamat) <- tmp.TSF$stockID
-    dvec <- t(as.matrix(tmp.fRtn[alphaf,'frtn'])) %*% t(alphamat)
-    if(addEvent){
-      # add event return
-    }
-    wgtLimit <- getStockWgtLimit(tmp.TS,wgtSet,sectorAttr)
-    
-    if(target=='balance'){
-      if('date' %in% colnames(fCov)){
-        tmp.fCov <- fCov[fCov$date==i,-1]
-      }else{
-        tmp.fCov <- fCov
-      }
-      rownames(tmp.fCov) <- colnames(tmp.fCov)
-      
-      Fcovmat <- as.matrix(tmp.fCov[alphaf,alphaf])
-      Dmat <- alphamat %*% Fcovmat %*% t(alphamat)
-      if(any(eigen(Dmat,only.values = T)[[1]]<=0)){
-        tmp <- Matrix::nearPD(Dmat)
-        Dmat <- tmp$mat
-        Dmat <- matrix(Dmat,nrow = nrow(Dmat))
-      }
-      nstock <- dim(Dmat)[1]
-      
-      if(optWay == "solve.QP"){
-        Amat <- cbind(riskmat,-1*riskmat)
-        Amat <- cbind(1,Amat,diag(x=1,nstock),diag(x=-1,nstock))#control weight
-        bvec <- c(1,totwgt$min,-1*totwgt$max,wgtLimit$min,-1*wgtLimit$max)
-        system.time(res <- quadprog::solve.QP(Dmat,dvec,Amat,bvec,meq = 1))
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res$solution)
-        
-      }else if(optWay == "ipop"){
-        f.ipop <- as.matrix(-dvec, ncol = 1)
-        A.ipop <- t(cbind(1,riskmat))
-        b.ipop <- c(1,totwgt$min)
-        dif.ipop <- totwgt$max - totwgt$min
-        r.ipop <- c(0, dif.ipop)
-        lb.ipop <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
-        ub.ipop <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
-        system.time(res.ipop <- kernlab::ipop(c = f.ipop, H = Dmat,
-                                              A = A.ipop, b = b.ipop, r = r.ipop,
-                                              l = lb.ipop, u = ub.ipop,
-                                              maxiter = 3000))
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.ipop@primal)
-        
-      }else if(optWay == "Matlab"){
-        H.matlab <- Dmat
-        f.matlab <- as.matrix(-dvec, ncol = 1)
-        A.matlab <- t(cbind(-1*riskmat, riskmat))
-        b.matlab <- as.matrix(c(-1*totwgt$min, totwgt$max), ncol=1)
-        Aeq.matlab <- matrix(data = 1, nrow = 1, ncol = nstock)
-        beq.matlab <- 1
-        lb.matlab <- matrix(data = wgtLimit$min, nrow = nstock, ncol = 1)
-        ub.matlab <- matrix(data = wgtLimit$max, nrow = nstock, ncol = 1)
-        system.time({
-          R.matlab::setVariable(matlab, H = H.matlab, f = f.matlab, A = A.matlab, b = b.matlab,
-                                Aeq = Aeq.matlab, beq = beq.matlab, lb = lb.matlab, ub = ub.matlab)
-          R.matlab::evaluate(matlab, "optionn = optimoptions(@quadprog,'Algorithm','interior-point-convex','MaxIter',5000);")
-          R.matlab::evaluate(matlab, "res = quadprog(H,f,A,b,Aeq,beq,lb,ub,[],optionn);")
-          res.tmp <- R.matlab::getVariable(matlab, "res")
-          res.matlab <- res.tmp$res
-        })
-        tmp <- data.frame(date=i,stockID=rownames(alphamat),wgt=res.matlab)
-      }
-      
-      tmp <- tmp[tmp$wgt>0.0005,]
-      colnames(tmp) <-c( "date","stockID","wgt")
-      tmp <- transform(tmp,wgt=wgt/sum(wgt))
-      
-    }else{
-      require(PortfolioAnalytics)
-      pspec <- portfolio.spec(assets=colnames(dvec))
-      pspec <- add.constraint(portfolio=pspec, type="full_investment")
-      pspec <- add.constraint(portfolio=pspec,type="box",min=wgtLimit$min,max=wgtLimit$max)
-      
-      pspec <- add.constraint(portfolio=pspec, type="factor_exposure",
-                              B=riskmat,lower=totwgt$min, upper=totwgt$max)
-      pspec <- add.objective(portfolio=pspec,type='return',name='mean')
-      dvec <- as.xts(dvec,order.by = as.Date(i,origin = '1970-01-01'))
-      opt_maxret <- optimize.portfolio(R=dvec, portfolio=pspec,
-                                       optimize_method="ROI",
-                                       trace=TRUE)
-      
-      tmp <- data.frame(date=i,stockID=names(opt_maxret$weights),wgt=opt_maxret$weights)
-      tmp <- tmp[tmp$wgt>0.0005,]
-      tmp$wgt <- tmp$wgt/sum(tmp$wgt)
-      
-    }
-    port <- rbind(port,tmp)
-  }# for dates end
-  
-  if(optWay == "Matlab"){
-    close(matlab)
-  }
-  port$date <- as.Date(port$date,origin = '1970-01-01')
-  port$stockID <- as.character(port$stockID)
-  return(port)
-}
-
-
-#' OptWgt_settingFuncs
-#' 
-#' \bold{buildFactorExp} build factor exposure setting in optimization function.
-#' \bold{buildWgtSet} build weight setting in optimization function.
-#' \bold{buildBoxConstr} build box constraint in optimization function.
-#' @name OptWgt_settingFuncs
-#' @rdname OptWgt_settingFuncs
-#' @examples 
-#' fexp <- buildFactorExp()
-#' fexp <- buildFactorExp(disposition_=c(-0.01,1),beta_ = c(-0.01, 1))
-#' fexp <- buildFactorExp(sectorall=c(-0.05,0.05),disposition_=c(-0.01,1),ES33480000=c(0.15,0.25))
-#' ---------------------------------------------------------------------
-#' wgtSet <- buildWgtSet()
-#' wgtSet <- buildWgtSet(wgtall=c(0,0.02),EQ601318=c(0.05,0.15))
-#' wgtSet <- buildWgtSet(EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
-#' ---------------------------------------------------------------------
-#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85))
-#' boxConstr <- buildBoxConstr(EI000905=c(0.75,0.85),EI000300=c(0.15,0.35))
-#' @export
-buildFactorExp <- function(sectorall=c(-0.05,0.05),...){
-  if(is.null(sectorall)){
-    result <- data.frame()
-  }else{
-    result <- data.frame(fname="sectorall",
-                         min=sectorall[1],
-                         max=sectorall[2])
-  }
-  
-  tmp <- list(...)
-  if(length(tmp)>0){
-    tmp <- plyr::ldply(tmp)
-    colnames(tmp) <- c('fname','min','max')
-    result <- rbind(result,tmp)
-  }
-  if(any(result$max<=result$min)){
-    warning('max less than min',call. = FALSE)
-  }
-  result$fname <- as.character(result$fname)
-  return(result)
-}
-
-
-
-#' @rdname OptWgt_settingFuncs
-#' 
-#' @export
-buildWgtSet <- function(wgtall=c(0,0.01),...){
-  if(is.null(wgtall)){
-    result <- data.frame()
-  }else{
-    result <- data.frame(ID='wgtall',
-                         min=wgtall[1],
-                         max=wgtall[2])
-  }
-
-  tmp <- list(...)
-  if(length(tmp)>0){
-    tmp <- plyr::ldply(tmp)
-    colnames(tmp) <- c('ID','min','max')
-    result <- rbind(result,tmp)
-  }
-  if(any(result$max<=result$min)){
-    warning('wgtmax less than wgtmin',call. = FALSE)
-  }
-  result$ID <- as.character(result$ID)
-  return(result)
-}
-
-
-
-
-
-#' @rdname OptWgt_settingFuncs
-#' 
-#' @export
-buildBoxConstr <- function(...){
-  tmp <- list(...)
-  if(length(tmp)>0){
-    tmp <- plyr::ldply(tmp)
-    colnames(tmp) <- c('indexID','min','max')
-  }
-  if(any(tmp$max<=tmp$min)){
-    warning('max less than min',call. = FALSE)
-  }
-  return(tmp)
-}
-
-
-
-
-# getbmkfExp
-# 
-# inner function, get benchmark's factor exposure
-# bmkdata <- getbmkfExp(TSF,bmk)
-getbmkfExp <- function(TSF,bmk){
-  fnames <- guess_factorNames(TSF,silence = TRUE)
-  bmkdata <- getIndexCompWgt(bmk,unique(TSF$date))
-  bmkdata <- dplyr::left_join(bmkdata,TSF[,c("date","stockID",fnames)],by=c('date','stockID'))
-  bmkdata[is.na(bmkdata)] <- 0
-  
-  result <- data.frame()
-  for(i in unique(bmkdata$date)){
-    tmp <- subset(bmkdata,date==i)
-    tmp <- t(as.matrix(tmp$wgt)) %*% as.matrix(tmp[,fnames])
-    tmp <- data.frame(date=i,fname=colnames(tmp),fexp=t(unname(tmp)))
-    result <- rbind(result,tmp)
-  }
-  result$date <- as.Date(result$date,origin='1970-01-01')
-  tmp <- dplyr::filter(result,substr(fname,1,2)=='ES',fexp>0)
-  tmp$fexp <- tmp$fexp/sum(tmp$fexp)
-  result <- dplyr::filter(result,substr(fname,1,2)!='ES')
-  result <- rbind(result,tmp)
-  result$fname <- as.character(result$fname)
-  return(result)
-}
-
-
-# getfExpLimit
-# 
-# inner function, get benchmark's factor exposure
-# totwgt <- getfExpLimit(factorExp,bmkdata)
-getfExpLimit <- function(factorExp,bmk,TSF){
-  if(missing(bmk)){
-    fnames <- guess_factorNames(TSF)
-    
-    fnames.f <- fnames[substr(fnames,1,2)!='ES']
-    tmp.result1 <- data.frame()
-    if(length(fnames.f)>0){
-      tmp.result1 <- expand.grid(date=unique(TSF$date),fname=fnames.f,
-                            KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-      tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      tmp.result1 <- na.omit(tmp.result1)
-      # if(sum(is.na(tmp.result1))>0){
-      #   tmp <- unique(tmp.result1[is.na(tmp.result1$min),'fname'])
-      #   warning(paste('miss ',tmp,' exposure setting!'))
-      #   tmp.result1[is.na(tmp.result1$min),'min'] <- -0.01
-      #   tmp.result1[is.na(tmp.result1$max),'max'] <- 100
-      # }
-    }
-    
-    
-    fnames.sec <- fnames[substr(fnames,1,2)=='ES']
-    tmp.result2 <- data.frame()
-    if(length(fnames.sec)>0){
-      tmp.result2 <- expand.grid(date=unique(TSF$date),fname=fnames.sec,
-                            KEEP.OUT.ATTRS = FALSE, stringsAsFactors = FALSE)
-      tmp.result2 <- dplyr::left_join(tmp.result2,factorExp,by='fname')
-      if(any(factorExp$fname=='sectorall')){
-        tmp.min <- factorExp[factorExp$fname=='sectorall','min']
-        tmp.max <- factorExp[factorExp$fname=='sectorall','max']
-        tmp.result2 <- transform(tmp.result2,
-                                     min=ifelse(is.na(min),tmp.min,min),
-                                     max=ifelse(is.na(max),tmp.max,max))
-      }
-      tmp.result2 <- na.omit(tmp.result2)
-      
-    }
-    result <- rbind(tmp.result1,tmp.result2)
-    
-  }else{
-    tmp.result1 <- subset(bmk,fname %in% factorExp$fname)
-    if(nrow(tmp.result1)>0){
-      tmp.result1 <- dplyr::left_join(tmp.result1,factorExp,by='fname')
-      tmp.result1 <- transform(tmp.result1,min=fexp+min,max=fexp+max)
-    }
-    
-    tmp.result2 <- subset(bmk,!(fname %in% factorExp$fname))
-    if(nrow(tmp.result2)>0){
-      tmp.result2.sec <- subset(tmp.result2,substr(fname,1,2)=='ES')
-      if(nrow(tmp.result2.sec)>0){
-        if(any(factorExp$fname=='sectorall')){
-          tmp.result2.sec <- transform(tmp.result2.sec,
-                                       min=fexp+factorExp[factorExp$fname=='sectorall','min'],
-                                       max=fexp+factorExp[factorExp$fname=='sectorall','max'])
-        }
-      }
-      tmp.result2 <- na.omit(tmp.result2.sec)
-    }
-    
-    result <- rbind(tmp.result1,tmp.result2)
-    result <- result[,c("date","fname","min","max")]
-    result <- dplyr::arrange(result,date)
-  }
-
-  
-  return(result)
-}
-
-
-
-# getStockWgtLimit
-# 
-# inner function, get stock's weight limit in optimization function.
-# wgtLimit <- getStockWgtLimit(TS,wgtSet,sectorAttr)
-getStockWgtLimit <- function(TS,wgtSet,sectorAttr){
-  result <- transform(TS,min=wgtSet[wgtSet$ID=='wgtall','min'],
-                  max=wgtSet[wgtSet$ID=='wgtall','max'])
-  
-  if(any(substr(wgtSet$ID,1,2)=='EQ')){
-    tmp <- result[result$stockID %in% wgtSet$ID,c('date','stockID')]
-    tmp <- dplyr::left_join(tmp,wgtSet,by=c('stockID'='ID'))
-    result <- result[!(result$stockID %in% wgtSet$ID),]
-    result <- rbind(result,tmp)
-  }
-  if(any(substr(wgtSet$ID,1,2)=='ES')){
-    result <- getSectorID(result,sectorAttr=sectorAttr)
-    
-    tmp <- result[result$sector %in% wgtSet$ID,c('date','stockID','sector')]
-    tmp <- dplyr::left_join(tmp,wgtSet,by=c('sector'='ID'))
-    tmp <- tmp[,c("date","stockID","min","max")]
-    result <- result[!(result$sector %in% wgtSet$ID),c('date','stockID','min','max')]
-    result <- rbind(result,tmp)
-  }
-  result <- dplyr::left_join(TS,result,by=c('date','stockID'))
-  return(result)
-}
-
-
-# getnewTSFtotwgt
-#
-# inner function
-getnewTSFtotwgt <- function(TSF,totwgt,boxConstr){
-  for(i in 1:nrow(boxConstr)){
-    tmp.indexID <- boxConstr$indexID[i]
-    if(substr(tmp.indexID,1,2)=='ES'){
-      totwgt[totwgt$fname==tmp.indexID,'min'] <- max(totwgt[totwgt$fname==tmp.indexID,'min'],boxConstr$min[i])
-      totwgt[totwgt$fname==tmp.indexID,'max'] <- min(totwgt[totwgt$fname==tmp.indexID,'max'],boxConstr$max[i])
-      next
-    }
-    indexComp <- data.frame(stockID=getIndexComp(tmp.indexID,unique(TSF$date)),value=c(1))
-    colnames(indexComp) <- c('stockID',tmp.indexID)
-    indexComp$stockID <- as.character(indexComp$stockID)
-    TSF <- dplyr::left_join(TSF,indexComp,by='stockID')
-  }
-  TSF[is.na(TSF)] <- 0
-  colnames(boxConstr) <- c("fname","min","max")
-  totwgt <- rbind(totwgt,boxConstr)
-  rownames(totwgt) <- totwgt$fname
-  return(list(TSF=TSF,totwgt=totwgt))
-}
-
-
-
-
-
-
 
 
 
@@ -1637,7 +1104,7 @@ exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
   TSWF <- merge.x(port,TSF,by=c('date','stockID'))
   TSWF <- na.omit(TSWF)
   if(!is.null(sectorAttr)){
-    TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
+    TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
   }
   
   fexp <- exposure.TSWF(TSWF) 
@@ -1653,11 +1120,8 @@ exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
 #' 
 #' @export
 #' @examples 
-#' tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
-#'                 factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
-#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
-#' alphaLists <- c(tmp,alphaLists)
-#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
 #' PA_tables <- getPAData(port,c(alphaLists,riskLists))
 #' PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
 getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
@@ -1681,7 +1145,7 @@ getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   # calculate factor exposure
   TSWF <- merge.x(port,TSFR,by=c('date','stockID'))
   TSWF <- na.omit(TSWF)
-  TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
+  TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
   fexp <- exposure.TSWF(TSWF) 
   fexp <- dplyr::arrange(fexp,date)
   
@@ -1813,11 +1277,9 @@ chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
 #' 
 #' @export
 #' @examples 
-#' tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
-#'                 factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
-#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
+#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
 #' alphaLists <- c(tmp,alphaLists)
-#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
 #' RA_tables <- getRAData(port,c(alphaLists,riskLists))
 #' RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
@@ -1840,7 +1302,7 @@ getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   # calculate factor exposure
   TSWF <- merge.x(port,TSFR,by=c('date','stockID'))
   TSWF <- na.omit(TSWF)
-  TSWF <- gf.sector(TSWF,sectorAttr = sectorAttr)
+  TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
   fexp <- exposure.TSWF(TSWF) 
   fexp <- dplyr::arrange(fexp,date)
   
@@ -1890,26 +1352,6 @@ chart.RA.attr <- function(RA_tables){
 
 
 
-#' get factorscore of sector
-#' 
-#' @export
-gf.sector <- function(TS, sectorAttr) {
-  TSS <- getSectorID(TS,sectorAttr = sectorAttr)
-  TSS <- sectorNA_fill(TSS,sectorAttr=sectorAttr)
-  re <- cast_sector(TSS)
-  return(re)
-}
-
-cast_sector <- function(TSS){
-  check.TSS(TSS)
-  TSS$.tmp <- 1
-  re <- reshape2::dcast(TSS,date+stockID~sector,fill=0,value.var = '.tmp')
-  TSS$.tmp <- NULL
-  re <- merge.x(TSS,re,by = c("date","stockID"))
-  return(re)
-}
-
-
 #' get active wgt
 #' 
 #' @export
@@ -1933,13 +1375,4 @@ getActivewgt <- function(port,bmk,res=c("all","active")) {
 
 
 
-#' check.colnames_sectorfs
-#' 
-#' @export
-check.colnames_sectorfs <- function(data){
-  check.colnames(data,"sector")
-  cols <- colnames(data)
-  if(!any(substr(cols,1,2)=="ES")){
-    stop("the data must contain the sector-factors!")
-  }
-}
+

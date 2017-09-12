@@ -8,6 +8,7 @@
 #' draw factor's histogram and boxplot,and summarize factor's statistics value.
 #' @name factor_descriptive_statistics
 #' @rdname factor_descriptive_statistics
+#' @author Aming.Tao
 #' @examples 
 #' mp <- modelPar.default()
 #' TSF <- Model.TSF(mp)
@@ -142,60 +143,14 @@ MF.table.Fct_descr <- function(mTSF){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000006","F000008","F000012")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorStd="norm",factorNA = "mean")
+#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
 #' mTSF <- getMultiFactor(TS,FactorLists = FactorLists)
 #' MF.chart.Fct_corr(mTSF)
 #' MF.chart.Fct_corr(mTSF,Nbin='year')
 #' @export
 MF.chart.Fct_corr <- function(mTSF,Nbin){
-  
-  # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
-  fnames <- guess_factorNames(mTSF)
-  mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
-  
-  cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
-  cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
-  cordata <- reshape2::melt(cordata,id=c('date','fname'),
-                            variable.name='fnamecor',factorsAsStrings=FALSE)
-  cordata <- transform(cordata,fname=as.character(fname),
-                       fnamecor=as.character(fnamecor))
-  
-  subfun <- function(df){
-    df <- dplyr::arrange(df,fname,fnamecor)
-    df <- reshape2::dcast(df,fname~fnamecor)
-    rownames(df) <- df$fname
-    df <- as.matrix(df[,-1])
-    df[upper.tri(df)] <- NA
-    df <- reshape2::melt(df, na.rm = TRUE)
-    colnames(df) <- c("fname","fnamecor",'value')
-    return(df)
-  }
-  
-  if(missing(Nbin)){
-    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- subfun(cordata_by)
-    
-    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-  }else{
-    cordata$date <- cut.Date2(cordata$date,Nbin)
-    N <- length(unique(cordata$date))
-    N <- floor(sqrt(N))
-    cordata_by <- dplyr::group_by(cordata,date,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- split(cordata_by[,-1],cordata_by$date)
-    cordata_by <- plyr::ldply(cordata_by,subfun,.id = 'date')
-    
-    cordata_by$value <- round(cordata_by$value,2)
-    ggplot(data=cordata_by,aes(fname,fnamecor,fill=value))+geom_tile()+
-      scale_fill_gradient2(low = "blue", high = "red", mid = "white")+
-      geom_text(aes(fname,fnamecor, label = value), color = "black")+facet_wrap(~ date,ncol=N)+
-      theme(axis.text.x = element_text(angle = 45,vjust = 1, hjust = 1))
-  }
-  
+  corr <- MF.table.Fct_corr(mTSF,Nbin)
+  ggplot.corr(corr)
 }
 
 
@@ -211,7 +166,7 @@ MF.table.Fct_corr <- function(mTSF,Nbin){
   fnames <- guess_factorNames(mTSF)
   mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
   
-  cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman'))
+  cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman',use="pairwise.complete.obs"))
   cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
                             variable.name='fnamecor',factorsAsStrings=FALSE)
@@ -307,6 +262,7 @@ seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
   # --- get the period rtns
   TSFR <- getTSR_decay(TSF, prd_lists = prd_lists)
   # --- calculate the IC seri.
+  prd_names <- names(prd_lists)
   if(stat=="pearson"){
     IC.seri <- plyr::ddply(TSFR,"date",function(dat){
       t(cor(dat[, paste("prdrtn_",prd_names,sep="")],dat[,"factorscore"],method="pearson",use="pairwise.complete.obs"))
@@ -376,7 +332,7 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
     warning("IC seri is shorter than 12 months, could not plot the 12 months MA!")
     re <- re + ggtitle("IC series")
   } else {
-    ICma <- zoo::rollapply(as.zoo(seri),width=wid,FUN=mean,na.rm=TRUE)
+    ICma <- zoo::rollapply(as.zoo(seri),width=wid,FUN=mean,na.rm=TRUE,align ="right")
     by <- cut.Date2(zoo::index(ICma),Nbin)
     ICma.aggr <- aggregate(ICma,as.Date(by),tail,1)
     colnames(ICma.aggr) <- "IC.MA"
@@ -515,9 +471,7 @@ MC.chart.IC.corr <- function(TSFRs,stat=c("pearson","spearman"),plotPar){
   IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
   rownames(IC.seris) <- names(TSFRs)
   IC.corrmat <- cor(t(IC.seris),method="pearson",use="pairwise.complete.obs")
-  corrplot::corrplot.mixed(IC.corrmat,order="hclust")
-  IC.corrplot <- recordPlot()
-  return(IC.corrplot)
+  ggplot.corr(IC.corrmat)
 }
 
 
@@ -576,7 +530,7 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
     ncol <- getplotPar.MC(plotPar,"ncol.IC.decay")
   }
   NMs <- names(TSFRs)
-  IC.charts.decay <- llply(TSFRs, chart.IC.decay, stat=stat)
+  IC.charts.decay <- plyr::llply(TSFRs, chart.IC.decay, stat=stat)
   for(i in 1:length(IC.charts.decay)){
     IC.charts.decay[[i]] <- IC.charts.decay[[i]] +
       ggtitle(NMs[i]) +
@@ -1111,7 +1065,8 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,Nbin="day",stat=c("mean","median"),
   
   if(facet_by=='none'){
     ggplot(rtnseri, aes(x=date, y=wealth, color=fname)) +
-      geom_line(size=1)
+      geom_line(size=1) +
+      coord_trans(y="log")
   }else if(facet_by=='date'){
     
     rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
@@ -1122,7 +1077,8 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,Nbin="day",stat=c("mean","median"),
       geom_bar(stat = 'identity')+facet_wrap(~date)
   }else if(facet_by=='fname'){
     ggplot(rtnseri, aes(x=date, y=wealth)) +
-      geom_line(size=1)+facet_wrap(~fname)
+      geom_line(size=1)+facet_wrap(~fname)+
+      coord_trans(y="log")
   }
 }
 

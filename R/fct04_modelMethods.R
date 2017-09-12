@@ -91,20 +91,15 @@ Model.TSF <- function(modelPar){
 #' # -- get the TSF object by TS
 #' TS <- Model.TS(modelPar)
 #' TSF <- Model.TSF_byTS(modelPar,TS)
-#' TSF2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TS)
 #' # -- get the TSFR object by TSR
 #' TSR <- Model.TSR(modelPar)
 #' TSFR <- Model.TSF_byTS(modelPar,TSR)
-#' TSFR2 <- Model.TSF_byTS(setmodelPar.factor(modelPar,factorOutlier = 10),TSR)
 Model.TSF_byTS <- function(modelPar,TS){ 
   factorFun <- modelPar$factor$factorFun
   factorPar <- modelPar$factor$factorPar
-  factorDir <- modelPar$factor$factorDir  
-  factorOutlier <- modelPar$factor$factorOutlier  
-  factorNA <- modelPar$factor$factorNA
-  factorStd <- modelPar$factor$factorStd
-  sectorAttr <- modelPar$factor$sectorAttr  
-  TSF <- getTSF(TS,factorFun=factorFun,factorPar=factorPar,factorDir=factorDir,factorOutlier=factorOutlier,factorNA=factorNA,factorStd=factorStd,sectorAttr=sectorAttr)  
+  factorDir <- modelPar$factor$factorDir
+  factorRefine <- modelPar$factor$factorRefine 
+  TSF <- getTSF(TS,factorFun=factorFun,factorPar=factorPar,factorDir=factorDir,factorRefine=factorRefine)  
   attr(TSF,"MP") <- modelPar
   return(TSF)
 }

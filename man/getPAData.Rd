@@ -10,11 +10,8 @@ getPAData(port, factorLists, bmk, sectorAttr = defaultSectorAttr())
 getPAData
 }
 \examples{
-tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
-                factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
-alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
-alphaLists <- c(tmp,alphaLists)
-riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
+riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
 PA_tables <- getPAData(port,c(alphaLists,riskLists))
 PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
 }

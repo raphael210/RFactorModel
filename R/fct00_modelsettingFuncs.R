@@ -154,17 +154,14 @@ setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
 #' @param factorFun a non-empty character string naming the function to get the factor scores.(See \code{\link{getTSF}})
 #' @param factorPar a list, or a character string, containing the parameters of the \code{factorFun}.(See \code{\link{getTSF}})
 #' @param factorDir a integer,should be 1 or -1 (1 for the positive factor,-1 for the negative one).(See \code{\link{getTSF}})
-#' @param factorStd a character string, indicating the standardizing pattern of the factor score,could be one of "none"(no scaling),"norm"(scaling to 0 mean and 1 stdev),"sectorNe"(scaling to 0 mean and 1 stdev in each sector).
-#' @param sectorAttr 
-#' @param factorOutlier a numeric value of standard deviations, e.g. 10 means that factor score larger or smaller than ten times the standard deviation will be removed
-#' @param factorNA a character string, indicating the method to deal with the missing value of the factorscore, could be one of "na"(default,keeping the missing value as it is),"mean","median","max","min".
+#' @param factorRefine a list. See detail in \code{\link{refinePar_default}}
 #' @param factorName a character string. IF missing, then take a default name by function \code{default.factorName}. 
 #' @param factorID
 #' @param factorType
 #' @param factorDesc
 #' @param FactorList a list containing all the factor related parametres in it. See more detail in \code{\link{buildFactorList}}.
 #' @return a \bold{modelPar} object.
-#' @note if the parammeter \code{factorFun} is \code{"gf_lcfs"}, then the factorDir, factorName, factorID, factorType and factorDesc will be mapped automatically by \code{\link{CT_FactorLists()}}.
+#' @note if the parammeter \code{factorFun} is \code{"gf_lcfs"}, then the factorDir, factorName, factorID, factorType and factorDesc will be mapped automatically by \code{\link{CT_FactorLists}}.
 #' @details if \code{FactorList} is missing, then the factor related parametres is set by the auguments separately, else, all the parametres is set by the \code{FactorList} once and for all.
 #' @seealso \code{\link{getTSF}}
 #' @author Ruifei.Yin
@@ -176,17 +173,12 @@ setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
 #'                            factorFun="gf.pct_chg_per",
 #'                            factorPar=list(N=25),
 #'                            factorDir=-1,
-#'                            factorStd = "sectorNe",
-#'                            factorNA = "na",
-#'                            factorOutlier = 3 )
+#'                            factorRefine= setrefinePar(refinePar_default("robust"),std_method="norm",na_method="median",outlier_method="mad"))
 modelPar.factor <- function(modelPar = modelPar.default() , 
                             factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1    ,
-                            factorStd  = "none" ,
-                            sectorAttr = defaultSectorAttr(),
-                            factorOutlier = 3 ,
-                            factorNA = "na",
+                            factorRefine  = refinePar_default("none") ,
                             factorName = default.factorName(factorFun,factorPar,factorDir), 
                             factorID = "" ,
                             factorType = ""   ,
@@ -196,10 +188,7 @@ modelPar.factor <- function(modelPar = modelPar.default() ,
     FactorList <- buildFactorList(factorFun  = factorFun ,
                                   factorPar   = factorPar  ,  
                                   factorDir   = factorDir  ,
-                                  factorStd   = factorStd  ,
-                                  sectorAttr = sectorAttr ,
-                                  factorOutlier = factorOutlier ,
-                                  factorNA = factorNA ,
+                                  factorRefine   = factorRefine ,
                                   factorName  = factorName , 
                                   factorID = factorID,
                                   factorType  = factorType ,
@@ -214,10 +203,7 @@ setmodelPar.factor <- function(modelPar ,
                                factorFun,
                                factorPar,
                                factorDir,
-                               factorStd,
-                               sectorAttr,
-                               factorOutlier,
-                               factorNA,
+                               factorRefine,
                                factorName, 
                                factorID,
                                factorType,
@@ -255,10 +241,7 @@ setmodelPar.factor <- function(modelPar ,
     if(!missing(factorDesc)) modelPar$factor$factorDesc <- factorDesc      
     if(!missing(factorFun)) modelPar$factor$factorFun <- factorFun 
     if(!missing(factorPar)) modelPar$factor$factorPar <- factorPar 
-    if(!missing(factorStd)) modelPar$factor$factorStd <- factorStd 
-    if(!missing(sectorAttr)) modelPar$factor$sectorAttr <- sectorAttr 
-    if(!missing(factorOutlier)) modelPar$factor$factorOutlier <- factorOutlier 
-    if(!missing(factorNA)) modelPar$factor$factorNA <- factorNA 
+    if(!missing(factorRefine)) modelPar$factor$factorRefine <- factorRefine 
   }  
   return(modelPar)
 }
@@ -280,14 +263,8 @@ setmodelPar.factor <- function(modelPar ,
 #' mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
 setmodelPar.factor_combi <- function(modelPar,
                                      factorLists, wgts, 
-                                     factorStd_mult="none",
-                                     factorNA_mult="na",
-                                     sectorAttr_mult=defaultSectorAttr(),
                                      factorDir,
-                                     factorStd,
-                                     sectorAttr,
-                                     factorOutlier,
-                                     factorNA,
+                                     factorRefine,
                                      factorName = "multifactor", 
                                      factorID,
                                      factorType,
@@ -295,44 +272,15 @@ setmodelPar.factor_combi <- function(modelPar,
   
   mp_m <- setmodelPar.factor(modelPar=modelPar,
                              factorFun="getMultiFactor",
-                             factorPar=list(factorLists,wgts,factorStd_mult, factorNA_mult,sectorAttr_mult), 
+                             factorPar=list(factorLists,wgts), 
                              factorDir,
-                             factorStd,
-                             sectorAttr,
-                             factorOutlier,
-                             factorNA,
+                             factorRefine,
                              factorName, 
                              factorID,
                              factorType,
                              factorDesc)
   return(mp_m)
 }
-
-# setmodelPar.factor_combi_TSFRs <- function(modelPar,
-#                                            TSFRs, wgts,
-#                                            factorDir,
-#                                            factorStd,
-#                                            sectorAttr,
-#                                            factorOutlier,
-#                                            factorNA,
-#                                            factorName = "multifactor", 
-#                                            factorID,
-#                                            factorType,
-#                                            factorDesc){
-#   mp_m <- setmodelPar.factor(modelPar=modelPar,
-#                              factorFun="getTSFbyTSFs",
-#                              factorPar=list(TSFRs,wgts), 
-#                              factorDir,
-#                              factorStd,
-#                              sectorAttr,
-#                              factorOutlier,
-#                              factorNA,
-#                              factorName, 
-#                              factorID,
-#                              factorType,
-#                              factorDesc)
-#   return(mp_m)
-# }
 
 
 #' @rdname modelPar.factor
@@ -345,34 +293,15 @@ setmodelPar.factor_combi <- function(modelPar,
 buildFactorList <- function(factorFun = "gf_demo" ,
                             factorPar  = list() ,
                             factorDir  = 1 ,
-                            factorStd  = "none" ,
-                            sectorAttr = defaultSectorAttr(),
-                            factorOutlier = 3 ,
-                            factorNA = "na",
+                            factorRefine  = refinePar_default("none") ,
                             factorName = default.factorName(factorFun,factorPar,factorDir), 
                             factorID ="" ,
                             factorType = ""  ,
                             factorDesc = "" ){
-  #   if(factorFun=="gf_lcfs"){
-  #     factorID <- if(is.list(factorPar)) unlist(factorPar) else gsub("\"","",factorPar)
-  #     tmpdf <- CT_FactorLists(factorID=factorID)
-  #     if(NROW(tmpdf) == 0L) {
-  #       warning(paste("Factor",QT(factorID),"not exist in table QT_FactorScore!"))
-  #     } else {
-  #       factorName <- tmpdf$factorName
-  #       factorDir <- tmpdf$factorDir
-  #       factorID <- tmpdf$factorID
-  #       factorType <- tmpdf$factorType
-  #       factorDesc <- tmpdf$factorDesc
-  #     }
-  #   }
   re <-list(factorFun  = factorFun ,
             factorPar   = factorPar  ,  
             factorDir   = factorDir  ,
-            factorStd   = factorStd  ,
-            sectorAttr = sectorAttr ,
-            factorOutlier = factorOutlier ,
-            factorNA = factorNA ,            
+            factorRefine   = factorRefine  ,   
             factorName  = factorName ,  
             factorID  = factorID,
             factorType  = factorType,
@@ -387,19 +316,12 @@ buildFactorList <- function(factorFun = "gf_demo" ,
 #' @examples
 #' # -- build a factorlist through "lcfs"
 #' FactorList2 <- buildFactorList_lcfs(factorID="F000001")
-buildFactorList_lcfs <- function(factorID,
-                                 factorStd  = "none",
-                                 sectorAttr = defaultSectorAttr(),
-                                 factorOutlier = 3 ,
-                                 factorNA = "na"
+buildFactorList_lcfs <- function(factorID, factorRefine  = refinePar_default("none")
 ){
   re <- buildFactorList(factorFun = "gf_lcfs",
                         factorPar = list(factorID),
                         factorDir = CT_FactorLists(factorID=factorID)$factorDir,
-                        factorStd = factorStd,
-                        sectorAttr = sectorAttr,
-                        factorOutlier = factorOutlier,
-                        factorNA = factorNA,
+                        factorRefine = factorRefine,
                         factorName = CT_FactorLists(factorID=factorID)$factorName,
                         factorID = factorID,
                         factorType = CT_FactorLists(factorID=factorID)$factorType,
@@ -410,26 +332,17 @@ buildFactorList_lcfs <- function(factorID,
 
 #' @export
 buildFactorList_combi <- function(factorLists, wgts, 
-                                  factorStd_mult="none",
-                                  factorNA_mult="na",
-                                  sectorAttr_mult=defaultSectorAttr(),
                                   factorDir  = 1 ,
-                                  factorStd  = "none",
-                                  sectorAttr = defaultSectorAttr(),
-                                  factorOutlier = 3 ,
-                                  factorNA = "na",
+                                  factorRefine  = refinePar_default("none"),
                                   factorName = "combi_factor",
                                   factorID ="",
                                   factorType ="",
                                   factorDesc =""
                                   ){
   re <-list(factorFun="getMultiFactor",
-            factorPar=list(factorLists,wgts,factorStd_mult,factorNA_mult,sectorAttr_mult),  
+            factorPar=list(factorLists,wgts),  
             factorDir   = factorDir  ,
-            factorStd   = factorStd  ,
-            sectorAttr = sectorAttr ,
-            factorOutlier = factorOutlier ,
-            factorNA = factorNA ,            
+            factorRefine   = factorRefine  ,
             factorName  = factorName ,  
             factorID  = factorID,
             factorType  = factorType,
@@ -441,7 +354,7 @@ buildFactorList_combi <- function(factorLists, wgts,
 #' 
 #' get a list of \bold{FactorList}, which is offen used in "multi-factor model builbing" or in "multifactor comparison".
 #' @param ... one or more FactorList. See more detail in \code{\link{buildFactorList}}.
-#' @note In function \code{buildFactorLists}, the settings of factorStd, factorOutlier, factorNA of factors will be change samely by the given arguments, if they are not missing. 
+#' @note In function \code{buildFactorLists}, the settings of factorRefine will be changed samely by the given arguments, if they are not missing. 
 #' @return a list of \bold{FactorList}
 #' @export
 #' @examples
@@ -456,7 +369,7 @@ buildFactorList_combi <- function(factorLists, wgts,
 #'                   factorPar=list(),
 #'                   factorDir=-1)
 #' )
-#' # - change some public arguments.
+#' # - change the factor-refining method.
 #' FactorLists2 <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.pct_chg_per",
 #'                   factorPar=list(N=60),
@@ -467,48 +380,27 @@ buildFactorList_combi <- function(factorLists, wgts,
 #'   buildFactorList(factorFun="gf.PE_ttm",
 #'                   factorPar=list(),
 #'                   factorDir=-1),
-#'   factorStd = "sectorNe",
-#'   factorNA = "mean"
+#'   factorRefine = refinePar_default()
 #' )
-buildFactorLists <- function(... ,
-                             factorStd ,                                  
-                             sectorAttr,
-                             factorOutlier ,
-                             factorNA){
+buildFactorLists <- function(... , factorRefine){
   re <- list(...)
-  if(!missing(factorStd)){
-    re <- lapply(re,function(x){x$factorStd <- factorStd;return(x)})
-  }
-  if(!missing(sectorAttr)){
-    re <- lapply(re,function(x){x$sectorAttr <- sectorAttr;return(x)})
-  }
-  if(!missing(factorOutlier)){
-    re <- lapply(re,function(x){x$factorOutlier <- factorOutlier;return(x)})
-  }
-  if(!missing(factorNA)){
-    re <- lapply(re,function(x){x$factorNA <- factorNA;return(x)})
+  if(!missing(factorRefine)){
+    re <- lapply(re,function(x){x$factorRefine <- factorRefine;return(x)})
   }
   return(re)
 }
 
 #' @rdname buildFactorLists
 #' @param factorIDs a character vector of factorID, available in table \code{CT_FactorLists()} .
-#' @note function \code{buildFactorLists_lcfs} give a simply and direct way to build a \bold{list of factorlist} through "lcfs", given a vector of factorID. Here, the settings of factorStd, factorOutlier, factorNA of factors will be set samely by the given arguments, and the other settings will be get through "lcfs" (\code{CT_FactorLists()}). See also \code{\link{buildFactorList_lcfs}}.
+#' @note function \code{buildFactorLists_lcfs} give a simply and direct way to build a \bold{list of factorlist} through "lcfs", given a vector of factorID. Here, the settings of factorRefine will be set samely by the given arguments, and the other settings will be get through "lcfs" (\code{CT_FactorLists()}). See also \code{\link{buildFactorList_lcfs}}.
 #' @export
 #' @examples
 #' # - through lcfs
 #' factorIDs <- c("F000001","F000002","F000005")
 #' FactorLists3 <- buildFactorLists_lcfs(factorIDs)
-buildFactorLists_lcfs <- function(factorIDs,
-                                  factorStd  = "none",
-                                  sectorAttr = defaultSectorAttr(),
-                                  factorOutlier = 3 ,
-                                  factorNA = "na"){
+buildFactorLists_lcfs <- function(factorIDs, factorRefine = refinePar_default("none")){
   re <- lapply(factorIDs, buildFactorList_lcfs, 
-               factorStd=factorStd, 
-               sectorAttr=sectorAttr,
-               factorOutlier=factorOutlier, 
-               factorNA=factorNA)
+               factorRefine=factorRefine)
   return(re)
 }
 
@@ -858,7 +750,6 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 #' @param backtestPar a \bold{backtestPar} object
 #' @param topN an integer,giving the numbers of the assets to be selected into the portfolio.
 #' @param topQ a numeric,giving the percentage of the assets to be selected into the portfolio.
-#' @param factorNA
 #' @param pick.sectorNe
 #' @param sectorAttr
 #' @param force_in
@@ -880,7 +771,6 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   topN = 50,
                                   topQ = NA,
-                                  factorNA ="median",
                                   pick.sectorNe=FALSE, 
                                   sectorAttr=defaultSectorAttr(),
                                   force_in=0, 
@@ -897,7 +787,6 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   hitFreq="month"){ 
   backtestPar$longshort <-list(topN         = topN,
                                topQ         = topQ,
-                               factorNA     = factorNA,
                                pick.sectorNe= pick.sectorNe,
                                sectorAttr   = sectorAttr,
                                force_in    = force_in,
@@ -919,7 +808,6 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
 setbacktestPar.longshort <- function(backtestPar,
                                      topN,
                                      topQ,
-                                     factorNA,
                                      pick.sectorNe,
                                      sectorAttr,
                                      force_in,
@@ -942,7 +830,6 @@ setbacktestPar.longshort <- function(backtestPar,
     backtestPar$longshort$topQ <- topQ  
     # backtestPar$longshort$topN <- NA
   }
-  if(!missing(factorNA)) backtestPar$longshort$factorNA <- factorNA
   if(!missing(pick.sectorNe)) backtestPar$longshort$pick.sectorNe <- pick.sectorNe  
   if(!missing(sectorAttr)) backtestPar$longshort$sectorAttr <- sectorAttr
   if(!missing(force_in)) backtestPar$longshort$force_in <- force_in

@@ -182,8 +182,10 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
   if(TRUE){ # --- add prdrtns
     cat("Getting the decayed rtn ....\n")
     pb_ <- txtProgressBar(min=0,max=length(prd_lists),initial=0,style=3)
-    for(ii in 1:length(prd_lists)){      
-      rtnI <- data.frame(rtn=getPeriodrtn(renameCol(TS,src=c("date",paste("endT_",prd_names[ii],sep="")),tgt=c("begT","endT")),drop=TRUE))      
+    for(ii in 1:length(prd_lists)){   
+      SP <- TS[,c("stockID","date",paste("endT_",prd_names[ii],sep=""))]
+      names(SP) <- c("stockID","begT","endT")
+      rtnI <- data.frame(rtn=getPeriodrtn(SP,drop=TRUE))      
       rtnI <- renameCol(rtnI,"rtn",paste("prdrtn_",prd_names[ii],sep=""))
       TS <- cbind(TS,rtnI)
       setTxtProgressBar(pb_,ii)
@@ -204,10 +206,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' @param factorFun a character string naming the function to get the factor scores.
 #' @param factorPar either a list or a character string, containing the parameters of the \code{factorFun}. If a character string, parameters are seprated by commas and the character parameters must quoted by  "\""s, see examples for details.
 #' @param factorDir a integer,should be 1 or -1 (1 for the positive factor,-1 for the negative one).
-#' @param factorOutlier a numeric value of standard deviations, e.g. 10 means that factor score larger or smaller than ten times the standard deviation will be removed
-#' @param factorNA a character string, indicating the method to deal with the missing value of the factorscore, could be one of "na"(default,keeping the missing value as it is),"mean","median","max","min".
-#' @param factorStd a character string, indicating the standardizing pattern of the factor score,could be one of "none"(no scaling),"norm"(scaling to 0 mean and 1 stdev),"sectorNe"(scaling to 0 mean and 1 stdev in each sector).
-#' @param sectorAttr
+#' @param factorRefine a list.
 #' @param factorList
 #' @param splitbin a integer or a charactor string of 'year','month',...
 #' @return given a \bold{TS} object,return a \bold{TSF} object,a dataframe containing cols:
@@ -244,7 +243,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' 
 #' # -- you can also get the TSF through the modelPar object directively --
 #' modelPar <- modelPar.default()
-#' modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
+#' modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1))
 #' TSF <- Model.TSF(modelPar)
 #' 
 #' # -- factorPar as character string
@@ -253,10 +252,7 @@ getTSR_decay <- function(TS, prd_lists = list(w1=lubridate::weeks(1),
 #' TSF2 <- getTSF(TS,"gf.foo","2,3")
 #' TSF2 <- getTSF(TS,"gf.bar","20,\"IF00\"")
 getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
-                   factorOutlier=3,
-                   factorStd="none",
-                   factorNA="na",
-                   sectorAttr=defaultSectorAttr(),
+                   factorRefine=refinePar_default("none"),
                    FactorList,
                    splitbin=100000L){
   if(!missing(FactorList)){
@@ -264,10 +260,7 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
     factorPar <- FactorList$factorPar
     factorName <- FactorList$factorName
     factorDir <- FactorList$factorDir
-    factorOutlier <- FactorList$factorOutlier
-    factorNA <- FactorList$factorNA    
-    factorStd <- FactorList$factorStd 
-    sectorAttr  <- FactorList$sectorAttr
+    factorRefine <- FactorList$factorRefine 
   }
   if(! factorDir %in% c(1L,-1L)) stop("unsupported \"factorDir\" argument!")
   cat(paste("Function getTSF: getting the factorscore ....\n"))
@@ -276,12 +269,8 @@ getTSF <- function(TS,factorFun,factorPar=list(),factorDir=1,
   subFun <- function(TS){
     # ---- get the raw factorscore
     TSF <- getRawFactor(TS[,c("date","stockID")],factorFun,factorPar)
-    # ---- deal with the outliers
-    TSF <- factor.outlier(TSF,factorOutlier)
-    # ---- standardize the factorscore
-    TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
-    # ---- deal with the missing values
-    TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
+    # ---- refine the factorscore
+    TSF <- factor_refine(TSF, refinePar = factorRefine)
     # ---- adjust the direction
     TSF$factorscore <- TSF$factorscore*factorDir
     # ---- re-order
@@ -352,8 +341,6 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' @param TS
 #' @param FactorLists a list, with elements of FactorList(See detail in \code{\link{buildFactorList}}).
 #' @param wgts a numeric vector with the same length of FactorLists(if the sum of wgts not equals to 1, the wgts will be rescaled to sum 1). If 'eq', \code{wgts <- rep(1/length(FactorLists),length(FactorLists))} ;If missing, then only return all the single-factor-scores, without the combined-factor-score.
-#' @param factorStd_mult
-#' @param factorNA_mult
 #' @return  \code{getMultiFactor} return a \bold{mTSF} object including cols of all the single-factor-scores, and (if param \code{wgts} not missing) the \bold{raw} combined-factor-score .
 #' @note  Function \code{getMultiFactor} not only could be used to get the "raw" combined-factor-score, but also could be used as the \code{"factorFun"} parametre in function \code{getTSF} to get the "clean and standardized" combined-factor-score. See more detail in the examples.
 #' @details Function \code{getMultiFactor} firstly get all the single-factor-scores and then calculating the weighted sum of them to get the combined-factor-score.
@@ -383,18 +370,13 @@ getRawFactor <- function (TS,factorFun,factorPar) {
 #' 
 #' # -- 2. get the "clean and standardized" combined-factor-score
 #' # --- 2.1 by \code{getTSF}
-#' TSF.multi2 <- getTSF(TS,factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorOutlier=10,factorStd="sectorNe")
+#' TSF.multi2 <- getTSF(TS,factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorRefine=setrefinePar(refinePar_default(),std_method="norm"))
 #' # --- 2.2 by \code{Model.TSF}
-#' modelPar <- modelPar.factor(modelPar.default(),factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorStd="sectorNe",factorDir=1)
+#' modelPar <- modelPar.factor(modelPar.default(),factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorRefine=setrefinePar(refinePar_default(),std_method="norm"))
 #' TSF.multi3 <- Model.TSF(modelPar)
 #' TSF.multi4 <- Model.TSF_byTS(modelPar, TS)
-getMultiFactor <- function(TS,FactorLists,wgts,
-                           factorStd_mult=c("none","norm","sectorNe"),
-                           factorNA_mult=c("na","mean","median","min","max","sectmean"),
-                           sectorAttr_mult=defaultSectorAttr()){ 
-  
-  factorStd_mult <- match.arg(factorStd_mult)
-  factorNA_mult <- match.arg(factorNA_mult)
+getMultiFactor <- function(TS,FactorLists,wgts){ 
+
   # ---- get all the single-factor-scores
   warnings_std <- c()
   warnings_na <- c()
@@ -403,27 +385,20 @@ getMultiFactor <- function(TS,FactorLists,wgts,
     factorPar <- FactorLists[[i]]$factorPar
     factorName <- FactorLists[[i]]$factorName
     factorDir <- FactorLists[[i]]$factorDir
-    factorOutlier <- FactorLists[[i]]$factorOutlier
-    factorNA <- FactorLists[[i]]$factorNA    
-    factorStd <- FactorLists[[i]]$factorStd 
-    sectorAttr  <- FactorLists[[i]]$sectorAttr
+    factorRefine <- FactorLists[[i]]$factorRefine 
     cat(paste("Function getMultiFactor: getting the score of factor",factorName,"....\n"))
     # ---- get the raw factorscore
     TSF <- getRawFactor(TS,factorFun,factorPar) 
     # ---- adjust the direction
     TSF$factorscore <- TSF$factorscore*factorDir
-    # ---- deal with the outliers
-    TSF <- factor.outlier(TSF,factorOutlier)
     # ---- standardize the factorscore 
-    TSF <- factor.std(TSF,factorStd,sectorAttr=sectorAttr)
-    TSF <- factor.std(TSF,factorStd_mult,sectorAttr=sectorAttr_mult) 
-    if(factorStd=="none" && factorStd_mult=="none"){
+    TSF <- factor_refine(TSF,refinePar = factorRefine)
+    factorStd <- factorRefine$std$method
+    factorNA <- factorRefine$na$method
+    if(factorStd=="none"){
       warnings_std <- c(warnings_std,factorName)
     }
-    # ---- deal with the missing values 
-    TSF <- factor.na(TSF,factorNA,sectorAttr=sectorAttr)
-    TSF <- factor.na(TSF,factorNA_mult,sectorAttr=sectorAttr_mult)
-    if(factorNA=="na" && factorNA_mult=="na" ){
+    if(factorNA=="none"){
       warnings_na <- c(warnings_na,factorName)
     }
     # ---- merge
@@ -462,14 +437,10 @@ getMultiFactor <- function(TS,FactorLists,wgts,
 #' TSFs <- Model.TSFs(MPs)
 #' TSF.multi5 <- getMultiFactorbyTSFs(TSFs,wgts)
 getMultiFactorbyTSFs <- function(TSFs,wgts,
-                                 factorStd_mult="none",
-                                 factorNA_mult="na",
-                                 sectorAttr_mult=defaultSectorAttr(),
                                  factorNames = names(TSFs)){
   
   # ---- get all the single-factor-scores
-  re <- TSFs2MultiFactor(TSFs=TSFs,factorStd_mult=factorStd_mult,factorNA_mult=factorNA_mult,
-                         factorNames = factorNames)
+  re <- TSFs2mTSF(TSFs=TSFs, factorNames = factorNames)
   
   # ---- get the combi-factor-score(weighted sum of all the single-factor-scores)
   if(!missing(wgts)){
@@ -487,11 +458,6 @@ getRawMultiFactor <- function(TS,FactorLists,name_suffix=FALSE){
     factorFun <- FactorLists[[i]]$factorFun
     factorPar <- FactorLists[[i]]$factorPar
     factorName <- FactorLists[[i]]$factorName
-    # factorDir <- FactorLists[[i]]$factorDir
-    # factorOutlier <- FactorLists[[i]]$factorOutlier
-    # factorNA <- FactorLists[[i]]$factorNA    
-    # factorStd <- FactorLists[[i]]$factorStd 
-    # sectorAttr  <- FactorLists[[i]]$sectorAttr
     cat(paste("Function getMultiFactor: getting the score of factor",factorName,"....\n"))
     # ---- get the raw factorscore
     TSF <- getRawFactor(TS,factorFun,factorPar) 
@@ -581,8 +547,7 @@ MultiFactor2CombiFactor <- function(mTSF,
 #' @examples 
 #' #-- TSFs2mTSF
 #' mTSF <- TSFs2mTSF(TSFs)
-TSFs2mTSF <- function(TSFs,factorStd_mult="none",factorNA_mult="na",sectorAttr_mult=defaultSectorAttr(),
-                             factorNames = names(TSFs)){
+TSFs2mTSF <- function(TSFs, factorNames = names(TSFs)){
   nrows <- sapply(TSFs,NROW)
   if(!all(nrows[1]==nrows)){
     stop("NROWs of TSFs are not all equal!\n")
@@ -594,15 +559,13 @@ TSFs2mTSF <- function(TSFs,factorStd_mult="none",factorNA_mult="na",sectorAttr_m
     factorName <- factorNames[i]
     TSF <- TSFs[[i]]
     if(TRUE){ # -- factorStd & factorNA
-      TSF <- factor.std(TSF,factorStd_mult, sectorAttr = sectorAttr_mult)
-      TSF <- factor.na(TSF,factorNA_mult, sectorAttr = sectorAttr_mult)
       if(!is.null(attr(TSF,"MP"))) {
-        factorStd <- attr(TSF,"MP")$factor$factorStd
-        if(factorStd=="none" && factorStd_mult=="none" ){
+        factorStd <- attr(TSF,"MP")$factor$factorRefine$std$method
+        factorNA <- attr(TSF,"MP")$factor$factorRefine$na$method
+        if(factorStd=="none"){
           warnings_std <- c(warnings_std,factorName) 
         }
-        factorNA <- attr(TSF,"MP")$factor$factorNA
-        if(factorNA=="na" && factorNA_mult=="na"){
+        if(factorNA=="none"){
           warnings_na <- c(warnings_na,factorName) 
         }
       }
@@ -630,8 +593,7 @@ TSFs2mTSF <- function(TSFs,factorStd_mult="none",factorNA_mult="na",sectorAttr_m
 #' @examples 
 #' #-- mTSF2TSFs
 #' TSFs <- mTSF2TSFs(mTSF)
-mTSF2TSFs <- function(mTSF,
-                             factorNames = guess_factorNames(mTSF)){
+mTSF2TSFs <- function(mTSF, factorNames = guess_factorNames(mTSF)){
   all_cols <- colnames(mTSF)
   if("factorscore" %in% all_cols){
     stop("There should not be 'factorscore' in the cols of mTSF! Please try to rename it.")
@@ -648,110 +610,337 @@ mTSF2TSFs <- function(mTSF,
   return(re)
 }
 
-# --------------------  ~~ intermediately called functions ----------------
-
-# ---- deal with the outliers of factorscore
-factor.outlier <- function (TSF, factorOutlier) {
-  if(typeof(factorOutlier) %in% c('double',"integer")){
-    if(factorOutlier>=1){
-      TSF <- plyr::ddply(TSF,"date",
-                         function(x,outlier){  
-                           outlier_u <- with(x,mean(factorscore,na.rm=TRUE)+outlier*sd(factorscore,na.rm=TRUE))
-                           outlier_l <- with(x,mean(factorscore,na.rm=TRUE)-outlier*sd(factorscore,na.rm=TRUE))
-                           transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                                            ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-                         },outlier=factorOutlier)
-    }else{
-      TSF <- plyr::ddply(TSF,"date",
-                         function(x,outlier){  
-                           outlier_u <- with(x,quantile(factorscore,1-outlier,na.rm=TRUE))
-                           outlier_l <- with(x,quantile(factorscore,outlier,na.rm=TRUE))
-                           transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                                            ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-                         },outlier=factorOutlier)
-    }
-  }else if(typeof(factorOutlier)=='character'){
-    if(factorOutlier=='mad'){
-      TSF <- plyr::ddply(TSF,"date",                         
-                         function(x){  
-                           outlier_u <- with(x,median(factorscore,na.rm = TRUE)+3*mad(factorscore,na.rm=TRUE))
-                           outlier_l <- with(x,median(factorscore,na.rm = TRUE)-3*mad(factorscore,na.rm=TRUE))
-                           transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                                            ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-                         })
-    }else if(factorOutlier=='boxplot'){
-      TSF <- plyr::ddply(TSF,"date",
-                         function(x){ 
-                           tmp <- with(x,boxplot.stats(factorscore,coef = 1.5)[[1]])
-                           outlier_u <- max(tmp)
-                           outlier_l <- min(tmp)
-                           transform(x,factorscore = ifelse(factorscore > outlier_u, outlier_u,
-                                                            ifelse(factorscore < outlier_l, outlier_l, factorscore)))
-                         })
-    }
-    
-  }
+mTSF_refine <- function(mTSF, refinePar=refinePar_default()){
   
-  return(TSF)
 }
 
-# ---- standardize the factorscore
-factor.std <- function (TSF,factorStd=c("none","norm","sectorNe","log_norm","log_sectorNe"),sectorAttr) {
-  factorStd <- match.arg(factorStd)
-  if(factorStd != "none"){
-    if(factorStd %in% c("sectorNe","log_sectorNe")){
-      TSF <- getSectorID(TSF, sectorAttr = sectorAttr)
-      TSF <- dplyr::group_by(TSF, date, sector)
-    } else{
-      TSF <- dplyr::group_by(TSF, date)
-    }
-    if(factorStd %in% c("log_norm","log_sectorNe")){
-      TSF <- dplyr::mutate(TSF, factorscore=as.numeric(scale(log(factorscore))))
-    } else {
-      TSF <- dplyr::mutate(TSF, factorscore=as.numeric(scale(factorscore)))
-    }
-    
-    TSF <- as.data.frame(TSF)
-  }
-  
-  return(TSF)
-}
-# ---- deal with the missing values of factorscore
 
-factor.na <- function (TSF, method=c("na","mean","median","min","max","sectmean","sectmedian"), sectorAttr, trim = 0) {
+
+############################ ~~  factor refining functions #############################
+
+#' factor_outlier
+#' 
+#' @param method
+#' @param par
+#' @param sectorAttr
+#' @export
+#' @author Han.Qian
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000300')
+#' TSF <- gf.NP_YOY(TS)
+#' TSF <- factor_outlier(TSF, method = "mad", par = 1.5)
+factor_outlier <- function (TSF, method=c("none","sd","mad","boxplot"), par,
+                            sectorAttr=defaultSectorAttr()) {
   method <- match.arg(method)
-  if(method %in% c("sectmean","sectmedian")){
-    TSF <- getSectorID(TSF, sectorAttr = sectorAttr)
+  # direct return
+  if(method == "none"){
+    return(TSF)
+  }
+  # sector splitting
+  if(!is.null(sectorAttr)){
+    if(!identical(sectorAttr,"existing")){
+      TSF <- getSectorID(TS = TSF,sectorAttr = sectorAttr)
+    }
     TSF <- dplyr::group_by(TSF, date, sector)
-  } else {
+  }else{
     TSF <- dplyr::group_by(TSF, date)
   }
-  
-  if(method=="mean"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-  } else if(method=="median"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
-  } else if(method=="min"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),min(factorscore,na.rm=TRUE),factorscore))
-  } else if(method=="max"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),max(factorscore,na.rm=TRUE),factorscore))
-  } else if(method=="sectmean"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE,trim=trim),factorscore))
-    if(any(is.na(TSF$factorscore))){ #if all of some sector's components is NA
-      TSF <- dplyr::group_by(TSF, date)
-      TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),mean(factorscore,na.rm=TRUE),factorscore))
+  # sub fun
+  outlier_sub_fun <- function(TSF, method, par){
+    if(method == "sd"){
+      outlier_u <- mean(TSF$factorscore, na.rm = TRUE) + par * sd(TSF$factorscore, na.rm = TRUE)
+      outlier_l <- mean(TSF$factorscore, na.rm = TRUE) - par * sd(TSF$factorscore, na.rm = TRUE)
+    }else if(method == "mad"){
+      outlier_u <- median(TSF$factorscore, na.rm = TRUE) + par * mad(TSF$factorscore, na.rm = TRUE)
+      outlier_l <- median(TSF$factorscore, na.rm = TRUE) - par * mad(TSF$factorscore, na.rm = TRUE)
+    }else if(method == "boxplot"){
+      boxplot_stat <- boxplot.stats(TSF$factorscore, coef = par)[[1]]
+      outlier_u <- max(boxplot_stat)
+      outlier_l <- min(boxplot_stat)
     }
-  } else if(method=="sectmedian"){
-    TSF <- dplyr::mutate(TSF, factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
-    if(any(is.na(TSF$factorscore))){ #if all of some sector's components is NA
-      TSF <- dplyr::group_by(TSF, date)
-      TSF <- dplyr::mutate(TSF,factorscore=ifelse(is.na(factorscore),median(factorscore,na.rm=TRUE),factorscore))
-    }
+    TSF <- transform(TSF,factorscore = ifelse(factorscore > outlier_u, outlier_u,
+                                              ifelse(factorscore < outlier_l, outlier_l, factorscore)))
+    return(TSF)
   }
-  
+  # processing
+  TSF <- dplyr::do(TSF, outlier_sub_fun(., method, par))
   TSF <- as.data.frame(TSF)
+  # output
   return(TSF)
 }
+
+#' factor_std
+#' 
+#' @export
+#' @author Han.Qian
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000300')
+#' TSF <- gf.NP_YOY(TS)
+#' regLists <- buildFactorLists(buildFactorList(factorFun = 'gf.PE_ttm',factorDir = -1,factorRefine=refinePar_default("robust")))
+#' TSF <- factor_std(TSF, method = "reg", log = FALSE, regLists = regLists)
+factor_std <- function(TSF,method=c("none","norm","robustNorm","reg"),
+                       log=FALSE, sectorAttr=defaultSectorAttr(),
+                       regLists=NULL){
+  method <- match.arg(method)
+  # direct return
+  if(method == "none"){
+    return(TSF)
+  }
+  # log
+  if(log){
+    TSF$factorscore <- log(TSF$factorscore)
+  }
+  # reg part 
+  if(method == "reg"){
+    TSF <- renameCol(TSF, "factorscore", "Y_for_reg")
+    
+    # subsetting not NA part
+    ind_ <- is.na(TSF$Y_for_reg)
+    TSF_core <- TSF[!ind_,]
+    
+    # what if its sector matrix ???? 
+    # to do ...
+    
+    # subset useful columns and get sector
+    if(is.null(sectorAttr)){
+      TSF_core <- TSF_core[,c("date","stockID","Y_for_reg")]
+    }else if(identical(sectorAttr, "existing")){
+      TSF_core <- TSF_core[,c("date","stockID","Y_for_reg","sector")]
+      TSF_core <- cast_sector(TSF_core)
+    }else{
+      TSF_core <- TSF_core[,c("date","stockID","Y_for_reg")]
+      TSF_core <- getSectorID(TSF_core, sectorAttr = sectorAttr)
+      TSF_core <- cast_sector(TSF_core)
+    }
+    
+    # get regList 
+    if(!is.null(regLists)){
+      TSF_core <- getMultiFactor(TSF_core, FactorLists = regLists)
+      # NA manipulating
+      fnames_list <- sapply(regLists, '[[', 'factorName')
+      if(!all(complete.cases(TSF_core))){
+        warning("There is NA in X variables. The NA will be filled with median.")
+        for(i in 1:length(fnames_list)){
+          fname_tmp_ <- fnames_list[i]
+          TSF_core <- renameCol(TSF_core, fname_tmp_, "factorscore")
+          TSF_core <- factor_na(TSF, method = "median", sectorAttr = NULL)
+          TSF_core <- renameCol(TSF_core, "factorscore", fname_tmp_)
+        }
+      }
+    }
+    # processing: strip the X varialbes from Y
+    TSF_core <- factor_orthogon_single(TSF_core, y = "Y_for_reg", sectorAttr = "existing")
+    TSF_core <- TSF_core[,c("date","stockID","Y_for_reg")]
+    TSF_core <- renameCol(TSF_core, "Y_for_reg", "factorscore")
+    
+    # merge back
+    TSF <- TSF[,setdiff(colnames(TSF), "Y_for_reg")]
+    TSF <- merge.x(TSF, TSF_core, by = c("date","stockID"))
+    
+    # output
+    return(TSF)
+    
+  }else{
+    # group splitting part 
+    # sector splitting
+    if(!is.null(sectorAttr)){
+      if(!identical(sectorAttr,"existing") ){
+        TSF <- getSectorID(TS = TSF, sectorAttr = sectorAttr)
+      }
+      TSF <- dplyr::group_by(TSF, date, sector)
+    }else{
+      TSF <- dplyr::group_by(TSF, date)
+    }
+    # sub fun
+    std_sub_fun <- function(TSF, method){
+      if(method == "norm"){
+        TSF$factorscore <- as.numeric(scale(TSF$factorscore))
+      }else if(method == "robustNorm"){
+        median_ <- median(TSF$factorscore, na.rm = TRUE)
+        mad_ <- mad(TSF$factorscore, na.rm = TRUE)
+        TSF$factorscore <- (TSF$factorscore - median_)/mad_
+      }
+      return(TSF)
+    }
+    # processing 
+    TSF <- dplyr::do(TSF, std_sub_fun(., method))
+    TSF <- as.data.frame(TSF)
+    # output
+    return(TSF)
+  }
+}
+
+#' factor_na
+#' 
+#' @export
+#' @author Han.Qian
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000300')
+#' TSF <- gf.NP_YOY(TS)
+#' TSF <- factor_na(TSF, method = "median")
+factor_na <- function (TSF, method=c("none","mean","median"), 
+                       sectorAttr=defaultSectorAttr()) {
+  method <- match.arg(method)
+  # direct return
+  if(method == "none"){
+    return(TSF)
+  }
+  # sector splitting
+  if(!is.null(sectorAttr)){
+    if(!identical(sectorAttr,"existing")){
+      TSF <- getSectorID(TS = TSF,sectorAttr = sectorAttr)
+    }
+    TSF <- dplyr::group_by(TSF, date, sector)
+  }else{
+    TSF <- dplyr::group_by(TSF, date)
+  }
+  # sub fun
+  na_sub_fun <- function(TSF, method){
+    if(method == "mean"){
+      ind_na_ <- is.na(TSF$factorscore)
+      mean_ <- mean(TSF$factorscore, na.rm = TRUE)
+      TSF[ind_na_,"factorscore"] <- mean_
+    }else if(method == "median"){
+      ind_na_ <- is.na(TSF$factorscore)
+      median_ <- median(TSF$factorscore, na.rm = TRUE)
+      TSF[ind_na_,"factorscore"] <- median_
+    }
+    return(TSF)
+  }
+  # batch processing
+  TSF <- dplyr::do(TSF, na_sub_fun(., method))
+  TSF <- as.data.frame(TSF)
+  
+  return(TSF)
+}
+
+
+#' factor_refine
+#' 
+#' @param refinePar
+#' @export
+#' @author Han.Qian
+factor_refine <- function(TSF, refinePar=refinePar_default()){
+  sector_outlier <- refinePar$outlier$sectorAttr
+  sector_std <- refinePar$std$sectorAttr
+  sector_na <- refinePar$na$sectorAttr
+  if(identical(sector_outlier,sector_std) & identical(sector_std,sector_na) & !is.null(sector_outlier)){
+    TSF <- getSectorID(TSF,sectorAttr = sector_outlier)
+    refinePar <- setrefinePar(refinePar,
+                              outlier_sectorAttr = "existing",
+                              std_sectorAttr = "existing",
+                              na_sectorAttr = "existing")
+  }
+  
+  TSF <- factor_outlier(TSF,
+                        method = refinePar$outlier$method,
+                        par = refinePar$outlier$par,
+                        sectorAttr=refinePar$outlier$sectorAttr)
+  
+  TSF <- factor_std(TSF,
+                    method = refinePar$std$method,
+                    log = refinePar$std$log,
+                    sectorAttr = refinePar$std$sectorAttr,
+                    regLists = refinePar$std$regLists)
+  
+  TSF <- factor_na(TSF,
+                   method = refinePar$na$method,
+                   sectorAttr = refinePar$na$sectorAttr)
+  
+  return(TSF)
+}
+
+
+#' refinePar_default
+#' 
+#' @param type
+#' @param sectorAttr could be a sectorAttr list, or NULL(means no grouping by sector)
+#' @export
+#' @author Han.Qian
+refinePar_default <- function(type=c("none","robust"), sectorAttr=defaultSectorAttr()){
+  type <- match.arg(type)
+  if(type=="none"){
+    re <- list(outlier=list(method = "none",
+                            par=NULL,
+                            sectorAttr= sectorAttr),
+               std=list(method = "none",
+                        log=FALSE, 
+                        sectorAttr=sectorAttr,
+                        regLists=NULL),
+               na=list(method = "none", 
+                       sectorAttr=sectorAttr)
+               )
+  }else if(type=="robust"){
+    re <- list(outlier=list(method = "boxplot",
+                            par=1.5,
+                            sectorAttr= sectorAttr),
+               std=list(method = "robustNorm",
+                        log=FALSE, 
+                        sectorAttr=sectorAttr,
+                        regLists=NULL),
+               na=list(method = "median", 
+                       sectorAttr=sectorAttr)
+               )
+  }
+  return(re)
+}
+
+#' setrefinePar
+#' 
+#' @param all_sectorAttr set all sectorAttr of std, outlier, na, in the same time
+#' @export
+#' @author Han.Qian
+setrefinePar <- function(refinePar=refinePar_default(),
+                         outlier_method,
+                         outlier_par,
+                         outlier_sectorAttr,
+                         std_method,
+                         std_log,
+                         std_sectorAttr,
+                         std_regLists,
+                         na_method,
+                         na_sectorAttr,
+                         all_sectorAttr){
+  if(!missing(outlier_method)){
+    refinePar$outlier$method <- outlier_method
+  }
+  if(!missing(outlier_par)){
+    refinePar$outlier$par <- outlier_par
+  }
+  if(!missing(outlier_sectorAttr)){
+    refinePar$outlier$sectorAttr <- outlier_sectorAttr
+  }
+  if(!missing(std_method)){
+    refinePar$std$method <- std_method
+  }
+  if(!missing(std_log)){
+    refinePar$std$log <- std_log
+  }
+  if(!missing(std_sectorAttr)){
+    refinePar$std$sectorAttr <- std_sectorAttr
+  }
+  if(!missing(std_regLists)){
+    refinePar$std$regLists <- std_regLists
+  }
+  if(!missing(na_method)){
+    refinePar$na$method <- na_method
+  }
+  if(!missing(na_sectorAttr)){
+    refinePar$na$sectorAttr <- na_sectorAttr
+  }
+  if(!missing(all_sectorAttr)){
+    refinePar$outlier$sectorAttr <- all_sectorAttr
+    refinePar$std$sectorAttr <- all_sectorAttr
+    refinePar$na$sectorAttr <- all_sectorAttr
+  }
+  return(refinePar)
+}
+
+
+
 
 
 # --------------------  ~~ TS removing functions ----------------
@@ -808,3 +997,5 @@ rm_whitelist <- function(TS){
 rm_ST <- function(TS){
   
 }
+
+

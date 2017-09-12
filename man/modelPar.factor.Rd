@@ -9,27 +9,23 @@
 \title{modelPar.factor}
 \usage{
 modelPar.factor(modelPar = modelPar.default(), factorFun = "gf_demo",
-  factorPar = list(), factorDir = 1, factorStd = "none",
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na",
+  factorPar = list(), factorDir = 1,
+  factorRefine = refinePar_default("none"),
   factorName = default.factorName(factorFun, factorPar, factorDir),
   factorID = "", factorType = "", factorDesc = "", FactorList)
 
-setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorStd,
-  sectorAttr, factorOutlier, factorNA, factorName, factorID, factorType,
-  factorDesc, FactorList)
+setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorRefine,
+  factorName, factorID, factorType, factorDesc, FactorList)
 
-setmodelPar.factor_combi(modelPar, factorLists, wgts, factorStd_mult = "none",
-  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr(), factorDir,
-  factorStd, sectorAttr, factorOutlier, factorNA, factorName = "multifactor",
-  factorID, factorType, factorDesc)
+setmodelPar.factor_combi(modelPar, factorLists, wgts, factorDir, factorRefine,
+  factorName = "multifactor", factorID, factorType, factorDesc)
 
 buildFactorList(factorFun = "gf_demo", factorPar = list(), factorDir = 1,
-  factorStd = "none", sectorAttr = defaultSectorAttr(), factorOutlier = 3,
-  factorNA = "na", factorName = default.factorName(factorFun, factorPar,
-  factorDir), factorID = "", factorType = "", factorDesc = "")
+  factorRefine = refinePar_default("none"),
+  factorName = default.factorName(factorFun, factorPar, factorDir),
+  factorID = "", factorType = "", factorDesc = "")
 
-buildFactorList_lcfs(factorID, factorStd = "none",
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na")
+buildFactorList_lcfs(factorID, factorRefine = refinePar_default("none"))
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
@@ -40,13 +36,7 @@ buildFactorList_lcfs(factorID, factorStd = "none",
 
 \item{factorDir}{a integer,should be 1 or -1 (1 for the positive factor,-1 for the negative one).(See \code{\link{getTSF}})}
 
-\item{factorStd}{a character string, indicating the standardizing pattern of the factor score,could be one of "none"(no scaling),"norm"(scaling to 0 mean and 1 stdev),"sectorNe"(scaling to 0 mean and 1 stdev in each sector).}
-
-\item{sectorAttr}{}
-
-\item{factorOutlier}{a numeric value of standard deviations, e.g. 10 means that factor score larger or smaller than ten times the standard deviation will be removed}
-
-\item{factorNA}{a character string, indicating the method to deal with the missing value of the factorscore, could be one of "na"(default,keeping the missing value as it is),"mean","median","max","min".}
+\item{factorRefine}{a list. See detail in \code{\link{refinePar_default}}}
 
 \item{factorName}{a character string. IF missing, then take a default name by function \code{default.factorName}.}
 
@@ -72,7 +62,7 @@ The different between \code{modelPar.factor} and \code{setmodelPar.factor} is th
 if \code{FactorList} is missing, then the factor related parametres is set by the auguments separately, else, all the parametres is set by the \code{FactorList} once and for all.
 }
 \note{
-if the parammeter \code{factorFun} is \code{"gf_lcfs"}, then the factorDir, factorName, factorID, factorType and factorDesc will be mapped automatically by \code{\link{CT_FactorLists()}}.
+if the parammeter \code{factorFun} is \code{"gf_lcfs"}, then the factorDir, factorName, factorID, factorType and factorDesc will be mapped automatically by \code{\link{CT_FactorLists}}.
 
 \code{setmodelPar.factor_combi} set \code{modelPar} by \code{factorFun="getMultiFactor"} and  \code{factorPar=list(factorLists,wgts)}.  It is used usually in testing the multi-factor-model. See \code{\link{getMultiFactor}}.
 }
@@ -82,9 +72,7 @@ modelPar <- modelPar.factor(modelPar,
                            factorFun="gf.pct_chg_per",
                            factorPar=list(N=25),
                            factorDir=-1,
-                           factorStd = "sectorNe",
-                           factorNA = "na",
-                           factorOutlier = 3 )
+                           factorRefine= setrefinePar(refinePar_default("robust"),std_method="norm",na_method="median",outlier_method="mad"))
 # -- setmodelPar.factor_combi
 mp <- modelPar.default()
 factorIDs <- c("F000008","F000001","F000006")

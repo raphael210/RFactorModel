@@ -5,10 +5,9 @@
 \alias{buildFactorLists_lcfs}
 \title{buildFactorLists}
 \usage{
-buildFactorLists(..., factorStd, sectorAttr, factorOutlier, factorNA)
+buildFactorLists(..., factorRefine)
 
-buildFactorLists_lcfs(factorIDs, factorStd = "none",
-  sectorAttr = defaultSectorAttr(), factorOutlier = 3, factorNA = "na")
+buildFactorLists_lcfs(factorIDs, factorRefine = refinePar_default("none"))
 }
 \arguments{
 \item{...}{one or more FactorList. See more detail in \code{\link{buildFactorList}}.}
@@ -22,9 +21,9 @@ a list of \bold{FactorList}
 get a list of \bold{FactorList}, which is offen used in "multi-factor model builbing" or in "multifactor comparison".
 }
 \note{
-In function \code{buildFactorLists}, the settings of factorStd, factorOutlier, factorNA of factors will be change samely by the given arguments, if they are not missing.
+In function \code{buildFactorLists}, the settings of factorRefine will be changed samely by the given arguments, if they are not missing.
 
-function \code{buildFactorLists_lcfs} give a simply and direct way to build a \bold{list of factorlist} through "lcfs", given a vector of factorID. Here, the settings of factorStd, factorOutlier, factorNA of factors will be set samely by the given arguments, and the other settings will be get through "lcfs" (\code{CT_FactorLists()}). See also \code{\link{buildFactorList_lcfs}}.
+function \code{buildFactorLists_lcfs} give a simply and direct way to build a \bold{list of factorlist} through "lcfs", given a vector of factorID. Here, the settings of factorRefine will be set samely by the given arguments, and the other settings will be get through "lcfs" (\code{CT_FactorLists()}). See also \code{\link{buildFactorList_lcfs}}.
 }
 \examples{
 FactorLists <- buildFactorLists(
@@ -38,7 +37,7 @@ FactorLists <- buildFactorLists(
                   factorPar=list(),
                   factorDir=-1)
 )
-# - change some public arguments.
+# - change the factor-refining method.
 FactorLists2 <- buildFactorLists(
   buildFactorList(factorFun="gf.pct_chg_per",
                   factorPar=list(N=60),
@@ -49,8 +48,7 @@ FactorLists2 <- buildFactorLists(
   buildFactorList(factorFun="gf.PE_ttm",
                   factorPar=list(),
                   factorDir=-1),
-  factorStd = "sectorNe",
-  factorNA = "mean"
+  factorRefine = refinePar_default()
 )
 # - through lcfs
 factorIDs <- c("F000001","F000002","F000005")

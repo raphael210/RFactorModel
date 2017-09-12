@@ -9,21 +9,16 @@
 \alias{mTSF2TSFs}
 \title{get multiFactors}
 \usage{
-getMultiFactor(TS, FactorLists, wgts, factorStd_mult = c("none", "norm",
-  "sectorNe"), factorNA_mult = c("na", "mean", "median", "min", "max",
-  "sectmean"), sectorAttr_mult = defaultSectorAttr())
+getMultiFactor(TS, FactorLists, wgts)
 
-getMultiFactorbyTSFs(TSFs, wgts, factorStd_mult = "none",
-  factorNA_mult = "na", sectorAttr_mult = defaultSectorAttr(),
-  factorNames = names(TSFs))
+getMultiFactorbyTSFs(TSFs, wgts, factorNames = names(TSFs))
 
 getRawMultiFactor(TS, FactorLists, name_suffix = FALSE)
 
 MultiFactor2CombiFactor(mTSF, wgts, factorNames = guess_factorNames(mTSF),
   na_deal = c("ignore", "rm"), keep_single_factors = TRUE)
 
-TSFs2mTSF(TSFs, factorStd_mult = "none", factorNA_mult = "na",
-  sectorAttr_mult = defaultSectorAttr(), factorNames = names(TSFs))
+TSFs2mTSF(TSFs, factorNames = names(TSFs))
 
 mTSF2TSFs(mTSF, factorNames = guess_factorNames(mTSF))
 }
@@ -75,9 +70,9 @@ TSF.multi <- getMultiFactor(TS,FactorLists,wgts)
 
 # -- 2. get the "clean and standardized" combined-factor-score
 # --- 2.1 by \\code{getTSF}
-TSF.multi2 <- getTSF(TS,factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorOutlier=10,factorStd="sectorNe")
+TSF.multi2 <- getTSF(TS,factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorRefine=setrefinePar(refinePar_default(),std_method="norm"))
 # --- 2.2 by \\code{Model.TSF}
-modelPar <- modelPar.factor(modelPar.default(),factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorStd="sectorNe",factorDir=1)
+modelPar <- modelPar.factor(modelPar.default(),factorFun="getMultiFactor",factorPar=list(FactorLists,wgts),factorRefine=setrefinePar(refinePar_default(),std_method="norm"))
 TSF.multi3 <- Model.TSF(modelPar)
 TSF.multi4 <- Model.TSF_byTS(modelPar, TS)
 # -- get multi-factor by TSFs 

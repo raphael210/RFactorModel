@@ -7,8 +7,7 @@
 \title{getTSF}
 \usage{
 getTSF(TS, factorFun, factorPar = list(), factorDir = 1,
-  factorOutlier = 3, factorStd = "none", factorNA = "na",
-  sectorAttr = defaultSectorAttr(), FactorList, splitbin = 100000L)
+  factorRefine = refinePar_default("none"), FactorList, splitbin = 100000L)
 
 getRawFactor(TS, factorFun, factorPar)
 
@@ -23,11 +22,7 @@ gf_lcfs(TS, factorID)
 
 \item{factorDir}{a integer,should be 1 or -1 (1 for the positive factor,-1 for the negative one).}
 
-\item{factorOutlier}{a numeric value of standard deviations, e.g. 10 means that factor score larger or smaller than ten times the standard deviation will be removed}
-
-\item{factorStd}{a character string, indicating the standardizing pattern of the factor score,could be one of "none"(no scaling),"norm"(scaling to 0 mean and 1 stdev),"sectorNe"(scaling to 0 mean and 1 stdev in each sector).}
-
-\item{factorNA}{a character string, indicating the method to deal with the missing value of the factorscore, could be one of "na"(default,keeping the missing value as it is),"mean","median","max","min".}
+\item{factorRefine}{a list.}
 
 \item{splitbin}{a integer or a charactor string of 'year','month',...}
 }
@@ -72,7 +67,7 @@ TSFR <- getTSF(TSR)
 
 # -- you can also get the TSF through the modelPar object directively --
 modelPar <- modelPar.default()
-modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1),factorOutlier=10,factorStd="sectorNe")
+modelPar <- modelPar.factor(modelPar,factorFun="gf_demo",factorPar=list(0,1))
 TSF <- Model.TSF(modelPar)
 
 # -- factorPar as character string

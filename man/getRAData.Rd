@@ -10,11 +10,9 @@ getRAData(port, factorLists, bmk, sectorAttr = defaultSectorAttr())
 getRAData
 }
 \examples{
-tmp <- buildFactorLists(buildFactorList(factorFun="gf.NP_YOY",
-                factorPar=list(),factorDir=1),factorStd="norm",factorNA = "median")
-alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorStd="norm",factorNA = "median")
+alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
 alphaLists <- c(tmp,alphaLists)
-riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorStd="norm",factorNA = "median")
+riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
 RA_tables <- getRAData(port,c(alphaLists,riskLists))
 RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 }
