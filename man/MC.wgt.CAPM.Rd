@@ -6,7 +6,7 @@
 \usage{
 MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar, wgtmin = 0,
   wgtmax = 0.5, targetType = c("sharpe", "return", "risk", "balance"),
-  riskaversion = 1)
+  riskaversion = 1, reg_results)
 }
 \arguments{
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
@@ -22,6 +22,8 @@ MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar, wgtmin = 0,
 \item{targetType}{optimization's target type, could be "return" or "risk" or "sharpe" or 'balance',default value is "sharpe".}
 
 \item{riskaversion}{risk aversion parameter for "balance" target.}
+
+\item{reg_results}{See \code{\link{reg.TSFR}}.}
 }
 \value{
 a factor weight vector
@@ -30,7 +32,7 @@ a factor weight vector
 compute the wgt vector of multi-factors by CAPM model.
 }
 \examples{
-mp = modelPar.default()
+mp <- modelPar.default()
 factorIDs <- c("F000001","F000004","F000005","F000008")
 FactorLists <- buildFactorLists_lcfs(factorIDs)
 mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
@@ -38,5 +40,8 @@ TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.wgt.CAPM(TSFRs)
 MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
-MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)  
+MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10) 
+-----------------------------------------------------------------------------
+MC.wgt.CAPM(reg_results=reg_results) 
+MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results) 
 }

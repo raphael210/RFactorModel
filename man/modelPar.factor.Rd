@@ -6,6 +6,7 @@
 \alias{setmodelPar.factor_combi}
 \alias{buildFactorList}
 \alias{buildFactorList_lcfs}
+\alias{buildFactorList_combi}
 \title{modelPar.factor}
 \usage{
 modelPar.factor(modelPar = modelPar.default(), factorFun = "gf_demo",
@@ -18,7 +19,7 @@ setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorRefine,
   factorName, factorID, factorType, factorDesc, FactorList)
 
 setmodelPar.factor_combi(modelPar, factorLists, wgts, factorDir, factorRefine,
-  factorName = "multifactor", factorID, factorType, factorDesc)
+  factorName = "combi_factor", factorID, factorType, factorDesc)
 
 buildFactorList(factorFun = "gf_demo", factorPar = list(), factorDir = 1,
   factorRefine = refinePar_default("none"),
@@ -26,6 +27,10 @@ buildFactorList(factorFun = "gf_demo", factorPar = list(), factorDir = 1,
   factorID = "", factorType = "", factorDesc = "")
 
 buildFactorList_lcfs(factorID, factorRefine = refinePar_default("none"))
+
+buildFactorList_combi(factorLists, wgts, factorDir = 1,
+  factorRefine = refinePar_default("none"), factorName = "combi_factor",
+  factorID = "", factorType = "", factorDesc = "")
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
@@ -79,6 +84,9 @@ factorIDs <- c("F000008","F000001","F000006")
 factorLists <- buildFactorLists_lcfs(factorIDs)
 wgts <- c(0.5, 0.3, 0.2)
 mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
+# -- setmodelPar.factor_combi by \\code{buildFactorlist_combi}
+factorlist_combi <- buildFactorList_combi(factorLists,wgts)
+mp_m2 <- setmodelPar.factor(mp,FactorList = factorlist_combi)
 # -- set modelPar.factor by a factorlist
 FactorList <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20))
 modelPar <- modelPar.factor(modelPar,FactorList=FactorList)
