@@ -169,19 +169,19 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000002","F000006","F000008")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
-#' FactorLists <- buildFactorLists(
+#' FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#' FactorLists2 <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
 #'                   factorDir=1),
 #'   factorRefine=refinePar_default("robust"))
-#' FactorLists <- c(tmp,FactorLists)
-#' re <- reg.TS(TS)
-#' re <- reg.TS(TS,FactorLists)
+#' FactorLists <- c(FactorLists1,FactorLists2)
+#' reg_results <- reg.TS(TS)
+#' reg_results <- reg.TS(TS,FactorLists)
 #' ----------------------------------------------------------
 #' TSF <- getMultiFactor(TS,FactorLists)
 #' TSFR <- getTSR(TSF)
-#' re <- reg.TSFR(TSFR)
+#' reg_results <- reg.TSFR(TSFR)
 reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
                      sectorAttr=defaultSectorAttr(),secRtnOut=FALSE){
   regType <- match.arg(regType)
@@ -206,7 +206,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf_lcfs",factorPar=list(factorID='F000001'),
+        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf.float_cap",factorPar=list(),
                       factorRefine=setrefinePar(refinePar_default(type="none",sectorAttr = NULL),na_method="median"))
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)

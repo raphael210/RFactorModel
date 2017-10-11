@@ -261,11 +261,14 @@ setmodelPar.factor <- function(modelPar ,
 #' factorLists <- buildFactorLists_lcfs(factorIDs)
 #' wgts <- c(0.5, 0.3, 0.2)
 #' mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
+#' # -- setmodelPar.factor_combi by \code{buildFactorlist_combi}
+#' factorlist_combi <- buildFactorList_combi(factorLists,wgts)
+#' mp_m2 <- setmodelPar.factor(mp,FactorList = factorlist_combi)
 setmodelPar.factor_combi <- function(modelPar,
                                      factorLists, wgts, 
                                      factorDir,
                                      factorRefine,
-                                     factorName = "multifactor", 
+                                     factorName = "combi_factor", 
                                      factorID,
                                      factorType,
                                      factorDesc){
@@ -330,6 +333,7 @@ buildFactorList_lcfs <- function(factorID, factorRefine  = refinePar_default("no
   return(re)
 }
 
+#' @rdname modelPar.factor
 #' @export
 buildFactorList_combi <- function(factorLists, wgts, 
                                   factorDir  = 1 ,
@@ -389,6 +393,12 @@ buildFactorLists <- function(... , factorRefine){
   }
   return(re)
 }
+
+setFactorListsRefinePar <- function(factorlists, factorRefine){
+  re <- lapply(factorlists,function(x){x$factorRefine <- factorRefine;return(x)})
+  return(re)
+}
+
 
 #' @rdname buildFactorLists
 #' @param factorIDs a character vector of factorID, available in table \code{CT_FactorLists()} .

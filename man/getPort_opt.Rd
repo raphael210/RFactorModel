@@ -20,13 +20,13 @@ getPort_opt
 }
 \examples{
 TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
-TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorStd = "sectorNe",factorNA = "median"))
+TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine = refinePar_default("robust")))
 TSF <- renameCol(TSF,"factorscore","combfct")
 # constrain setting
 constr <- constr_default(box_each = c(0,0.02))
 constr <- addConstr_box(constr,each = c(0,0.02))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-conslist <- buildFactorLists_lcfs("F000002",factorStd = "norm",factorNA = "median")
+conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("robust"))
 # with bmk
 constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
 port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'combfct')

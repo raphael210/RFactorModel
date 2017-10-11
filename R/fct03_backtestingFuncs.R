@@ -80,11 +80,120 @@ chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
     facet_wrap(~date,scales = "free",ncol = ncol)
 }
 
+
+#' ANOVA ANALYSIS
+#' 
+#' @param TSF A TSF.
+#' @param sectorAttr_lists A list of sectorAttr, each sectorAttr is a list.
+#' @param sectorAttr_names A character vector of names, could be missing.
+#' @param significant_level The ceiling of the p_value. This argument will make sense only when the value_type is p_value. Only the value under this cutting line will be considered as passing the test.
+#' @param full_details Logical value. Whether return the details instead of summary. 
+#' @return If all the arguments are default, the result is a table with the ANOVA test pass ratio in each sector splitting method.
+#' @rdname table.Fct_anova
+#' @name table.Fct_anova
+#' @export
+#' @author Han.Qian
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000300')
+#' TSF <- gf.NP_YOY(TS, src = "fin")
+#' sectorAttr_lists_1 <- list(list(std = 33, level = 1),
+#'                            list(std = 336, level = 1))
+#' sectorAttr_lists_2 <- list(list(std = 33, level = 1))
+#' chart.Fct_anova(TSF, sectorAttr_lists_1)
+#' chart.Fct_anova(TSF, sectorAttr_lists_2)
+#' table.Fct_anova(TSF, sectorAttr_lists_1)
+#' table.Fct_anova(TSF, sectorAttr_lists_2)
+#' table.Fct_anova(TSF, sectorAttr_lists_1, full_details = TRUE)
+#' table.Fct_anova(TSF, sectorAttr_lists_2, full_details = TRUE)
+table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names, 
+                        significant_level = 0.05, full_details = FALSE){
+  
+  # ARGUMENTS CHECKING
+  sec_attr_length <- length(sectorAttr_lists)
+  if(missing(sectorAttr_names)){
+    sectorAttr_names <- paste0("sec_",1:sec_attr_length)
+  }else{
+    if(length(sectorAttr_lists) != length(sectorAttr_names)){
+      stop("The length of sectorAttr_names does not match the length of sectorAttr_lists")
+    }
+  }
+  
+  # GET SECTORS
+  for(i in 1:sec_attr_length){
+    sectorAttr_ <- sectorAttr_lists[[i]]
+    TSF <- getSectorID(TSF, sectorAttr = sectorAttr_)
+    TSF <- renameCol(TSF, "sector", sectorAttr_names[i])
+  }
+  TSF_core <- subset(TSF, select = c("date","stockID","factorscore", sectorAttr_names))
+  
+  # LOOP STARTS HERE  
+  datelist <- unique(TSF$date)
+  final_re_p <- data.frame()
+  final_re_f <- data.frame()
+  for( i in 1:length(datelist)){
+    date_ <- datelist[i]
+    TSF_subset_ <- subset(TSF_core, date == date_)
+    # LOOP THROUGH COLUMNS
+    for( j in 1:sec_attr_length){
+      results_ <- aov(factorscore ~ TSF_subset_[,j+3], data = TSF_subset_)
+      results2_ <- summary(results_)
+      re_p_ <- results2_[[1]]$`Pr(>F)`[1]
+      re_f_ <- results2_[[1]]$`F value`[1]
+      
+      if(j == 1L){
+        final_re_row_p <- data.frame("date" = date_, re_p_)
+        final_re_row_p <- renameCol(final_re_row_p, "re_p_", sectorAttr_names[1])
+        final_re_row_f <- data.frame("date" = date_, re_f_)
+        final_re_row_f <- renameCol(final_re_row_f, "re_f_", sectorAttr_names[1])
+      }else{
+        final_re_row_p <- cbind(final_re_row_p, re_p_)
+        final_re_row_p <- renameCol(final_re_row_p, "re_p_", sectorAttr_names[j]) 
+        final_re_row_f <- cbind(final_re_row_f, re_f_)
+        final_re_row_f <- renameCol(final_re_row_f, "re_f_", sectorAttr_names[j])
+      }
+    }
+    final_re_p <- rbind(final_re_p, final_re_row_p)
+    final_re_f <- rbind(final_re_f, final_re_row_f)
+  }
+  
+  # ORGANIZE AND OUTPUT
+  if(full_details){
+    colnames(final_re_p) <- c("date", paste0("p_value_",colnames(final_re_p)[-1]))
+    colnames(final_re_f) <- c("date", paste0("f_value_",colnames(final_re_f)[-1]))
+    final_final_re <- merge.x(final_re_p, final_re_f, by = "date")
+  }else{
+    final_re_p[,2:(sec_attr_length+1)] <- (final_re_p[,2:(sec_attr_length+1), drop = FALSE] < significant_level)
+    final_final_re <- colMeans(final_re_p[,2:(sec_attr_length+1), drop = FALSE])
+    final_final_re <- as.data.frame(final_final_re)
+    colnames(final_final_re) <- "PassRate"
+  }
+  return(final_final_re)
+}
+
+#' @rdname table.Fct_anova
+#' @export
+chart.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names, 
+                        significant_level = 0.05, 
+                        value_type = c("p_value","f_value")){
+  value_type <- match.arg(value_type)
+  dat <- table.Fct_anova(TSF, sectorAttr_lists, sectorAttr_names, significant_level, full_details = TRUE)
+  col_names <- colnames(dat)
+  if(value_type == "p_value"){
+    ind_ <- substr(col_names, 1, 4) == "p_va"
+  }else if(value_type == "f_value"){
+    ind_ <- substr(col_names, 1, 4) == "f_va"
+  }
+  the_xts <- xts::as.xts(dat[,ind_], order.by = dat$date)
+  # OUT PUT
+  return(ggplot.ts.line(the_xts, main = paste("ANOVA",value_type,"time series")))
+}
+
 # ---------------------  ~~ Multi-factor - descriptive stat --------------
 #' @rdname factor_descriptive_statistics
 #' @export
 MF.chart.Fct_hist <- function(mTSF){
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore)) + 
     geom_histogram(colour = "black", fill = "white")+
@@ -96,7 +205,7 @@ MF.chart.Fct_hist <- function(mTSF){
 #' @rdname factor_descriptive_statistics
 #' @export
 MF.chart.Fct_density <- function(mTSF,ncol=NULL){
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore,color=fname)) + 
     geom_density()+
@@ -107,7 +216,7 @@ MF.chart.Fct_density <- function(mTSF,ncol=NULL){
 #' 
 #' @export
 MF.chart.Fct_box <- function(mTSF,ncol=NULL){
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(fname,factorscore)) + 
     geom_boxplot()+
@@ -118,7 +227,7 @@ MF.chart.Fct_box <- function(mTSF,ncol=NULL){
 #' @rdname factor_descriptive_statistics
 #' @export
 MF.table.Fct_descr <- function(mTSF){
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   re <- mTSF %>% group_by(date,fname) %>%
     dplyr::summarise(Obs=length(factorscore),
@@ -163,7 +272,7 @@ MF.chart.Fct_corr <- function(mTSF,Nbin){
 MF.table.Fct_corr <- function(mTSF,Nbin){
   
   # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
   
   cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman',use="pairwise.complete.obs"))
@@ -401,7 +510,7 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
 #' MF.chart.IC(mTSFR)
 MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
                         facet_by=c("date","fname")){
-  fnames <- guess_factorNames(mTSFR)
+  fnames <- guess_factorNames(mTSFR,silence = TRUE)
   TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
     as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
                         factorscore=x,periodrtn=mTSFR[,'periodrtn']))
@@ -427,7 +536,7 @@ MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
     seri <- reshape2::dcast(IC,date~fname,value.var = 'IC')
     seri <- xts::xts(seri[,-1],order.by = seri[,1])
     wid <- round(365/periodicity_Ndays(seri))
-    if(wid > NROW(seri)){
+    if(wid >= NROW(seri)){
       ggplot(IC,aes(date, IC)) +
         geom_bar(stat = "identity") + facet_wrap(~fname)
     } else {
@@ -1045,7 +1154,7 @@ chart.Ngroup.turnover <- function(TSFR,N=5,turnoverType=c("num","wgt"),group=1,
 MF.chart.Ngroup.spread <- function(mTSFR,N=5,Nbin="day",stat=c("mean","median"),
                                    sectorNe=FALSE,sectorAttr=defaultSectorAttr(),
                                    facet_by=c("none","date","fname")){
-  fnames <- guess_factorNames(mTSFR)
+  fnames <- guess_factorNames(mTSFR,silence = TRUE)
   TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
     as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
                         factorscore=x,periodrtn=mTSFR[,'periodrtn']))
@@ -1357,9 +1466,8 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 
 
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-# ---------------------  multifactor comparison ------------------------
+# ---------------------  others ------------------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-
 
 
 
@@ -1373,11 +1481,12 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' @param wgtmax set maximal factor weight.
 #' @param targetType optimization's target type, could be "return" or "risk" or "sharpe" or 'balance',default value is "sharpe".
 #' @param riskaversion risk aversion parameter for "balance" target.
+#' @param reg_results See \code{\link{reg.TSFR}}.
 #' @return a factor weight vector
 #' @export
 #' @importFrom PortfolioAnalytics set.portfolio.moments
 #' @examples
-#' mp = modelPar.default()
+#' mp <- modelPar.default()
 #' factorIDs <- c("F000001","F000004","F000005","F000008")
 #' FactorLists <- buildFactorLists_lcfs(factorIDs)
 #' mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
@@ -1385,41 +1494,52 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 #' MC.wgt.CAPM(TSFRs)
 #' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
-#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)  
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10) 
+#' -----------------------------------------------------------------------------
+#' MC.wgt.CAPM(reg_results=reg_results) 
+#' MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results) 
 MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
                          wgtmin=0, wgtmax=0.5,
                          targetType=c('sharpe','return','risk','balance'),
-                         riskaversion=1) {
-  check.name_exist(TSFRs)
-  stat <- match.arg(stat)
+                         riskaversion=1,
+                         reg_results) {
   targetType <- match.arg(targetType)
-  if(!missing(backtestPar)){
-    stat <- getbacktestPar.IC(backtestPar,"stat")
-  } 
-  IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
-  rownames(IC.seris) <- names(TSFRs)
-  IC.seris <- t(IC.seris)
-  IC.seris <- xts::xts(IC.seris,order.by = unique(TSFRs[[1]]$date_end)[1:nrow(IC.seris)])
+  if(missing(reg_results)){
+    check.name_exist(TSFRs)
+    stat <- match.arg(stat)
+    targetType <- match.arg(targetType)
+    if(!missing(backtestPar)){
+      stat <- getbacktestPar.IC(backtestPar,"stat")
+    } 
+    IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
+    rownames(IC.seris) <- names(TSFRs)
+    IC.seris <- t(IC.seris)
+    seris <- xts::xts(IC.seris,order.by = unique(TSFRs[[1]]$date_end)[1:nrow(IC.seris)])
+  }else{
+    rtn.seris <- reg_results$fRtn
+    rtn.seris <- reshape2::dcast(rtn.seris,date~fname,value.var = 'frtn')
+    seris <- xts::xts(rtn.seris[,-1],order.by = rtn.seris[,1])
+  }
   
   require(ROI)
-  factor.names <- colnames(IC.seris)
+  factor.names <- colnames(seris)
   pspec <- PortfolioAnalytics::portfolio.spec(assets=factor.names)
   pspec <- PortfolioAnalytics::add.constraint(portfolio=pspec, type="full_investment")
   pspec <- PortfolioAnalytics::add.constraint(portfolio=pspec, type="box", min=wgtmin, max=wgtmax)
   if(targetType=='return'){
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec,type='return',name='mean')
-    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
   }else if(targetType=='risk'){
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec,type='risk',name='var')
-    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
   }else if(targetType=='balance'){
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="return", name="mean")
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="var", risk_aversion=riskaversion)
-    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",trace=TRUE)
   }else if(targetType=='sharpe'){
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="return", name="mean")
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="StdDev")
-    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=IC.seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
+    opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
   }
   
   return(opt_ps$weights)
@@ -1427,7 +1547,45 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
 
 
 
-
-
-
-
+#' summary of factor-refine-methods comparing
+#' 
+#' @param rawTSF The TSF which contains the raw factorscore.
+#' @param refinePar_lists A list of (refinePar)s, each refinePar is a list built by refinePar_default.
+#' @param refinePar_names The character vector of names, could be missing.
+#' @param result_type Currently supports 3 possible results : chart, table, data
+#' @param group_N The argument passed into Ngroup.overall, etc.
+#' @author Han.Qian
+#' @export
+#' @examples 
+#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
+#' TS <- getTS(RebDates,'EI000300')
+#' refinePar_lists <- list(refinePar_default(type = "none"),
+#'                         refinePar_default(type = "old_fashion"),
+#'                         refinePar_default(type = "old_robust"),
+#'                         refinePar_default(type = "new_fashion"))
+#' rawTSF <- gf.NP_YOY(TS, src = "fin")
+#' summary.factor_refine(rawTSF, refinePar_lists)
+summary.factor_refine <- function(rawTSF, refinePar_lists, refinePar_names, result_type = c("chart","table","data"), group_N = 5){
+  
+  # ARGUMENTS CHECKING
+  result_type <- match.arg(result_type)
+  # ORGANIZE TSFs
+  core_mTSF <- factor_refine_MF(TSF = rawTSF,refinePar_lists = refinePar_lists,refinePar_names = refinePar_names)
+  # GET RETURN
+  core_mTSFR <- getTSR(core_mTSF)
+  
+  ### OUTPUT
+  # CHART/TABLE
+  if(result_type == "chart"){
+    return(MF.chart.Ngroup.spread(mTSFR = core_mTSFR, N = group_N))
+    # MF.chart.IC(core_mTSFR)
+    # MC.chart.Ngroup.overall(mTSF2TSFs(core_mTSFR), N = group_N)
+    # MC.chart.IC(mTSF2TSFs(core_mTSFR))
+  }else if(result_type == "table"){
+    return(MC.table.Ngroup.overall(mTSF2TSFs(core_mTSFR), N = group_N))
+    # MC.table.IC(mTSF2TSFs(core_mTSFR))
+  }else if(result_type == "data"){
+    return(core_mTSFR)
+  }
+  # END
+}

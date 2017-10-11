@@ -12,7 +12,7 @@
 
 <meta name="author" content="UBSSDIC Quant Group" />
 
-<meta name="date" content="2017-09-07" />
+<meta name="date" content="2017-09-15" />
 
 <title>Multiple factors model using regression</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">Multiple factors model using regression</h1>
 <h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-09-07</em></h4>
+<h4 class="date"><em>2017-09-15</em></h4>
 
 
 
@@ -321,9 +321,9 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 <h2>portfolio optimization</h2>
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2015-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-07-31'</span>))
 TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,<span class="dt">indexID =</span> <span class="st">'EI000906'</span>)
-tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorStd=</span><span class="st">&quot;sectorNe&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;median&quot;</span>,<span class="dt">factorOutlier =</span> <span class="st">'boxplot'</span>))
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;robust&quot;</span>)))
 factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>)
-FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorStd=</span><span class="st">&quot;sectorNe&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;median&quot;</span>,<span class="dt">factorOutlier =</span> <span class="st">'boxplot'</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;robust&quot;</span>))
 FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
 TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
 TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
@@ -333,9 +333,9 @@ fRtn &lt;-<span class="st"> </span>rtn_cov_delta$fRtn
 fCov &lt;-<span class="st"> </span>rtn_cov_delta$fCov
 constr &lt;-<span class="st"> </span><span class="kw">constr_default</span>(<span class="dt">box_each =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.01</span>))
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_box</span>(constr,<span class="dt">ES33480000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.05</span>),<span class="dt">ES33490000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.03</span>))
-constr &lt;-<span class="st"> </span><span class="kw">addConstr_group</span>(constr,<span class="dt">EI000300=</span><span class="kw">c</span>(<span class="fl">0.8</span>,<span class="fl">0.8</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_group</span>(constr,<span class="dt">EI000300=</span><span class="kw">c</span>(<span class="fl">0.6</span>,<span class="fl">0.8</span>))
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_sector</span>(constr,<span class="dt">each =</span> <span class="kw">c</span>(-<span class="fl">0.05</span>,<span class="fl">0.05</span>))
-conslist &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(<span class="st">&quot;F000002&quot;</span>,<span class="dt">factorStd =</span> <span class="st">&quot;sectorNe&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;median&quot;</span>,<span class="dt">factorOutlier =</span> <span class="st">'boxplot'</span>)
+conslist &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(<span class="st">&quot;F000002&quot;</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;robust&quot;</span>))
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_style</span>(constr,conslist,-<span class="fl">0.1</span>,<span class="fl">0.1</span>,<span class="dt">relative =</span> <span class="dv">0</span>)
 
 <span class="co">#max return</span>
@@ -364,9 +364,14 @@ rtn1 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_op
 rtn2 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt5,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
 rtn3 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt6,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
 rtn4 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt7,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
-allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(rtn1,rtn2)
-allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn3)
-allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn4)
+bmk &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(rtn1,<span class="dt">bmk =</span> <span class="st">'EI000300'</span>)
+rtn1 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn1,bmk)
+rtn2 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn2,bmk)
+rtn3 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn3,bmk)
+rtn4 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn4,bmk)
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(rtn1[,<span class="st">'hedge'</span>],rtn2[,<span class="st">'hedge'</span>])
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn3[,<span class="st">'hedge'</span>])
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn4[,<span class="st">'hedge'</span>])
 <span class="kw">ggplot.WealthIndex</span>(allrtn)
 <span class="kw">rtn.summary</span>(allrtn)
 <span class="kw">rtn.periods</span>(allrtn)</code></pre></div>

@@ -38,19 +38,19 @@ Regression to the TSFR data, calculate factor return, residuals, and R squrare, 
 RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000985')
 factorIDs <- c("F000002","F000006","F000008")
-FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
-FactorLists <- buildFactorLists(
+FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+FactorLists2 <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
                   factorDir=1),
   factorRefine=refinePar_default("robust"))
-FactorLists <- c(tmp,FactorLists)
-re <- reg.TS(TS)
-re <- reg.TS(TS,FactorLists)
+FactorLists <- c(FactorLists1,FactorLists2)
+reg_results <- reg.TS(TS)
+reg_results <- reg.TS(TS,FactorLists)
 ----------------------------------------------------------
 TSF <- getMultiFactor(TS,FactorLists)
 TSFR <- getTSR(TSF)
-re <- reg.TSFR(TSFR)
+reg_results <- reg.TSFR(TSFR)
 }
 \author{
 Ruifei.yin
