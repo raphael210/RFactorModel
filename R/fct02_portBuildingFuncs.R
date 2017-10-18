@@ -15,8 +15,7 @@
 #' @param TSF a \bold{TSF} object or a \bold{TSFR} object
 #' @param topN an integer vector with 2 or 1 elements, giving the rank range of the assets to be selected into the portfolio. If containing only 1 element, the the top rank of 1 will be added automatically.
 #' @param topQ a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.
-#' @param pick.sectorNe
-#' @param sectorAttr
+#' @param sectorNe_pick
 #' @param force_in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.
 #' @param buffer_keep a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer_keep)}) or pct less than topQ*110\% will be kept coercively.
 #' @param buffer_rate
@@ -26,7 +25,6 @@
 #' @return \code{getPort} return a \bold{Port}('portfolio') objects,which are of dataframe class containing at least 2 cols("date","stockID")
 #' @note Note that \code{topN} and \code{topQ} should at least have one and only have one.
 #' @note Note that if use bufferring, the length of topN (or topQ) should be 1.
-#' @note Note that if pick.sectorNe is TRUE, the param topN and topQ will act \bold{in the sector}. That is , for example, topN=10 means picking 10 stocks in every sectors. For that reason, if pick.sectorNe is true, topQ is a better choise than topN.
 #' @author Ruifei.Yin
 #' @export
 #' @examples
@@ -52,14 +50,14 @@
 #' tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
 #' pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
 #' factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorRefine=refinePar_default("robust"))
-#' pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,pick.sectorNe = T,sectorAttr = list(list(factorList),list(2)))
+#' pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,sectorNe_pick = defaultSectorAttr())
 #' # -- with buffer_rate
-#' pt3 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =F)
-#' pt4 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =F)
-#' pt5 <- getPort(tsf,20,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
-#' pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,pick.sectorNe =T,sectorAttr = list(list(factorList1),list(2)))
+#' pt3 <- getPort(tsf,20,buffer_rate =  0.5,sectorNe_pick =NULL)
+#' pt4 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,sectorNe_pick =NULL)
+#' pt5 <- getPort(tsf,20,buffer_rate =  0.5,sectorNe_pick =defaultSectorAttr())
+#' pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,sectorNe_pick =defaultSectorAttr())
 getPort <- function(TSF, topN=NA, topQ=NA, 
-                    pick.sectorNe=FALSE, sectorAttr=defaultSectorAttr(),
+                    sectorNe_pick=NULL,
                     force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                     backtestPar,
                     dir=c("long","short")){
@@ -67,8 +65,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
   if(!missing(backtestPar)){
     topN <- getbacktestPar.longshort(backtestPar,"topN")
     topQ <- getbacktestPar.longshort(backtestPar,"topQ")
-    pick.sectorNe <- getbacktestPar.longshort(backtestPar,"pick.sectorNe")
-    sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorAttr")
+    sectorNe_pick <- getbacktestPar.longshort(backtestPar,"sectorNe_pick")
     force_in <- getbacktestPar.longshort(backtestPar,"force_in")
     buffer_keep <- getbacktestPar.longshort(backtestPar,"buffer_keep")
     buffer_rate <- getbacktestPar.longshort(backtestPar,"buffer_rate")
@@ -87,8 +84,8 @@ getPort <- function(TSF, topN=NA, topQ=NA,
   }
   if(length(topN) == 1L) topN_ <- c(1,topN) else topN_ <- topN
   if(length(topQ) == 1L) topQ_ <- c(0,topQ) else topQ_ <- topQ
-  if(pick.sectorNe){
-    TSF <- getSectorID(TSF,sectorAttr=sectorAttr)
+  if(!is.null(sectorNe_pick)){
+    TSF <- getSectorID(TSF,sectorAttr=sectorNe_pick)
     TSF_by <- dplyr::group_by(TSF,date) %>% dplyr::mutate(cnt=n()) %>% dplyr::group_by(sector,add=TRUE) %>% dplyr::mutate(cnt_sct=n())
   } else {
     TSF_by <- dplyr::group_by(TSF,date) %>% dplyr::mutate(cnt=n()) 
@@ -133,9 +130,9 @@ getPort <- function(TSF, topN=NA, topQ=NA,
           subTSF <- dplyr::bind_rows(data.frame(date=as.Date(idx,"1970-01-01"), stockID=old_sus_underLim, rnk=0),
                                      dplyr::filter(subTSF,!stockID %in% old_sus_underLim))
           
-          if(pick.sectorNe){
+          if(!is.null(sectorNe_pick)){
             subTSF$sector <- NULL
-            subTSF <- getSectorID(subTSF,sectorAttr = sectorAttr)
+            subTSF <- getSectorID(subTSF,sectorAttr = sectorNe_pick)
             subTSF <- dplyr::group_by(subTSF,date,sector)
           }
           
@@ -172,7 +169,7 @@ getPort <- function(TSF, topN=NA, topQ=NA,
         # 1-intersect of (rnk<=topQ*n() & old==TRUE)
         # 2-coercively kept old stocks due to buffer_rate
         # 3-others
-        if(!pick.sectorNe){
+        if(is.null(sectorNe_pick)){
           pt_0 <- dplyr::filter(subTSF,rnk==0)$stockID
           pt_1 <- dplyr::filter(subTSF,rnk<=topQ*n() & old==TRUE & rnk!=0)$stockID
           pt_2 <- dplyr::filter(subTSF,rnk>topQ*n() & old==TRUE)$stockID
@@ -216,9 +213,9 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 #' @details \code{addwgt2port} add the weights to the \bold{Port} object.
 #' @rdname PortfolioBacktest
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
-#' @param wgt.sectorNe a logic. If true, the wgt will be neutralized by sector.
+#' @param sectorNe_wgt
 #' @param wgtbmk
-#' @param tolerance a numeric, only used when \code{wgt.sectorNe} is true. Giving the tolerance of absent sectors weights in the portfolio.
+#' @param tolerance a numeric, only used when \code{sectorNe_wgt} is not null, Giving the tolerance of absent sectors weights in the portfolio.
 #' @return \code{addwgt2port} return a \bold{Port} object which are of dataframe class containing at least 3 cols("date","stockID","wgt").
 #' @export
 #' @examples 
@@ -227,14 +224,13 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 #' port <- addwgt2port(port,"fv")
 addwgt2port <- function (port,
                          wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
-                         wgt.sectorNe=FALSE, wgtbmk="EI000300", sectorAttr=defaultSectorAttr(),
+                         sectorNe_wgt=NULL, wgtbmk="EI000300",
                          backtestPar,                       
                          tolerance=0.2) {  
   wgtType <- match.arg(wgtType)
   if(!missing(backtestPar)){
     wgtType <- getbacktestPar.longshort(backtestPar,"wgtType")
-    wgt.sectorNe <- getbacktestPar.longshort(backtestPar,"wgt.sectorNe") 
-    sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorAttr")
+    sectorNe_wgt <- getbacktestPar.longshort(backtestPar,"sectorNe_wgt") 
     wgtbmk <- getbacktestPar.longshort(backtestPar,"bmk")
   }     
   if (wgtType=="custom") {
@@ -266,14 +262,14 @@ addwgt2port <- function (port,
     port$factorscore <- NULL
   }
   # ---- neutrualizing wgt by sectors 
-  if (wgt.sectorNe) {
+  if (!is.null(sectorNe_wgt)) {
     # --- get the bmk sector wgt
     datelist <- unique(port$date)    
     wgt.bmk <- getIndexCompWgt(indexID=wgtbmk,endT=datelist)      
-    wgt.bmk <- getSectorID(wgt.bmk, sectorAttr=sectorAttr)
+    wgt.bmk <- getSectorID(wgt.bmk, sectorAttr=sectorNe_wgt)
     wgt.bmk.sector <- plyr::ddply(wgt.bmk,c("date","sector"),plyr::summarize,wgt.sector=sum(wgt,na.rm=TRUE))  
     # --- merge and rescale the wgt to neutrualiezde
-    port<- getSectorID(port,sectorAttr=sectorAttr)
+    port<- getSectorID(port,sectorAttr=sectorNe_wgt)
     port <- merge(port,wgt.bmk.sector,by=c("date","sector"),all.x=TRUE)
     port[is.na(port$wgt.sector),"wgt.sector"] <- 0  # -- dealing with sectors in port but not in bmk
     port <- plyr::ddply(port,c("date","sector"),transform,wgt=wgt/sum(wgt,na.rm=TRUE)*wgt.sector)    
@@ -314,7 +310,7 @@ port.substitute <- function(port,TSF,
   dir <- match.arg(dir)
   if(!missing(backtestPar)){
     wgt.max <- getbacktestPar.longshort(backtestPar,"wgt.max")
-    sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorAttr")
+    sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorNe_wgt")
   }
   if(is.na(wgt.max)){ # 
     return(port)
@@ -373,35 +369,32 @@ port.substitute <- function(port,TSF,
 getPort_throughout <- function (TSF,
                                 # getPort
                                 topN=NA, topQ=NA, 
-                                pick.sectorNe=FALSE, 
+                                sectorNe_pick=NULL, 
                                 force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
                                 # addwgt2port
                                 wgtType= "eq",
-                                wgt.sectorNe=FALSE, wgtbmk="EI000300",
+                                sectorNe_wgt=NULL, wgtbmk="EI000300",
                                 # port.substitute
                                 wgt.max=NA, 
-                                # sector setting
-                                sectorAttr=defaultSectorAttr(),
                                 
                                 backtestPar,
                                 dir=c("long","short")) {
   dir <- match.arg(dir)
   Port <- getPort(TSF, 
                   topN=topN, topQ=topQ,
-                  pick.sectorNe=pick.sectorNe,
+                  sectorNe_pick=sectorNe_pick,
                   force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)
   
   Port <- addwgt2port(Port, 
                       wgtType=wgtType, 
-                      wgt.sectorNe=wgt.sectorNe,                       
-                      wgtbmk=wgtbmk,
-                      sectorAttr=sectorAttr, 
+                      sectorNe_wgt=sectorNe_wgt,                       
+                      wgtbmk=wgtbmk, 
                       backtestPar=backtestPar)
   
   Port <- port.substitute(port=Port, TSF=TSF, 
                           wgt.max=wgt.max, 
-                          sectorAttr=sectorAttr, 
+                          sectorAttr=sectorNe_wgt, 
                           dir=dir, backtestPar=backtestPar)
   
   return(Port)
@@ -512,37 +505,34 @@ port.backtest <- function(port,
 getPB <- function (TSF,
                    # getPort
                    topN=NA, topQ=NA, 
-                   pick.sectorNe=FALSE, 
+                   sectorNe_pick=NULL, 
                    force_in=0, buffer_keep=0, buffer_rate=0, init_port=NULL,
                    # addwgt2port
                    wgtType= "eq",
-                   wgt.sectorNe=FALSE, wgtbmk="EI000300",
+                   sectorNe_wgt=NULL, wgtbmk="EI000300",
                    # port.substitute
                    wgt.max=NA, 
                    # port.backtest
                    holdingEndT=Sys.Date(), fee.buy=0, fee.sell=fee.buy,
-                   # sector setting
-                   sectorAttr=defaultSectorAttr(),
                    
                    backtestPar,
                    dir=c("long","short")) {
   dir <- match.arg(dir)
   Port <- getPort(TSF, 
                   topN=topN, topQ=topQ,
-                  pick.sectorNe=pick.sectorNe,
+                  sectorNe_pick=sectorNe_pick,
                   force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
                   dir=dir, backtestPar=backtestPar)
   
   Port <- addwgt2port(Port, 
                       wgtType=wgtType, 
-                      wgt.sectorNe=wgt.sectorNe,                       
-                      wgtbmk=wgtbmk,
-                      sectorAttr=sectorAttr,  
+                      sectorNe_wgt=sectorNe_wgt,                       
+                      wgtbmk=wgtbmk, 
                       backtestPar=backtestPar)
   
   Port <- port.substitute(port=Port, TSF=TSF, 
                           wgt.max=wgt.max, 
-                          sectorAttr=sectorAttr, 
+                          sectorAttr=sectorNe_wgt, 
                           dir=dir, backtestPar=backtestPar)
   
   PB <- port.backtest(Port, 

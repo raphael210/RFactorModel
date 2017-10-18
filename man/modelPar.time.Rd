@@ -20,7 +20,7 @@ setmodelPar.time(modelPar, begT, endT, rebFreq, shiftby, dure, dates)
 
 \item{rebFreq}{an interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s". See \code{\link{cut.Date}} for detail.}
 
-\item{shiftby}{a integer,how many days the rebalancing date be shifted afterward}
+\item{shiftby}{a integer,how many days the rebalancing date be shifted foreward}
 
 \item{dates}{an arbitrary vector of trading date, with class of Date. If param \code{dates} is not null, then all the other params will be invalidated.}
 }

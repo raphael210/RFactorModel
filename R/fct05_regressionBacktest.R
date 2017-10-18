@@ -1145,7 +1145,9 @@ getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
   # calculate factor exposure
   TSWF <- merge.x(port,TSFR,by=c('date','stockID'))
   TSWF <- na.omit(TSWF)
-  TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
+  if(!is.null(sectorAttr)){
+    TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
+  }
   fexp <- exposure.TSWF(TSWF) 
   fexp <- dplyr::arrange(fexp,date)
   

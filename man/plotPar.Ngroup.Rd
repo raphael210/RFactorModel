@@ -6,9 +6,9 @@
 \title{plotPar.Ngroup}
 \usage{
 plotPar.Ngroup(plotPar = plotPar.default(), Nbin = "day", N = 5,
-  stat = c("mean", "median"), turnoverType = c("num", "wgt"))
+  stat = c("mean", "median"))
 
-setplotPar.Ngroup(plotPar, Nbin, N, stat, turnoverType)
+setplotPar.Ngroup(plotPar, Nbin, N, stat)
 }
 \arguments{
 \item{plotPar}{a \bold{plotPar} object}
@@ -18,8 +18,6 @@ setplotPar.Ngroup(plotPar, Nbin, N, stat, turnoverType)
 \item{N}{the number of the groups the universe is cut to}
 
 \item{stat}{a character string,indicating the statistic of the return center of each group,could be "mean" or "median".}
-
-\item{turnoverType}{a character string,indicating the method to calculate the turnover,could be "num" or "wgt".}
 }
 \value{
 a \bold{plotPar} object

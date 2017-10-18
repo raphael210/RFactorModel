@@ -3,6 +3,8 @@
 \name{table.Fct_anova}
 \alias{table.Fct_anova}
 \alias{chart.Fct_anova}
+\alias{chart.Fct_NA}
+\alias{MF.chart.Fct_NA}
 \title{ANOVA ANALYSIS}
 \usage{
 table.Fct_anova(TSF, sectorAttr_lists, sectorAttr_names,
@@ -10,6 +12,10 @@ table.Fct_anova(TSF, sectorAttr_lists, sectorAttr_names,
 
 chart.Fct_anova(TSF, sectorAttr_lists, sectorAttr_names,
   significant_level = 0.05, value_type = c("p_value", "f_value"))
+
+chart.Fct_NA(TSF)
+
+MF.chart.Fct_NA(mTSF)
 }
 \arguments{
 \item{TSF}{A TSF.}

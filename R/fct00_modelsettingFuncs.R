@@ -68,7 +68,7 @@ setmodelPar.title <- function(modelPar,
 #' @param begT the begin date
 #' @param endT the end date
 #' @param rebFreq an interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s". See \code{\link{cut.Date}} for detail.
-#' @param shiftby a integer,how many days the rebalancing date be shifted afterward
+#' @param shiftby a integer,how many days the rebalancing date be shifted foreward
 #' @param dure
 #' @param dates an arbitrary vector of trading date, with class of Date. If param \code{dates} is not null, then all the other params will be invalidated.
 #' @return a \bold{modelPar} object
@@ -713,10 +713,7 @@ backtestPar.reg <- function(backtestPar=list()){
 #' set the Ngroup related parametres of the backtesting
 #' @param backtestPar a \bold{backtestPar} object
 #' @param N the number of the groups the universe is cut to
-#' @param stat a character string,indicating the statistic of the return center of each group,could be "mean" or "median".
 #' @param sectorNe
-#' @param sectorAttr
-#' @param turnoverType
 #' @return a \bold{backtestPar} object
 #' @seealso \code{\link{seri.Ngroup.rtn}} \code{\link{seri.Ngroup.turnover}}
 #' @author Ruifei.Yin
@@ -724,32 +721,18 @@ backtestPar.reg <- function(backtestPar=list()){
 #' @family backtestPar setting functions
 backtestPar.Ngroup <- function(backtestPar = backtestPar.default() ,
                                N           = 5  ,
-                               stat        = c("mean","median"),
-                               sectorNe    = FALSE,
-                               sectorAttr  = defaultSectorAttr(),
-                               turnoverType =  c("num","wgt")){ 
-  stat <- match.arg(stat)
-  turnoverType <- match.arg(turnoverType)
+                               sectorNe    = NULL){ 
   backtestPar$Ngroup <-list(N    = N,
-                            stat = stat,
-                            sectorNe =sectorNe,
-                            sectorAttr = sectorAttr,
-                            turnoverType=turnoverType)
+                            sectorNe =sectorNe)
   return(backtestPar)
 }
 #' @rdname backtestPar.Ngroup
 #' @export
 setbacktestPar.Ngroup <- function(backtestPar ,
                                   N,
-                                  stat,
-                                  sectorNe,
-                                  sectorAttr,
-                                  turnoverType){ 
+                                  sectorNe){ 
   if(!missing(N)) backtestPar$Ngroup$N <- N
-  if(!missing(stat)) backtestPar$Ngroup$stat <- stat
   if(!missing(sectorNe)) backtestPar$Ngroup$sectorNe <- sectorNe
-  if(!missing(sectorAttr)) backtestPar$Ngroup$sectorAttr <- sectorAttr
-  if(!missing(turnoverType)) backtestPar$Ngroup$turnoverType <- turnoverType
   return(backtestPar)
 }
 
@@ -760,14 +743,13 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 #' @param backtestPar a \bold{backtestPar} object
 #' @param topN an integer,giving the numbers of the assets to be selected into the portfolio.
 #' @param topQ a numeric,giving the percentage of the assets to be selected into the portfolio.
-#' @param pick.sectorNe
-#' @param sectorAttr
+#' @param sectorNe_pick
 #' @param force_in
 #' @param buffer_keep
 #' @param init_port
 #' @param holdingEndT the ending date of the holding portfolio.
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
-#' @param wgt.sectorNe a logic. If true, the wgt will be neutralized by sector.
+#' @param sectorNe_wgt a logic. If true, the wgt will be neutralized by sector.
 #' @param wgt.max a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port.substitute}}.
 #' @param bmk a character string,giving the stockID of the benchmark index, eg. "EI000300".
 #' @param hedge.rebFreq giving the rebalance freq when computing the hedged rtn.
@@ -781,15 +763,14 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   topN = 50,
                                   topQ = NA,
-                                  pick.sectorNe=FALSE, 
-                                  sectorAttr=defaultSectorAttr(),
+                                  sectorNe_pick=NULL,
                                   force_in=0, 
                                   buffer_keep=0,
                                   buffer_rate=0,
                                   init_port=NULL,
                                   holdingEndT = Sys.Date(),
                                   wgtType = "eq", 
-                                  wgt.sectorNe = FALSE,
+                                  sectorNe_wgt = NULL,
                                   wgt.max = NA,
                                   bmk="EI000300",
                                   hedge.rebFreq="month",
@@ -797,15 +778,14 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   hitFreq="month"){ 
   backtestPar$longshort <-list(topN         = topN,
                                topQ         = topQ,
-                               pick.sectorNe= pick.sectorNe,
-                               sectorAttr   = sectorAttr,
+                               sectorNe_pick= sectorNe_pick,
                                force_in    = force_in,
                                buffer_keep  = buffer_keep,
                                buffer_rate  = buffer_rate,
                                init_port    = init_port,
                                holdingEndT  = holdingEndT,
                                wgtType      = wgtType,
-                               wgt.sectorNe = wgt.sectorNe,
+                               sectorNe_wgt = sectorNe_wgt,
                                wgt.max      = wgt.max,                               
                                bmk          = bmk,
                                hedge.rebFreq= hedge.rebFreq,
@@ -818,15 +798,14 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
 setbacktestPar.longshort <- function(backtestPar,
                                      topN,
                                      topQ,
-                                     pick.sectorNe,
-                                     sectorAttr,
+                                     sectorNe_pick,
                                      force_in,
                                      buffer_keep,
                                      buffer_rate,
                                      init_port,
                                      holdingEndT,
                                      wgtType,
-                                     wgt.sectorNe,
+                                     sectorNe_wgt,
                                      wgt.max ,
                                      bmk,
                                      hedge.rebFreq,
@@ -840,15 +819,14 @@ setbacktestPar.longshort <- function(backtestPar,
     backtestPar$longshort$topQ <- topQ  
     # backtestPar$longshort$topN <- NA
   }
-  if(!missing(pick.sectorNe)) backtestPar$longshort$pick.sectorNe <- pick.sectorNe  
-  if(!missing(sectorAttr)) backtestPar$longshort$sectorAttr <- sectorAttr
+  if(!missing(sectorNe_pick)) backtestPar$longshort$sectorNe_pick <- sectorNe_pick 
   if(!missing(force_in)) backtestPar$longshort$force_in <- force_in
   if(!missing(buffer_keep)) backtestPar$longshort$buffer_keep <- buffer_keep
   if(!missing(buffer_rate)) backtestPar$longshort$buffer_rate <- buffer_rate
   if(!missing(init_port)) backtestPar$longshort$init_port <- init_port
   if(!missing(holdingEndT)) backtestPar$longshort$holdingEndT <- holdingEndT
   if(!missing(wgtType)) backtestPar$longshort$wgtType <- wgtType
-  if(!missing(wgt.sectorNe)) backtestPar$longshort$wgt.sectorNe <- wgt.sectorNe
+  if(!missing(sectorNe_wgt)) backtestPar$longshort$sectorNe_wgt <- sectorNe_wgt
   if(!missing(wgt.max)) backtestPar$longshort$wgt.max <- wgt.max
   if(!missing(bmk)) backtestPar$longshort$bmk <- bmk
   if(!missing(hedge.rebFreq)) backtestPar$longshort$hedge.rebFreq <- hedge.rebFreq
@@ -1049,7 +1027,6 @@ plotPar.reg <- function(plotPar=plotPar.default()){
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the "date.grp".It could also be character of interval specification,See \code{\link{cut.Date}} for detail.
 #' @param N the number of the groups the universe is cut to
 #' @param stat a character string,indicating the statistic of the return center of each group,could be "mean" or "median".
-#' @param turnoverType a character string,indicating the method to calculate the turnover,could be "num" or "wgt".
 #' @return a \bold{plotPar} object
 #' @seealso \code{\link{chart.Ngroup.overall}},\code{\link{chart.Ngroup.seri}}
 #' @author Ruifei.Yin
@@ -1058,14 +1035,11 @@ plotPar.reg <- function(plotPar=plotPar.default()){
 plotPar.Ngroup <- function(plotPar = plotPar.default() ,
                            Nbin    = "day"   ,
                            N       = 5 ,                           
-                           stat    = c("mean","median"),
-                           turnoverType = c("num","wgt")){ 
+                           stat    = c("mean","median")){ 
   stat <- match.arg(stat)
-  turnoverType <- match.arg(turnoverType)
   plotPar$Ngroup <-list(Nbin = Nbin,
                         N    = N,
-                        stat = stat,
-                        turnoverType=turnoverType)
+                        stat = stat)
   return(plotPar)
 }
 #' @rdname plotPar.Ngroup
@@ -1073,12 +1047,10 @@ plotPar.Ngroup <- function(plotPar = plotPar.default() ,
 setplotPar.Ngroup <- function(plotPar ,
                               Nbin,
                               N,                           
-                              stat,
-                              turnoverType){ 
+                              stat){ 
   if(!missing(Nbin)) plotPar$Ngroup$Nbin <- Nbin
   if(!missing(N)) plotPar$Ngroup$N <- N
   if(!missing(stat)) plotPar$Ngroup$stat <- stat
-  if(!missing(turnoverType)) plotPar$Ngroup$turnoverType <- turnoverType
   return(plotPar)
 }
 
