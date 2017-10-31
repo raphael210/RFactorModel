@@ -7,24 +7,18 @@
 \alias{getDelta}
 \title{factor return,covariance and delta}
 \usage{
-f_rtn_cov_delta(RebDates, fname, dure = months(1), rolling = FALSE,
-  rtntype = c("mean", "forcast"), covtype = c("shrink", "simple"),
+f_rtn_cov_delta(dure = months(1), rolling = FALSE, rtntype = c("mean",
+  "forcast"), covtype = c("shrink", "simple"), nwin = 24, reg_results)
+
+getfRtn(dure = months(1), rolling = FALSE, rtntype = c("mean", "forcast"),
   nwin = 24, reg_results)
 
-getfRtn(RebDates, fname, dure = months(1), rolling = FALSE,
-  rtntype = c("mean", "forcast"), nwin = 24, reg_results)
+getfCov(dure = months(1), rolling = FALSE, covtype = c("shrink",
+  "simple"), nwin = 24, reg_results)
 
-getfCov(RebDates, fname, dure = months(1), rolling = FALSE,
-  covtype = c("shrink", "simple"), nwin = 24, reg_results)
-
-getDelta(RebDates, dure = months(1), rolling = FALSE, nwin = 24,
-  reg_results)
+getDelta(dure = months(1), rolling = FALSE, nwin = 24, reg_results)
 }
 \arguments{
-\item{RebDates}{is date set, can be missing.}
-
-\item{fname}{is factor names, can be missing.}
-
 \item{dure}{a period object from package \code{lubridate}. (ie. \code{months(1),weeks(2)}. See example in \code{\link{trday.offset}}.) If null, then get periodrtn between \code{date} and the next \code{date}, else get periodrtn of '\code{dure}' starting from \code{date}.}
 
 \item{rolling}{default value is \code{FALSE}, if value is \code{TRUE} means the data period is \code{nwin} forward.}
@@ -36,6 +30,8 @@ getDelta(RebDates, dure = months(1), rolling = FALSE, nwin = 24,
 \item{nwin}{is rolling windows forward.}
 
 \item{reg_results}{see examples in \code{\link{reg.TSFR}}}
+
+\item{RebDates}{is date set, can be missing.}
 }
 \value{
 a data frame of factors' return .
@@ -44,10 +40,8 @@ a data frame of factors' return .
 calculate factor return, factor covariance and residual variance.
 }
 \examples{
-RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-08-31'))
-fname <- c("NP_YOY","PB_mrq_","disposition_","ln_mkt_cap_")
-fRtn <- getfRtn(RebDates,fname,reg_results=reg_results)
-fCov <- getfCov(RebDates,fname,reg_results=reg_results)
-Delta <- getDelta(RebDates,dure=months(1),rolling=FALSE,nwin=24,reg_results)
+fRtn <- getfRtn(reg_results=reg_results)
+fCov <- getfCov(reg_results=reg_results)
+Delta <- getDelta(dure=months(1),rolling=FALSE,nwin=24,reg_results)
 rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results)
 }

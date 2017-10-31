@@ -6,15 +6,14 @@
 \title{backtestPar.longshort}
 \usage{
 backtestPar.longshort(backtestPar = backtestPar.default(), topN = 50,
-  topQ = NA, pick.sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
-  force_in = 0, buffer_keep = 0, buffer_rate = 0, init_port = NULL,
-  holdingEndT = Sys.Date(), wgtType = "eq", wgt.sectorNe = FALSE,
-  wgt.max = NA, bmk = "EI000300", hedge.rebFreq = "month",
-  hedge.posi = 1, hitFreq = "month")
+  topQ = NA, sectorNe_pick = NULL, force_in = 0, buffer_keep = 0,
+  buffer_rate = 0, init_port = NULL, holdingEndT = Sys.Date(),
+  wgtType = "eq", sectorNe_wgt = NULL, wgt.max = NA, bmk = "EI000300",
+  hedge.rebFreq = "month", hedge.posi = 1, hitFreq = "month")
 
-setbacktestPar.longshort(backtestPar, topN, topQ, pick.sectorNe, sectorAttr,
-  force_in, buffer_keep, buffer_rate, init_port, holdingEndT, wgtType,
-  wgt.sectorNe, wgt.max, bmk, hedge.rebFreq, hedge.posi, hitFreq)
+setbacktestPar.longshort(backtestPar, topN, topQ, sectorNe_pick, force_in,
+  buffer_keep, buffer_rate, init_port, holdingEndT, wgtType, sectorNe_wgt,
+  wgt.max, bmk, hedge.rebFreq, hedge.posi, hitFreq)
 }
 \arguments{
 \item{backtestPar}{a \bold{backtestPar} object}
@@ -27,7 +26,7 @@ setbacktestPar.longshort(backtestPar, topN, topQ, pick.sectorNe, sectorAttr,
 
 \item{wgtType}{a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".}
 
-\item{wgt.sectorNe}{a logic. If true, the wgt will be neutralized by sector.}
+\item{sectorNe_wgt}{a logic. If true, the wgt will be neutralized by sector.}
 
 \item{wgt.max}{a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port.substitute}}.}
 

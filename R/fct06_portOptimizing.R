@@ -727,11 +727,17 @@ getPort_opt <- function(TSF,
     
     
     # get 'Amat' & 'bvec'
-    mat_vec_list <- list(mat_group=get_constrMat_group(TSF2_, univFilter, cons = constr$group),
-                     mat_box=get_constrMat_box(TSF2_, univFilter, cons = constr$box),
-                     mat_position=get_constrMat_position(TSF2_, univFilter, cons = constr$position),
-                     mat_fctExp_sector=get_constrMat_fctExp_sector(TSF2_, univFilter, cons = constr$fctExp_sector),
-                     mat_fctExp_style=get_constrMat_fctExp_style(TSF2_, univFilter, cons = constr$fctExp_style))
+    mat_group <- get_constrMat_group(TSF2_, univFilter, cons = constr$group)
+    mat_box <- get_constrMat_box(TSF2_, univFilter, cons = constr$box)
+    mat_position <- get_constrMat_position(TSF2_, univFilter, cons = constr$position)
+    mat_fctExp_sector <- get_constrMat_fctExp_sector(TSF2_, univFilter, cons = constr$fctExp_sector)
+    mat_fctExp_style <- get_constrMat_fctExp_style(TSF2_, univFilter, cons = constr$fctExp_style)
+    
+    mat_vec_list <- list(mat_group=mat_group,
+                           mat_box=mat_box,
+                           mat_position=mat_position,
+                           mat_fctExp_sector=mat_fctExp_sector,
+                           mat_fctExp_style=mat_fctExp_style)
     
     ##check Amat and bvec
     jumptag <- mat_constr_check(mat_vec_list)
@@ -956,7 +962,7 @@ solver_turnover_simple <- function(dvec,Dmat,mat_vec_list,obj,constr,init_wgt,tu
                           UB = matrix(data = mat_box$bvec[,'max'], ncol = 1),
                           W0 = init_wgt,
                           delta=turnover_target)
-    evalformula <- "N=length(MU);cvx_begin ; cvx_solver mosek ;  variable w(N) ;"
+    evalformula <- "N=length(MU);cvx_begin ;  variable w(N) ;"
     if(!is.null(Dmat)){
       R.matlab::setVariable(matlab, COV=Dmat * obj$risk[,'risk_aversion'])
       evalformula <- paste(evalformula,"minimize(-MU'*w+w'*COV*w) ;")
@@ -1005,7 +1011,7 @@ solver_trackingerror_simple <- function(dvec,Dmat,mat_vec_list,constr,...){
                           TransMatrix=Mmat,
                           TargetTE=constr$trackingerror[,'target'])
     
-    evalformula <- "N=length(MU) ;cvx_begin ;cvx_solver mosek ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
+    evalformula <- "N=length(MU) ;cvx_begin ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
                        norm(TransMatrix*w)<=TargetTE/sqrt(12) ;"                            
     
     if(!is.null(Amat_bvec$amat_eq)){
@@ -1041,7 +1047,7 @@ solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,matlab,i
                         TransMatrix=Mmat,
                         TargetTE=constr$trackingerror[,'target'])
   
-  evalformula <- "N=length(MU) ;cvx_begin ;cvx_solver mosek ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
+  evalformula <- "N=length(MU) ;cvx_begin ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
   norm(TransMatrix*w)<=TargetTE/sqrt(12) ;"                            
   
   if(!is.null(Amat_bvec$amat_eq)){

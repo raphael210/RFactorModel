@@ -5,7 +5,6 @@
 \alias{seri.Ngroup.rtn}
 \alias{seri.Ngroup.turnover}
 \alias{table.Ngroup.overall}
-\alias{table.Ngroup.overall_bysector}
 \alias{table.Ngroup.spread}
 \alias{chart.Ngroup.overall}
 \alias{chart.Ngroup.seri_point}
@@ -18,65 +17,49 @@
 \alias{MC.chart.Ngroup.overall}
 \title{backtest.Ngroup}
 \usage{
-seri.Ngroup.rtn(TSFR, N = 5, stat = c("mean", "median"), sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), backtestPar, bysector = FALSE)
+seri.Ngroup.rtn(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
+  bysector = NULL, backtestPar)
 
-seri.Ngroup.turnover(TSFR, N = 5, turnoverType = c("num", "wgt"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), backtestPar)
+seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL, backtestPar)
 
-table.Ngroup.overall(TSFR, N = 5, stat = c("mean", "median"),
-  turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), backtestPar)
+table.Ngroup.overall(TSFR, N = 5, sectorNe = NULL, bysector = NULL,
+  fee = 0, rtn_type = c("long-short", "long-univ"), backtestPar)
 
-table.Ngroup.overall_bysector(TSFR, N = 5, stat = c("mean", "median"),
-  sectorAttr = defaultSectorAttr(), backtestPar)
+table.Ngroup.spread(TSFR, N = 5, sectorNe = NULL, fee = 0,
+  rtn_type = c("long-short", "long-univ"), backtestPar)
 
-table.Ngroup.spread(TSFR, N = 5, stat = c("mean", "median"),
-  turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), backtestPar)
+chart.Ngroup.overall(TSFR, N = 5, sectorNe = NULL, bysector = NULL,
+  plotPar)
 
-chart.Ngroup.overall(TSFR, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar,
-  bysector = FALSE)
+chart.Ngroup.seri_point(TSFR, N = 5, Nbin = "day", sectorNe = NULL,
+  plotPar)
 
-chart.Ngroup.seri_point(TSFR, N = 5, Nbin = "day", stat = c("mean",
-  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
+chart.Ngroup.seri_bar(TSFR, N = 5, Nbin = "day", sectorNe = NULL,
+  bysector = NULL, plotPar)
 
-chart.Ngroup.seri_bar(TSFR, N = 5, Nbin = "day", stat = c("mean",
-  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar,
-  bysector = FALSE)
+chart.Ngroup.seri_line(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
+  plotPar)
 
-chart.Ngroup.seri_line(TSFR, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
+chart.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
+  rtn_type = c("long-short", "long-univ"), plotPar)
 
-chart.Ngroup.spread(TSFR, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
+chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL, plotPar)
 
-chart.Ngroup.turnover(TSFR, N = 5, turnoverType = c("num", "wgt"),
-  group = 1, sectorNe = FALSE, sectorAttr = defaultSectorAttr(), plotPar)
-
-MF.chart.Ngroup.spread(mTSFR, N = 5, Nbin = "day", stat = c("mean",
-  "median"), sectorNe = FALSE, sectorAttr = defaultSectorAttr(),
+MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL, Nbin = "day",
   facet_by = c("none", "date", "fname"))
 
-MC.table.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
-  turnoverType = c("num", "wgt"), fee = 0, sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), backtestPar)
+MC.table.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, fee = 0,
+  backtestPar)
 
-MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
-  sectorNe = FALSE, sectorAttr = defaultSectorAttr(), ncol = 3, plotPar,
-  bysector = FALSE)
+MC.chart.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, bysector = NULL,
+  ncol = 3, plotPar)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
 
 \item{N}{the number of the groups the universe is cut to}
 
-\item{stat}{a character string,indicating the statistic of the return center of each group,could be "mean" or "median".}
-
 \item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
-
-\item{turnoverType}{a character of "num" or "wgt". If "wgt", consider the weight change due to the periodrtn when calculate the turnover.}
 
 \item{fee}{a numeric, giving the (one side) fee}
 
@@ -91,8 +74,6 @@ MC.chart.Ngroup.overall(TSFRs, N = 5, stat = c("mean", "median"),
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
-
-\item{turnoverType}{a character string,indicating the method to calculate the turnover,could be "num" or "wgt".}
 }
 \value{
 seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
@@ -100,8 +81,6 @@ seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
 seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
 
 table.Ngroup.overall return a matrix which giving the statistics of the rtn of each group, as well as the rtn of top-bottom spread.
-
-table.Ngroup.overall_bysector return a matrix which giving the annualized rtn of each group, by sectors.
 
 table.Ngroup.spread return a matrix which giving the statistics of the rtn of top-bottom spread in each year.
 
@@ -128,14 +107,18 @@ If param backtestPar and plotPar is not missing,then the related params will be 
 modelPar <- modelPar.default()
 TSFR <- Model.TSFR(modelPar)
 re <- seri.Ngroup.rtn(TSFR,5)
+re2 <- seri.Ngroup.rtn(TSFR,5,include_univ=TRUE)
 re <- seri.Ngroup.turnover(TSFR,5)
 re <- table.Ngroup.overall(TSFR,5,fee=0.002)
+re2 <- table.Ngroup.overall(TSFR, rtn_type = "long-univ")
 re <- table.Ngroup.spread(TSFR,5,fee=0.002)
+re2 <- table.Ngroup.spread(TSFR, rtn_type = "long-univ")
 chart.Ngroup.overall(TSFR,5)
 chart.Ngroup.seri_point(TSFR,5,"3 month")
 chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.spread(TSFR,5)
+chart.Ngroup.spread(TSFR, rtn_type = "long-univ")
 chart.Ngroup.turnover(TSFR,5)
 mTSFR <- getMultiFactor(TSR)
 MF.chart.Ngroup.spread(mTSFR)

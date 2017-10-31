@@ -6,17 +6,14 @@
 \title{backtestPar.Ngroup}
 \usage{
 backtestPar.Ngroup(backtestPar = backtestPar.default(), N = 5,
-  stat = c("mean", "median"), sectorNe = FALSE,
-  sectorAttr = defaultSectorAttr(), turnoverType = c("num", "wgt"))
+  sectorNe = NULL)
 
-setbacktestPar.Ngroup(backtestPar, N, stat, sectorNe, sectorAttr, turnoverType)
+setbacktestPar.Ngroup(backtestPar, N, sectorNe)
 }
 \arguments{
 \item{backtestPar}{a \bold{backtestPar} object}
 
 \item{N}{the number of the groups the universe is cut to}
-
-\item{stat}{a character string,indicating the statistic of the return center of each group,could be "mean" or "median".}
 }
 \value{
 a \bold{backtestPar} object
