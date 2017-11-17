@@ -4,12 +4,12 @@
 
 
 #' Factor descriptive statistics
-#' 
+#'
 #' draw factor's histogram and boxplot,and summarize factor's statistics value.
 #' @name factor_descriptive_statistics
 #' @rdname factor_descriptive_statistics
 #' @author Aming.Tao
-#' @examples 
+#' @examples
 #' mp <- modelPar.default()
 #' TSF <- Model.TSF(mp)
 #' chart.Fct_hist(TSF)
@@ -26,7 +26,7 @@
 #' re2 <- MF.table.Fct_descr(mTSF)
 #' @export
 chart.Fct_hist <- function(TSF,bins=NULL,ncol=NULL){
-  ggplot(TSF, aes(factorscore)) + 
+  ggplot(TSF, aes(factorscore)) +
     geom_histogram(colour = "black", fill = "white",bins = bins)+
     facet_wrap(~date,scales = "free",ncol = ncol)
 }
@@ -34,7 +34,7 @@ chart.Fct_hist <- function(TSF,bins=NULL,ncol=NULL){
 #' @rdname factor_descriptive_statistics
 #' @export
 chart.Fct_density <- function(TSF){
-  ggplot(TSF, aes(factorscore,color=as.factor(date))) + 
+  ggplot(TSF, aes(factorscore,color=as.factor(date))) +
     geom_density()
 }
 
@@ -44,7 +44,7 @@ chart.Fct_density <- function(TSF){
 chart.Fct_box <- function(TSF){
   #facet by dates
   TSF$date <- as.factor(TSF$date)
-  ggplot(TSF, aes(date,factorscore)) + 
+  ggplot(TSF, aes(date,factorscore)) +
     geom_boxplot()+
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 }
@@ -67,14 +67,14 @@ table.Fct_descr <- function(TSF){
 
 
 #' chart.FctRtn_scatter
-#' 
+#'
 #' @export
-#' @examples 
+#' @examples
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
 #' chart.FctRtn_scatter(TSFR,25)
 chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
-  ggplot(TSFR, aes(factorscore,periodrtn)) + 
+  ggplot(TSFR, aes(factorscore,periodrtn)) +
     geom_point()+
     geom_smooth()+
     facet_wrap(~date,scales = "free",ncol = ncol)
@@ -82,18 +82,18 @@ chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
 
 
 #' ANOVA ANALYSIS
-#' 
+#'
 #' @param TSF A TSF.
 #' @param sectorAttr_lists A list of sectorAttr, each sectorAttr is a list.
 #' @param sectorAttr_names A character vector of names, could be missing.
 #' @param significant_level The ceiling of the p_value. This argument will make sense only when the value_type is p_value. Only the value under this cutting line will be considered as passing the test.
-#' @param full_details Logical value. Whether return the details instead of summary. 
+#' @param full_details Logical value. Whether return the details instead of summary.
 #' @return If all the arguments are default, the result is a table with the ANOVA test pass ratio in each sector splitting method.
 #' @rdname table.Fct_anova
 #' @name table.Fct_anova
 #' @export
 #' @author Han.Qian
-#' @examples 
+#' @examples
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000300')
 #' TSF <- gf.NP_YOY(TS, src = "fin")
@@ -106,9 +106,9 @@ chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
 #' table.Fct_anova(TSF, sectorAttr_lists_2)
 #' table.Fct_anova(TSF, sectorAttr_lists_1, full_details = TRUE)
 #' table.Fct_anova(TSF, sectorAttr_lists_2, full_details = TRUE)
-table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names, 
+table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
                         significant_level = 0.05, full_details = FALSE){
-  
+
   # ARGUMENTS CHECKING
   sec_attr_length <- length(sectorAttr_lists)
   if(missing(sectorAttr_names)){
@@ -118,7 +118,7 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
       stop("The length of sectorAttr_names does not match the length of sectorAttr_lists")
     }
   }
-  
+
   # GET SECTORS
   for(i in 1:sec_attr_length){
     sectorAttr_ <- sectorAttr_lists[[i]]
@@ -126,8 +126,8 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
     TSF <- renameCol(TSF, "sector", sectorAttr_names[i])
   }
   TSF_core <- subset(TSF, select = c("date","stockID","factorscore", sectorAttr_names))
-  
-  # LOOP STARTS HERE  
+
+  # LOOP STARTS HERE
   datelist <- unique(TSF$date)
   final_re_p <- data.frame()
   final_re_f <- data.frame()
@@ -140,7 +140,7 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
       results2_ <- summary(results_)
       re_p_ <- results2_[[1]]$`Pr(>F)`[1]
       re_f_ <- results2_[[1]]$`F value`[1]
-      
+
       if(j == 1L){
         final_re_row_p <- data.frame("date" = date_, re_p_)
         final_re_row_p <- renameCol(final_re_row_p, "re_p_", sectorAttr_names[1])
@@ -148,7 +148,7 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
         final_re_row_f <- renameCol(final_re_row_f, "re_f_", sectorAttr_names[1])
       }else{
         final_re_row_p <- cbind(final_re_row_p, re_p_)
-        final_re_row_p <- renameCol(final_re_row_p, "re_p_", sectorAttr_names[j]) 
+        final_re_row_p <- renameCol(final_re_row_p, "re_p_", sectorAttr_names[j])
         final_re_row_f <- cbind(final_re_row_f, re_f_)
         final_re_row_f <- renameCol(final_re_row_f, "re_f_", sectorAttr_names[j])
       }
@@ -156,7 +156,7 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
     final_re_p <- rbind(final_re_p, final_re_row_p)
     final_re_f <- rbind(final_re_f, final_re_row_f)
   }
-  
+
   # ORGANIZE AND OUTPUT
   if(full_details){
     colnames(final_re_p) <- c("date", paste0("p_value_",colnames(final_re_p)[-1]))
@@ -173,8 +173,8 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
 
 #' @rdname table.Fct_anova
 #' @export
-chart.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names, 
-                        significant_level = 0.05, 
+chart.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
+                        significant_level = 0.05,
                         value_type = c("p_value","f_value")){
   value_type <- match.arg(value_type)
   dat <- table.Fct_anova(TSF, sectorAttr_lists, sectorAttr_names, significant_level, full_details = TRUE)
@@ -229,10 +229,10 @@ MF.chart.Fct_NA <- function(mTSF){
 MF.chart.Fct_hist <- function(mTSF){
   fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
-  ggplot(mTSF, aes(factorscore)) + 
+  ggplot(mTSF, aes(factorscore)) +
     geom_histogram(colour = "black", fill = "white")+
     facet_grid(date~fname,scales="free")
-  
+
 }
 
 
@@ -241,18 +241,18 @@ MF.chart.Fct_hist <- function(mTSF){
 MF.chart.Fct_density <- function(mTSF,ncol=NULL){
   fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
-  ggplot(mTSF, aes(factorscore,color=fname)) + 
+  ggplot(mTSF, aes(factorscore,color=fname)) +
     geom_density()+
     facet_wrap(~date,scales="free",ncol = ncol)
 }
 
 #' @rdname factor_descriptive_statistics
-#' 
+#'
 #' @export
 MF.chart.Fct_box <- function(mTSF,ncol=NULL){
   fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
-  ggplot(mTSF, aes(fname,factorscore)) + 
+  ggplot(mTSF, aes(fname,factorscore)) +
     geom_boxplot()+
     facet_wrap(~date,scales = "free",ncol = ncol)+
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
@@ -274,7 +274,7 @@ MF.table.Fct_descr <- function(mTSF){
                      skewness=PerformanceAnalytics::skewness(factorscore,na.rm = TRUE),
                      kurtosis=PerformanceAnalytics::kurtosis(factorscore,na.rm = TRUE))
   return(re)
-  
+
 }
 
 
@@ -299,23 +299,23 @@ MF.chart.Fct_corr <- function(mTSF,Nbin){
 
 
 #' @rdname factor_descriptive_statistics
-#' @examples 
+#' @examples
 #' MF.table.Fct_corr(mTSF)
 #' MF.table.Fct_corr(mTSF,Nbin='year')
 #' @export
 MF.table.Fct_corr <- function(mTSF,Nbin){
-  
+
   # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
   fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
-  
+
   cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman',use="pairwise.complete.obs"))
   cordata <- cordata %>% dplyr::do(data.frame(date=.$date,fname=fnames,.$cormat))
   cordata <- reshape2::melt(cordata,id=c('date','fname'),
                             variable.name='fnamecor',factorsAsStrings=FALSE)
   cordata <- transform(cordata,fname=as.character(fname),
                        fnamecor=as.character(fnamecor))
-  
+
   if(missing(Nbin)){
     cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
     cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
@@ -347,22 +347,22 @@ MF.table.Fct_corr <- function(mTSF,Nbin){
 
 #' backtest.IC
 #'
-#' backtesting the factor with some tables and charts using the 'IC' method. 
-#' 
+#' backtesting the factor with some tables and charts using the 'IC' method.
+#'
 #' When caculating the correlation,two methods "pearson" and "spearman" is used.
-#' 
+#'
 #' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 #' @rdname backtest.IC
 #' @name backtest.IC
 #' @aliases seri.IC
 #' @param TSF a \bold{TSF} object
 #' @param TSFR a \bold{TSFR} object
-#' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman". 
-#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar. 
-#' @return seri.IC return a xts object, which containing the IC seri 
+#' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman".
+#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
+#' @return seri.IC return a xts object, which containing the IC seri
 #' @author Ruifei.Yin
 #' @export
-#' @examples 
+#' @examples
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
 #' re <- seri.IC(TSFR)
@@ -388,7 +388,7 @@ seri.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
 #' @rdname backtest.IC
 #' @return seri.IC.decay return a xts object of 12 cols, which containing the decayed ICs seri
 #' @export
-#' @examples 
+#' @examples
 #' re <- seri.IC.decay(TSF)
 seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
                           prd_lists = list(w1=lubridate::weeks(1),
@@ -401,7 +401,7 @@ seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
   if(!missing(backtestPar)){
     stat <- getbacktestPar.IC(backtestPar,"stat")
   }
-  
+
   # --- get the period rtns
   TSFR <- getTSR_decay(TSF, prd_lists = prd_lists)
   # --- calculate the IC seri.
@@ -419,15 +419,15 @@ seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
   colnames(re) <- paste("IC_",prd_names,sep="")
   return(re)
 }
-  
-  
-  
-  
-  
+
+
+
+
+
 #' @rdname backtest.IC
 #' @return table.IC return a matirx of the statistical of the IC, containing rows: "IC.mean","IC.std","IC.IR","IC.t","IC.p","IC.hitRatio"
 #' @export
-#' @examples 
+#' @examples
 #' IC.table <- table.IC(TSFR)
 table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
   stat <- match.arg(stat)
@@ -439,20 +439,20 @@ table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
   IC.IR <- IC.mean/IC.std
   IC.Ttest.t <- t.test(seri)$statistic
   IC.Ttest.p <- t.test(seri)$p.value
-  IC.hit <- hitRatio(seri) 
+  IC.hit <- hitRatio(seri)
   re <- c(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu)
   re <- matrix(re,length(re),1)
   colnames(re) <- "IC"
   rownames(re) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   return(re)
-}  
+}
 
 #' @rdname backtest.IC
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.
 #' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
 #' @return chart.IC return a ggplot object of IC time series(with its 12 months MA)
 #' @export
-#' @examples 
+#' @examples
 #' IC.chart <- chart.IC(TSFR,"3 month")
 chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
   stat <- match.arg(stat)
@@ -461,16 +461,16 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
     stat <- getplotPar.IC(plotPar,"stat")
   }
   # ---- IC series
-  seri <- seri.IC(TSFR=TSFR,stat=stat)    
+  seri <- seri.IC(TSFR=TSFR,stat=stat)
   by <- cut.Date2(zoo::index(seri),Nbin)
   seri.aggr <- aggregate(seri,as.Date(by),mean,na.rm=TRUE)
   colnames(seri.aggr) <- "IC"
   seri.df <- data.frame(time=time(seri.aggr),zoo::coredata(seri.aggr))
-  seri.melt <- reshape2::melt(seri.df,id.vars="time")  
+  seri.melt <- reshape2::melt(seri.df,id.vars="time")
   re <- ggplot() +
     geom_bar(data=seri.melt[,-2], aes(x=time, y=value),position="dodge",stat="identity")
   # ---- IC 12 months MA
-  wid <- 365/periodicity_Ndays(seri)  
+  wid <- 365/periodicity_Ndays(seri)
   if(wid >= NROW(seri)){
     warning("IC seri is shorter than 12 months, could not plot the 12 months MA!")
     re <- re + ggtitle("IC series")
@@ -481,7 +481,7 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
     colnames(ICma.aggr) <- "IC.MA"
     ICma.df <- data.frame(time=time(ICma.aggr),zoo::coredata(ICma.aggr))
     ICma.melt <- reshape2::melt(ICma.df,id.vars="time")
-    re <- re + 
+    re <- re +
       geom_line(data=ICma.melt[,-2],aes(x=time,y=value),size=1) +
       ggtitle("IC series (with its 12 months MA)")
   }
@@ -491,7 +491,7 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
 #' @rdname backtest.IC
 #' @return chart.IC.decay return a ggplot object of decayed ICs bar chart. (You can also use \code{attr(re,"table")} to get the result table.)
 #' @export
-#' @examples 
+#' @examples
 #' re <- chart.IC.decay(TSF)
 #' attr(re,"table") # the result table
 chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
@@ -520,7 +520,7 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
   }
   re_table <- t(cbind(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu))
   rownames(re_table) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
-  
+
   if(TRUE){ # -- chart.IC.decay
     dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
     re <- ggplot(data = dat)+
@@ -544,15 +544,10 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
 #' MF.chart.IC(mTSFR)
 MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
                         facet_by=c("date","fname")){
-  fnames <- guess_factorNames(mTSFR,silence = TRUE)
-  TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
-    as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
-                        factorscore=x,periodrtn=mTSFR[,'periodrtn']))
-  },mTSFR=mTSFR)
-  
   stat <- match.arg(stat)
   facet_by <- match.arg(facet_by)
-  
+
+  TSFRs <- mTSF2TSFs(mTSFR)
   IC <- plyr::llply(TSFRs,seri.IC,stat=stat)
   IC <- lapply(IC,function(ts){
     df <- data.frame(date=zoo::index(ts),IC=zoo::coredata(ts))
@@ -562,7 +557,7 @@ MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
     return(df)
   })
   IC <- dplyr::bind_rows(IC,.id = 'fname')
-  
+
   if(facet_by=='date'){
     ggplot(IC,aes(fname, IC,fill=fname)) +
       geom_bar(stat = "identity") + facet_wrap(~date)
@@ -577,12 +572,15 @@ MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
       ICma <- zoo::rollapply(zoo::as.zoo(seri),width=wid,FUN=mean,na.rm=TRUE,align='right')
       by <- cut.Date2(zoo::index(ICma),Nbin)
       ICma.aggr <- aggregate(ICma,as.Date(by),tail,1)
-      ICma.aggr <- melt.ts(ICma.aggr)
-      colnames(ICma.aggr) <- c("date","fname","IC.MA")
-      
+      fnames_ <- colnames(ICma.aggr)
+      ICma.aggr <- data.frame(date=zoo::index(ICma.aggr),zoo::coredata(ICma.aggr))
+      ICma.aggr <- tibble::as.tibble(ICma.aggr)
+      colnames(ICma.aggr) <- c('date',fnames_)
+      ICma.aggr <- tidyr::gather(ICma.aggr,'fname','IC_MA',-date)
+
       ggplot(IC,aes(date, IC)) +
         geom_bar(stat = "identity")+
-        geom_line(data=ICma.aggr,aes(x=date,y=IC.MA),size=1)+
+        geom_line(data=ICma.aggr,aes(x=date,y=IC_MA),size=1)+
         ggtitle("IC series (with its 12 months MA)")+
         facet_wrap(~fname)
     }
@@ -597,7 +595,7 @@ MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
 #' @return  MC.chart.IC.corr return a correlation chart of ICs of each \code{TSFR}.
 #' @rdname backtest.IC
 #' @export
-#' @examples 
+#' @examples
 #' mp = modelPar.default()
 #' factorIDs <- c("F000001","F000002","F000005")
 #' FactorLists <- buildFactorLists_lcfs(factorIDs)
@@ -627,7 +625,7 @@ MC.table.IC <- function(TSFRs,stat=c("pearson","spearman"),backtestPar){
   stat <- match.arg(stat)
   if(!missing(backtestPar)){
     stat <- getbacktestPar.IC(backtestPar,"stat")
-  }  
+  }
   IC.table <- plyr::laply(TSFRs,table.IC, stat=stat)
   rownames(IC.table) <- names(TSFRs)
   return(IC.table)
@@ -637,7 +635,7 @@ MC.table.IC <- function(TSFRs,stat=c("pearson","spearman"),backtestPar){
 #' @param ncol a integer, specificate the number of cols of the multi-charts.
 #' @rdname backtest.IC
 #' @export
-#' @examples 
+#' @examples
 #' MC.chart.IC(TSFRs)
 MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, plotPar){
   check.name_exist(TSFRs)
@@ -649,7 +647,7 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
   }
   NMs <- names(TSFRs)
   IC.charts <- mapply(function(x,nm){
-    chart.IC(x,Nbin=Nbin,stat=stat)+  
+    chart.IC(x,Nbin=Nbin,stat=stat)+
       ggtitle(nm) +
       theme(axis.title.x= element_blank(),axis.title.y= element_blank())
   },TSFRs,NMs,SIMPLIFY = FALSE )
@@ -663,7 +661,7 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
 
 #' @rdname backtest.IC
 #' @export
-#' @examples 
+#' @examples
 #' MC.chart.IC.decay(TSFRs)
 MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar){
   check.name_exist(TSFRs)
@@ -692,9 +690,9 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
 
 #' backtest.Ngroup
 #'
-#' backtesting the factor with some tables and charts using the 'Ngroup' method. 
-#'   
-#' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.  
+#' backtesting the factor with some tables and charts using the 'Ngroup' method.
+#'
+#' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 #' @rdname backtest.Ngroup
 #' @name backtest.Ngroup
 #' @aliases seri.Ngroup.rtn
@@ -706,7 +704,7 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
 #' @return  seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
 #' @author Ruifei.Yin
 #' @export
-#' @examples 
+#' @examples
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
 #' re <- seri.Ngroup.rtn(TSFR,5)
@@ -727,16 +725,32 @@ seri.Ngroup.rtn <- function(TSFR,N=5,
   
   # ADD RANK AND GROUP
   if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
+    TSFR2 <- data.table::data.table(TSFR,key=c("date_end"))
+    TSFR2 <- TSFR2[,rank:=rank(-factorscore), by="date_end"]
+    TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by="date_end"]
+    check_stat_ <- (table(TSFR2$group)) > nrow(TSFR2)/N*1.5
+    if(any(check_stat_)){ # abnormal grouping 
+      warning("There are ties in middle groups.")
+      TSFR2 <- data.table::data.table(TSFR, key = "date_end")
+      TSFR2 <- TSFR2[, .(stockID, factorscore, periodrtn, rank = rank(-factorscore, ties.method = "random")), by = "date_end"]
+      TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by="date_end"]
+    }
+    TSFR <- TSFR2
   } else {
     TSFR <- renameCol(TSFR,"date_end","date")
     TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
     TSFR <- renameCol(TSFR,"date","date_end")
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
+    TSFR2 <- data.table::data.table(TSFR,key=c("date_end","sector"))
+    TSFR2 <- TSFR2[,rank:=rank(-factorscore), by=c("date_end","sector")]
+    TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
+    check_stat_ <- (table(TSFR2$group)) > nrow(TSFR2)/N*1.5
+    if(any(check_stat_)){ # abnormal grouping 
+      warning("There are ties in middle groups.")
+      TSFR2 <- data.table::data.table(TSFR,key=c("date_end","sector"))
+      TSFR2 <- TSFR2[,.(stockID, factorscore, periodrtn, rank = rank(-factorscore, ties.method = "random")), by=c("date_end","sector")]
+      TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
+    }
+    TSFR <- TSFR2
     TSFR$sector <- NULL
   }
   
@@ -797,15 +811,31 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
   check.TSFR(TSFR)
   # TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
   # ---- add the rank and groups of the factorscores 
-  if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date"]    
+  if(is.null(sectorNe)){ 
+    TSFR2 <- data.table::data.table(TSFR,key=c("date"))
+    TSFR2 <- TSFR2[,rank:=rank(-factorscore), by="date"]
+    TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by="date"]
+    check_stat_ <- (table(TSFR2$group)) > (nrow(TSFR)/N*1.5)
+    if(any(check_stat_)){ # abnormal grouping
+      warning("There are ties in middle groups.")
+      TSFR2 <- data.table::data.table(TSFR,key=c("date"))
+      TSFR2 <- TSFR2[,.(stockID, factorscore, date_end, periodrtn, rank = rank(-factorscore, ties.method = "random")), by="date"]
+      TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by="date"]
+    }
+    TSFR <- TSFR2
   } else {
     TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
-    TSFR <- data.table::data.table(TSFR,key=c("date","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]    
+    TSFR2 <- data.table::data.table(TSFR,key=c("date","sector"))
+    TSFR2 <- TSFR2[,rank:=rank(-factorscore), by=c("date","sector")]
+    TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
+    check_stat_ <- (table(TSFR2$group)) > (nrow(TSFR)/N*1.5)
+    if(any(check_stat_)){ # abnormal grouping
+      warning("There are ties in middle groups.")
+      TSFR2 <- data.table::data.table(TSFR,key=c("date","sector"))
+      TSFR2 <- TSFR2[,.(stockID, factorscore, date_end, periodrtn, rank = rank(-factorscore, ties.method = "random")), by=c("date","sector")]
+      TSFR2 <- TSFR2[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
+    }
+    TSFR <- TSFR2
   }
   # ---- turnover seri of each group
   for(i in 1:N){
@@ -829,8 +859,16 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
   return(re)
 }
 
+
+
+
+
+
+
+
 # inner function
 seri.Ngroup.size <- function(TSFR,N=5,
+                             include_univ=FALSE,
                              sectorNe=NULL,
                              backtestPar){
   # ARGUMENTS CHECKING
@@ -839,27 +877,27 @@ seri.Ngroup.size <- function(TSFR,N=5,
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
   }
   check.TSFR(TSFR)
-  TSFR <- TSFR[,c("date","date_end","stockID")]
+  TSFR <- TSFR[,c("date","date_end","stockID","factorscore")]
   TSFR <- getTech(TSFR, variables = "mkt_cap")
   
   # ADD RANK OR GROUP
   if(is.null(sectorNe)){
     TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-mkt_cap), by="date_end"]
+    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
     TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
   } else {
     TSFR <- renameCol(TSFR,"date_end","date")
     TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
     TSFR <- renameCol(TSFR,"date","date_end")
     TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-mkt_cap), by=c("date_end","sector")]
+    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
     TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
   }
   
   # ORGANIZING 
   data.table::setkeyv(TSFR,c("date_end","group"))
-  size.df <- TSFR[,list(mean.size=mean(mkt_cap)), by=c("date_end","group")]
-  univ_size <- TSFR[,.(group = N+1, mean.size = mean(mkt_cap)), by = "date_end"]
+  size.df <- TSFR[,list(mean.size=mean(mkt_cap, na.rm = TRUE)), by=c("date_end","group")]
+  univ_size <- TSFR[,.(group = N+1, mean.size = mean(mkt_cap, na.rm = TRUE)), by = "date_end"]
   
   size.df <- rbind(size.df, univ_size)
   size.df <- as.data.frame(size.df)
@@ -867,13 +905,13 @@ seri.Ngroup.size <- function(TSFR,N=5,
   size.xts <- xts::as.xts(size.mat,as.Date(rownames(size.mat),tz=""))
   
   colnames(size.xts) <- c(paste("Q",1:N,sep=""),"univ")
-  result <- size.xts
+  if(include_univ){
+    result <- size.xts/10000
+  } else {
+    result <- size.xts[,1:N]/10000
+  }
   return(result)
 }
-
-
-
-
 
 #' @rdname backtest.Ngroup
 #' @param fee a numeric, giving the (one side) fee
@@ -959,9 +997,10 @@ table.Ngroup.overall <- function(TSFR,N=5,
   colnames(group_beta) <- colnames(re)
   
   # size
-  sizeseri <- seri.Ngroup.size(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR,N=N,include_univ = TRUE,sectorNe=sectorNe,backtestPar=backtestPar)
   group_cap <- t(colMeans(sizeseri))
-  group_cap <- cbind(NA, group_cap)
+  spread_cap <- if(rtn_type=="long-short") group_cap[1]-group_cap[N] else group_cap[1]-group_cap[N+1]
+  group_cap <- cbind(spread_cap, group_cap)
   colnames(group_cap)[1] <- spreadNM
   row.names(group_cap) <- "Size"
   
@@ -994,11 +1033,14 @@ table.Ngroup.spread <- function(TSFR,N=5,
   
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,include_univ = TRUE, sectorNe=sectorNe, bysector = NULL, backtestPar=backtestPar)
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR, N = N, include_univ = TRUE, sectorNe = sectorNe, backtestPar = backtestPar)
   
   if(rtn_type == "long-short"){
-    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]    
+    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]  
+    spreadsize <- sizeseri[,1]-sizeseri[,ncol(sizeseri)-1]
   }else if(rtn_type == "long-univ"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)]
+    spreadsize <- sizeseri[,1]-sizeseri[,ncol(sizeseri)]
   }
   
   yearlist <- as.character(unique(lubridate::year(TSFR$date)))
@@ -1020,9 +1062,11 @@ table.Ngroup.spread <- function(TSFR,N=5,
       # beta
       fit_ <- lm(spreadseri[yy]~rtnseri[yy,"univ"])
       beta_ <- t(fit_$coefficients[[2]])
+      # size
+      size_ <- mean(spreadsize[yy])
       #
-      tsub <- rbind(rtnsummary,turnover.annu,rtn.feecut,beta_)
-      rownames(tsub)[(nrow(tsub)-2):(nrow(tsub))] <- c("Annualized Turnover","Annualized Return (fee cut)","Beta")
+      tsub <- rbind(rtnsummary,turnover.annu,rtn.feecut,beta_,size_)
+      rownames(tsub)[(nrow(tsub)-3):(nrow(tsub))] <- c("Annualized Turnover","Annualized Return (fee cut)","Beta","Size Diff")
       colnames(tsub) <- yy
     }
     if (ii==1L) {
@@ -1033,11 +1077,14 @@ table.Ngroup.spread <- function(TSFR,N=5,
   }
   return(re)
 }
+
+
+
 #' @rdname backtest.Ngroup
 #' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
 #' @return chart.Ngroup.overall return a ggplot object of "Annualized return of each group"
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.overall(TSFR,5)
 chart.Ngroup.overall <- function(TSFR,N=5,
                                  sectorNe=NULL,
@@ -1046,7 +1093,7 @@ chart.Ngroup.overall <- function(TSFR,N=5,
                                  ){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
-  }  
+  }
   if(is.null(bysector)){
     tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,sectorNe=sectorNe,bysector=NULL)
     rtn.annu <- tmptable[1,2:(N+1)]
@@ -1069,7 +1116,7 @@ chart.Ngroup.overall <- function(TSFR,N=5,
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the "date.grp".It could also be character of interval specification,See \code{\link{cut.Date}} for detail. the default value is "day",which means no cutting, The value of every date are ploted.
 #' @return chart.Ngroup.seri_point return a ggplot object of "return time series of the groups" with geom_point
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.seri_point(TSFR,5,"3 month")
 chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",
                                     sectorNe=NULL,
@@ -1093,7 +1140,7 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.seri_bar return a ggplot object of "return time series of the groups" with geom_bar
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
                                   sectorNe=NULL,
@@ -1103,7 +1150,7 @@ chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }  
+  }
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,sectorNe=sectorNe,bysector = bysector)
   if(is.null(bysector)){
     rtn_aggr <- aggr.rtn(rtnseri,freq=Nbin)
@@ -1132,7 +1179,7 @@ chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.seri_line return a ggplot object of "Cumulated return of each group" with geom_line
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.seri_line <- function(TSFR,N=5,
                                    include_univ=TRUE,
@@ -1140,7 +1187,7 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,
                                    plotPar){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
-  }  
+  }
   rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,include_univ=include_univ,sectorNe=sectorNe)
   indexseri <- WealthIndex(rtnseri)
   re <- ggplot.ts.line(indexseri,main="Wealth index of each group",size=1)
@@ -1157,14 +1204,14 @@ chart.Ngroup.box <- function(TSFR,N=5,Nbin="day",
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }  
-  
-  
-  
-  
+  }
+
+
+
+
   check.TSFR(TSFR)
   TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
-  # ---- add the rank and groups of the factorscores 
+  # ---- add the rank and groups of the factorscores
   if(is.null(sectorNe)){
     TSFR <- data.table::data.table(TSFR,key=c("date_end"))
     TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
@@ -1175,16 +1222,16 @@ chart.Ngroup.box <- function(TSFR,N=5,Nbin="day",
     TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
     TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
   }
-  
+
 
   rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
   rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
-  colnames(rtn.xts) <- paste("Q",1:N,sep="")   
+  colnames(rtn.xts) <- paste("Q",1:N,sep="")
   result <- rtn.xts
-  
-  
-  
-  
+
+
+
+
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,sectorNe=sectorNe)
   rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
@@ -1196,20 +1243,20 @@ chart.Ngroup.box <- function(TSFR,N=5,Nbin="day",
     facet_wrap(~ time, scales="free_y") +
     ggtitle("Return of each group")+
     scale_y_continuous(labels=scales::percent)
-  
-  
-  
+
+
+
   p <- ggplot(data=TSFR,mapping = aes(x=factor(date),y=periodrtn, fill=factor(group)))+geom_boxplot()
   return(re)
-  
-  
+
+
 }
 
 
 #' @rdname backtest.Ngroup
-#' @return chart.Ngroup.spread return and print a recordedplot object of "Performance Summary of top-bottom spread" . 
+#' @return chart.Ngroup.spread return and print a recordedplot object of "Performance Summary of top-bottom spread" .
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.spread(TSFR,5)
 #' chart.Ngroup.spread(TSFR, rtn_type = "long-univ")
 chart.Ngroup.spread <- function(TSFR,N=5,
@@ -1220,7 +1267,7 @@ chart.Ngroup.spread <- function(TSFR,N=5,
   rtn_type <- match.arg(rtn_type)
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
-  }  
+  }
   rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,sectorNe=sectorNe,include_univ = TRUE)
   if(rtn_type == "long-short"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
@@ -1236,14 +1283,14 @@ chart.Ngroup.spread <- function(TSFR,N=5,
 #' @param group a integer, indicating the group whose turnover be plotted
 #' @return chart.Ngroup.turnover return a ggplot object of "Turnover Rate of each rebalancing point"
 #' @export
-#' @examples 
+#' @examples
 #' chart.Ngroup.turnover(TSFR,5)
 chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
                                   sectorNe=NULL,
                                   plotPar){
   if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")  
-  }  
+    N <- getplotPar.Ngroup(plotPar,"N")
+  }
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe)
   turnoverseri <- turnoverseri[,group,drop=FALSE]
   re <- ggplot.ts.bar(turnoverseri,main=paste("Turnover rate of group",group)) +
@@ -1258,21 +1305,21 @@ chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
 #' @param mTSFR a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.
 #' @rdname backtest.Ngroup
 #' @export
-#' @examples 
+#' @examples
 #' mTSFR <- getMultiFactor(TSR)
 #' MF.chart.Ngroup.spread(mTSFR)
 MF.chart.Ngroup.spread <- function(mTSFR,N=5,
                                    sectorNe=NULL,
                                    Nbin="day",
                                    facet_by=c("none","date","fname")){
-  fnames <- guess_factorNames(mTSFR)
+  fnames <- guess_factorNames(mTSFR,silence = TRUE)
   TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
     as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
                         factorscore=x,periodrtn=mTSFR[,'periodrtn']))
   },mTSFR=mTSFR)
-  
+
   facet_by <- match.arg(facet_by)
-  
+
   rtnseri <- plyr::llply(TSFRs,seri.Ngroup.rtn,N=N,sectorNe=sectorNe)
   rtnseri <- lapply(rtnseri,function(ts){
     rtn <- ts[,1]-ts[,ncol(ts)]
@@ -1281,17 +1328,17 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
     colnames(spread) <- c('date','rtn','wealth')
     return(spread)})
   rtnseri <- dplyr::bind_rows(rtnseri,.id = 'fname')
-  
+
   if(facet_by=='none'){
     ggplot(rtnseri, aes(x=date, y=wealth, color=fname)) +
       geom_line(size=1) +
       coord_trans(y="log")
   }else if(facet_by=='date'){
-    
+
     rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
     rtnseri <- rtnseri %>% dplyr::group_by(fname,date) %>% dplyr::summarise(rtn=prod(1+rtn)-1) %>%
       dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
-    
+
     ggplot(rtnseri, aes(x=fname, y=rtn,fill=fname)) +
       geom_bar(stat = 'identity')+facet_wrap(~date)
   }else if(facet_by=='fname'){
@@ -1310,7 +1357,7 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
 #' @param TSFRs a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.
 #' @return  MC.table.Ngroup.overall return a matrix, which giving the statistics of the top-bottom spread of each \code{TSFR}.
 #' @export
-#' @examples 
+#' @examples
 #' mp = modelPar.default()
 #' factorIDs <- c("F000001","F000002","F000005")
 #' FactorLists <- buildFactorLists_lcfs(factorIDs)
@@ -1327,7 +1374,7 @@ MC.table.Ngroup.overall <- function(TSFRs,N=5,
     N <- getbacktestPar.Ngroup(backtestPar,"N")
     fee <- getbacktestPar.fee(backtestPar,"secu")
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-  } 
+  }
   overall.table <- plyr::laply(TSFRs,function(x) {table.Ngroup.overall(TSFR=x,N=N,fee=fee,sectorNe=sectorNe)[ , 1, drop=FALSE]})
   NMs <- names(TSFRs)
   rownames(overall.table) <- NMs
@@ -1338,7 +1385,7 @@ MC.table.Ngroup.overall <- function(TSFRs,N=5,
 #' @param ncol a integer, specificate the number of cols of the multi-charts.
 #' @rdname backtest.Ngroup
 #' @export
-#' @examples 
+#' @examples
 #' MC.chart.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall <- function(TSFRs,N=5,
                                     sectorNe=NULL,
@@ -1350,10 +1397,10 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
     N <- getplotPar.Ngroup(plotPar,"N")
     sectorNe <- getplotPar.Ngroup(plotPar,"sectorNe")
     ncol <- getplotPar.MC(plotPar,"ncol.Ngroup")
-  } 
+  }
   NMs <- names(TSFRs)
   Ngroup.charts <- mapply(function(x,nm){
-    chart.Ngroup.overall(x,N=N,sectorNe=sectorNe,bysector=bysector)+  
+    chart.Ngroup.overall(x,N=N,sectorNe=sectorNe,bysector=bysector)+
       ggtitle(nm) +
       theme(axis.title.x= element_blank(),axis.title.y= element_blank())
   },TSFRs,NMs,SIMPLIFY = FALSE )
@@ -1377,11 +1424,11 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 backtest.reg <- function(TSFR){
-  
+
 }
 
 plot.reg <- function(TSFR){
-  
+
 }
 
 
@@ -1393,9 +1440,9 @@ plot.reg <- function(TSFR){
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 #' backtest.longshort
-#' 
+#'
 #' backtesting the factor with some tables and charts using the 'long-short(hedging)' method.
-#' 
+#'
 #' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 #' @rdname backtest.longshort
 #' @name backtest.longshort
@@ -1425,21 +1472,21 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
     hitFreq <- getbacktestPar.longshort(backtestPar,"hitFreq")
   }
   rtn <- rtn.LSH
-  # ---- rtn.aggr: aggreated return series(of long,short and hedge) by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn') 
-  freq <- c("day","week","month","quarter","year")  
+  # ---- rtn.aggr: aggreated return series(of long,short and hedge) by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn')
+  freq <- c("day","week","month","quarter","year")
   rtn.aggr <- lapply(freq,function(freq){aggr.rtn(rtn,freq)})
   names(rtn.aggr) <- paste(freq,"ly",sep="")
-  
+
   # ---- hedge.stats: main statisticals of the hedged rtn,by different freq
   hedge.stats <- t(plyr::laply(rtn.aggr,function(x){rtn.stats(x[,"hedge",drop=FALSE])}))
-  colnames(hedge.stats) <- paste(freq,"ly",sep="")  
-  
+  colnames(hedge.stats) <- paste(freq,"ly",sep="")
+
   # ---- period.stats: table showing the yearly,all-span and annualized return
   period.stats <- rtn.periods(rtn)
-  
+
   # ---- DD.stats:table showing statistics for the worst drawdowns.
-  DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn$hedge)  
-  
+  DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn$hedge)
+
   # ---- summary:summary of the all over rtn
   summary <- rtn.summary(rtn,hitFreq=hitFreq)
   if(!is.null(attr(rtn,"turnover_L"))){
@@ -1453,7 +1500,7 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
     rownames(turnover) <- "Annualized Turnover"
     summary <- rbind(summary,turnover)
   }
-  
+
   # ---- summary.yearly:summary of the yearly 'hedged' rtn
   summary.yearly <- t(xts::apply.yearly(rtn$hedge,rtn.summary,hitFreq=hitFreq))
   colnames(summary.yearly) <- lubridate::year(colnames(summary.yearly))
@@ -1466,19 +1513,19 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
     colnames(turnover.yearly) <- lubridate::year(colnames(turnover.yearly))
     summary.yearly <- plyr::rbind.fill.matrix(summary.yearly,turnover.yearly)
   }
-  rownames(summary.yearly) <- rownames(summary)  
+  rownames(summary.yearly) <- rownames(summary)
   return(list(summary=summary,
               summary.yearly=summary.yearly,
               period.stats=period.stats,
-              hedge.stats=hedge.stats,              
-              DD.stats=DD.stats))  
+              hedge.stats=hedge.stats,
+              DD.stats=DD.stats))
 }
 
 
 
 
 #' tables.PB
-#' 
+#'
 #' @param PB a PB object or a one colume rtn series.
 #' @param hitFreq
 #' @return a list containing some tables which giving the summary result of the PB.
@@ -1486,21 +1533,21 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
 #' @export
 tables.PB <- function(PB, hitFreq="month"){
   rtn <- PB
-  # ---- rtn.aggr: aggreated return series by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn') 
-  freq <- c("day","week","month","quarter","year")  
+  # ---- rtn.aggr: aggreated return series by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn')
+  freq <- c("day","week","month","quarter","year")
   rtn.aggr <- lapply(freq,function(freq){aggr.rtn(rtn,freq)})
   names(rtn.aggr) <- paste(freq,"ly",sep="")
-  
+
   # ---- rtn.stats: main statisticals of the rtn,by different freq
   rtn.stats <- t(plyr::laply(rtn.aggr,function(x){rtn.stats(x)}))
-  colnames(rtn.stats) <- paste(freq,"ly",sep="")  
-  
+  colnames(rtn.stats) <- paste(freq,"ly",sep="")
+
   # ---- period.stats: table showing the yearly,all-span and annualized return
   period.stats <- rtn.periods(rtn)
-  
+
   # ---- DD.stats:table showing statistics for the worst drawdowns.
-  DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn)  
-  
+  DD.stats <- PerformanceAnalytics::table.Drawdowns(rtn)
+
   # ---- summary:summary of the all over rtn
   summary <- rtn.summary(rtn,hitFreq=hitFreq)
   if(!is.null(attr(rtn,"turnover"))){
@@ -1509,7 +1556,7 @@ tables.PB <- function(PB, hitFreq="month"){
     rownames(turnover) <- "Annualized Turnover"
     summary <- rbind(summary,turnover)
   }
-  
+
   # ---- summary.yearly:summary of the yearly rtn
   summary.yearly <- t(xts::apply.yearly(rtn,rtn.summary,hitFreq=hitFreq))
   colnames(summary.yearly) <- lubridate::year(colnames(summary.yearly))
@@ -1518,12 +1565,12 @@ tables.PB <- function(PB, hitFreq="month"){
     colnames(turnover.yearly) <- lubridate::year(colnames(turnover.yearly))
     summary.yearly <- plyr::rbind.fill.matrix(summary.yearly,turnover.yearly)
   }
-  rownames(summary.yearly) <- rownames(summary)  
+  rownames(summary.yearly) <- rownames(summary)
   return(list(summary=summary,
               summary.yearly=summary.yearly,
               period.stats=period.stats,
-              rtn.stats=rtn.stats,              
-              DD.stats=DD.stats))  
+              rtn.stats=rtn.stats,
+              DD.stats=DD.stats))
 }
 
 
@@ -1534,7 +1581,7 @@ tables.PB <- function(PB, hitFreq="month"){
 #' @export
 #' @examples
 #' chart.longshort.summary(rtn.LSH)
-chart.longshort.summary <- function(rtn.LSH,bar.freq="month",plotPar){  
+chart.longshort.summary <- function(rtn.LSH,bar.freq="month",plotPar){
   if(!missing(plotPar)){
     bar.freq <- getplotPar.longshort(plotPar,"bar.freq")
   }
@@ -1557,10 +1604,10 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 
 
 # table.turnover <- function(PB){
-#   
+#
 # }
 # chart.turnover <- function(PB){
-#   
+#
 # }
 
 
@@ -1575,8 +1622,8 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 
 
 #' MC.wgt.CAPM
-#' 
-#' compute the wgt vector of multi-factors by CAPM model. 
+#'
+#' compute the wgt vector of multi-factors by CAPM model.
 #' @param TSFRs a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.
 #' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman".
 #' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
@@ -1596,11 +1643,11 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' TSR <- Model.TSR(mp)
 #' TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 #' MC.wgt.CAPM(TSFRs)
-#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
-#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10) 
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')
+#' MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)
 #' -----------------------------------------------------------------------------
-#' MC.wgt.CAPM(reg_results=reg_results) 
-#' MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results) 
+#' MC.wgt.CAPM(reg_results=reg_results)
+#' MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results)
 MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
                          wgtmin=0, wgtmax=0.5,
                          targetType=c('sharpe','return','risk','balance'),
@@ -1613,7 +1660,7 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     targetType <- match.arg(targetType)
     if(!missing(backtestPar)){
       stat <- getbacktestPar.IC(backtestPar,"stat")
-    } 
+    }
     IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
     rownames(IC.seris) <- names(TSFRs)
     IC.seris <- t(IC.seris)
@@ -1623,7 +1670,7 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     rtn.seris <- reshape2::dcast(rtn.seris,date~fname,value.var = 'frtn')
     seris <- xts::xts(rtn.seris[,-1],order.by = rtn.seris[,1])
   }
-  
+
   require(ROI)
   factor.names <- colnames(seris)
   pspec <- PortfolioAnalytics::portfolio.spec(assets=factor.names)
@@ -1644,14 +1691,14 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="StdDev")
     opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
   }
-  
+
   return(opt_ps$weights)
 }
 
 
 
 #' summary of factor-refine-methods comparing
-#' 
+#'
 #' @param rawTSF The TSF which contains the raw factorscore.
 #' @param refinePar_lists A list of (refinePar)s, each refinePar is a list built by refinePar_default.
 #' @param refinePar_names The character vector of names, could be missing.
@@ -1659,7 +1706,7 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
 #' @param group_N The argument passed into Ngroup.overall, etc.
 #' @author Han.Qian
 #' @export
-#' @examples 
+#' @examples
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000300')
 #' refinePar_lists <- list(refinePar_default(type = "none"),
@@ -1669,14 +1716,14 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
 #' rawTSF <- gf.NP_YOY(TS, src = "fin")
 #' summary.factor_refine(rawTSF, refinePar_lists)
 summary.factor_refine <- function(rawTSF, refinePar_lists, refinePar_names, result_type = c("chart","table","data"), group_N = 5){
-  
+
   # ARGUMENTS CHECKING
   result_type <- match.arg(result_type)
   # ORGANIZE TSFs
   core_mTSF <- factor_refine_MF(TSF = rawTSF,refinePar_lists = refinePar_lists,refinePar_names = refinePar_names)
   # GET RETURN
   core_mTSFR <- getTSR(core_mTSF)
-  
+
   ### OUTPUT
   # CHART/TABLE
   if(result_type == "chart"){

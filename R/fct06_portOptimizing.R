@@ -13,7 +13,7 @@
 #' @rdname opt_constrain
 #' @examples 
 #' constr <- constr_default()
-constr_default <- function(position=c(1,1), box_each=c(0,1)){
+constr_default <- function(position=c(1,1), box_each=c(0,0.1)){
   constr <- list()
   emptydf <- data.frame(ID = character(0), 
                         min = numeric(0), 
@@ -185,7 +185,7 @@ addConstr_turnover <- function(constr,turnover_target=0.5,method=c('rmosek','mat
 #' @rdname opt_constrain
 #' @examples
 #' addConstr_trackingerror(constr,trackingerror_ann=0.08)
-addConstr_trackingerror <- function(constr,trackingerror_ann=0.08,method=c('matlab')){
+addConstr_trackingerror <- function(constr,trackingerror_ann=0.05,method=c('rmosek','matlab')){
   method <- match.arg(method)
   cons <- data.frame(ID="trackingerror",target=trackingerror_ann,method=method,stringsAsFactors = FALSE)
   constr$trackingerror <- rbind(constr$trackingerror,cons)
@@ -292,7 +292,7 @@ addObj_return <- function(obj,method=c('mean','event')){
 }
 #' @rdname opt_object
 #' @export
-addObj_risk <- function(obj,method=c('rmosek','solve.QP'),risk_aversion=1){
+addObj_risk <- function(obj,method=c('rmosek','solve.QP'),risk_aversion=4){
   method <- match.arg(method)
   obj$risk <- data.frame(method = method,
                          risk_aversion=risk_aversion,
@@ -574,16 +574,16 @@ port_wgt_roundto <- function(port,target=1,digits=5){
 # ---  port optimizing  ------
 #' getPort_opt
 #' 
-#' @param TSF
-#' @param fRtn
-#' @param fCov
+#' @param TSF a \bold{TSF} object,may contains multiple factors.
+#' @param fRtn a data frame of factor return,see \code{\link{getfRtn}} for detail.
+#' @param fCov a data frame of factor covariance,see \code{\link{getfCov}} for detail.
 #' @param exp_rtn
-#' @param bmk
-#' @param constr
-#' @param obj
-#' @param init_port 
-#' @param delta 
-#' @return a port
+#' @param bmk benchmark indexID code.
+#' @param constr constrain lists,see \code{\link{opt_constrain}}.
+#' @param obj object lists,see \code{\link{opt_object}}.
+#' @param init_port if constrain includes turnover,then init_port is required.
+#' @param delta if constrain includes tracking error,then delta is required.
+#' @return a optimized port
 #' @export
 #' @examples 
 #' TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
@@ -614,7 +614,7 @@ getPort_opt <- function(TSF,
                         init_port,
                         delta){
   
-  fnames <- guess_factorNames(TSF)
+  fnames <- guess_factorNames(TSF,silence = TRUE)
   
   ### constrain data preparing
   if(dim(constr$turnover)[1]>0){
@@ -734,10 +734,10 @@ getPort_opt <- function(TSF,
     mat_fctExp_style <- get_constrMat_fctExp_style(TSF2_, univFilter, cons = constr$fctExp_style)
     
     mat_vec_list <- list(mat_group=mat_group,
-                           mat_box=mat_box,
-                           mat_position=mat_position,
-                           mat_fctExp_sector=mat_fctExp_sector,
-                           mat_fctExp_style=mat_fctExp_style)
+                         mat_box=mat_box,
+                         mat_position=mat_position,
+                         mat_fctExp_sector=mat_fctExp_sector,
+                         mat_fctExp_style=mat_fctExp_style)
     
     ##check Amat and bvec
     jumptag <- mat_constr_check(mat_vec_list)
@@ -759,10 +759,15 @@ getPort_opt <- function(TSF,
       Dmat <- Dmat+delta_mat
       
       if(dim(constr$turnover)[1]>0 && nrow(init_port)>0){
-        wgt_ <- try(solver_trackingerror_turnover(dvec,Dmat,mat_vec_list,constr,matlab,init_wgt,turnover_target),silent = TRUE)
+        wgt_ <- try(solver_trackingerror_turnover(dvec,Dmat,mat_vec_list,constr,init_wgt,turnover_target),silent = TRUE)
         turnover_target <- constr$turnover[,'target']
       }else{
-        wgt_ <- try(solver_trackingerror_simple(dvec,Dmat,mat_vec_list,constr,matlab=matlab),silent = TRUE)
+        if(constr$trackingerror[,'method']=='matlab'){
+          wgt_ <- try(solver_trackingerror_simple(dvec,Dmat,mat_vec_list,constr,matlab=matlab),silent = TRUE)
+        }else{
+          wgt_ <- try(solver_trackingerror_simple(dvec,Dmat,mat_vec_list,constr),silent = TRUE)
+        }
+        
       }
       
       
@@ -777,7 +782,7 @@ getPort_opt <- function(TSF,
         wgt_ <- try(solver_turnover_simple(dvec,Dmat,mat_vec_list,obj,constr,init_wgt,turnover_target),silent = TRUE)
       }
       turnover_target <- constr$turnover[,'target']
-
+      
     }else if(dim(obj$risk)[1]>0){
       #solve quadprog optimization
       wgt_ <- try(solver_QP_balance(dvec,Dmat,mat_vec_list,obj),silent = TRUE)
@@ -994,9 +999,8 @@ solver_trackingerror_simple <- function(dvec,Dmat,mat_vec_list,constr,...){
   mat_fctExp_sector <- mat_vec_list$mat_fctExp_sector
   mat_fctExp_style <- mat_vec_list$mat_fctExp_style
   
-  dotlits <- list(...)
-  
   if(constr$trackingerror[,'method']=='matlab'){
+    dotlits <- list(...)
     matlab <- dotlits[['matlab']]
     eigdmt <- eigen(Dmat)
     Mmat <- diag(sqrt(eigdmt$values)) %*% t(eigdmt$vectors)
@@ -1027,51 +1031,106 @@ solver_trackingerror_simple <- function(dvec,Dmat,mat_vec_list,constr,...){
     res <- R.matlab::getVariable(matlab, "w")
     return(res$w) 
     
-  }else{
+  }else if(constr$trackingerror[,'method']=='rmosek'){
+
+    Amat_bvec <- mat_vec_bind(dir='gl',eqsep = FALSE,mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
+    nstock <- length(dvec)
+    nconstr <- ncol(Amat_bvec$amat)
+    Gmat <-  Matrix::chol(Dmat)
+    gamma_ <- constr$trackingerror[,'target']/sqrt(12)
+    lo1 <- list()
+    lo1$sense <- "max"
+    lo1$c <- c(dvec,0,rep(0,nstock))
+    Amat_ <- cbind(rbind(t(Amat_bvec$amat),Gmat),
+               matrix(0,ncol = 1,nrow = nstock+nconstr),
+               rbind(matrix(0,ncol = nstock,nrow = nconstr),diag(-1,nrow = nstock)))
+    lo1$A <- Matrix::Matrix(Amat_,sparse=TRUE)
+    lo1$bc <- rbind(blc = c(Amat_bvec$bvec[,'min'],rep(0,nstock)),
+                    buc = c(Amat_bvec$bvec[,'max'],rep(0,nstock)))
+    lo1$bx <- rbind(blx = c(mat_box$bvec[,'min'],gamma_,rep(-Inf,nstock)),
+                    bux = c(mat_box$bvec[,'max'],gamma_,rep(Inf,nstock)))
     
+    lo1$cones <- matrix(list(), nrow=2, ncol=1)
+    rownames(lo1$cones) <- c("type","sub")
+    lo1$cones[,1] <- list("QUAD", c(nstock+1,(nstock+2):(2*nstock+1)))
+    
+    r <- Rmosek::mosek(lo1)
+    return(r$sol$itr$xx[1:nstock]) 
   }
 }
 
-solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,matlab,init_wgt,turnover_target){
+solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,init_wgt,turnover_target,...){
   
-  eigdmt <- eigen(Dmat)
-  Mmat <- diag(sqrt(eigdmt$values)) %*% t(eigdmt$vectors)
-  
-  Amat_bvec <- mat_vec_bind(dir='le',mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
-  R.matlab::setVariable(matlab, 
-                        MU=matrix(dvec, ncol = 1),
-                        A_leq=t(Amat_bvec$amat),
-                        b_leq=Amat_bvec$bvec,
-                        LB = matrix(data = mat_box$bvec[,'min'], ncol = 1), 
-                        UB = matrix(data = mat_box$bvec[,'max'], ncol = 1),
-                        TransMatrix=Mmat,
-                        TargetTE=constr$trackingerror[,'target'])
-  
-  evalformula <- "N=length(MU) ;cvx_begin ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
-  norm(TransMatrix*w)<=TargetTE/sqrt(12) ;"                            
-  
-  if(!is.null(Amat_bvec$amat_eq)){
+  if(constr$trackingerror[,'method']=='matlab'){
+    dotlits <- list(...)
+    matlab <- dotlits[['matlab']]
+    eigdmt <- eigen(Dmat)
+    Mmat <- diag(sqrt(eigdmt$values)) %*% t(eigdmt$vectors)
+    
+    Amat_bvec <- mat_vec_bind(dir='le',mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
     R.matlab::setVariable(matlab, 
-                          A_eq=t(Amat_bvec$amat_eq),
-                          b_eq=Amat_bvec$bvec_eq)
-    evalformula <- paste(evalformula,"  A_eq*w==b_eq ;")
+                          MU=matrix(dvec, ncol = 1),
+                          A_leq=t(Amat_bvec$amat),
+                          b_leq=Amat_bvec$bvec,
+                          LB = matrix(data = mat_box$bvec[,'min'], ncol = 1), 
+                          UB = matrix(data = mat_box$bvec[,'max'], ncol = 1),
+                          TransMatrix=Mmat,
+                          TargetTE=constr$trackingerror[,'target'])
+    
+    evalformula <- "N=length(MU) ;cvx_begin ;variable w(N) ;minimize(-MU'*w) ;subject to ;A_leq*w<=b_leq ;LB<=w<=UB ;                                            
+    norm(TransMatrix*w)<=TargetTE/sqrt(12) ;"                            
+    
+    if(!is.null(Amat_bvec$amat_eq)){
+      R.matlab::setVariable(matlab, 
+                            A_eq=t(Amat_bvec$amat_eq),
+                            b_eq=Amat_bvec$bvec_eq)
+      evalformula <- paste(evalformula,"  A_eq*w==b_eq ;")
+    }
+    
+    #add turnover constrain
+    R.matlab::setVariable(matlab,W0 = init_wgt,
+                          delta=turnover_target)
+    evalformula <- paste(evalformula," norm(w-W0,1)<=delta ;")
+    
+    evalformula <- paste(evalformula,"  cvx_end ;")
+    R.matlab::evaluate(matlab, evalformula) 
+    
+    res <- R.matlab::getVariable(matlab, "w")
+    return(res$w) 
+    
+  }else{
+    Amat_bvec <- mat_vec_bind(dir='gl',eqsep = FALSE,mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
+    nstock <- length(dvec)
+    nconstr <- ncol(Amat_bvec$amat)
+    Gmat <-  Matrix::chol(Dmat)
+    gamma_ <- constr$trackingerror[,'target']/sqrt(12)
+    lo1 <- list()
+    lo1$sense <- "max"
+    lo1$c <- c(dvec,0,rep(0,nstock),rep(0,nstock))
+    Amat_ <- rbind(cbind(t(Amat_bvec$amat),matrix(0,ncol = 1,nrow = nconstr),matrix(0,ncol = nstock,nrow = nconstr),matrix(0,ncol = nstock,nrow = nconstr)),
+                   cbind(Gmat,matrix(0,ncol = 1,nrow = nstock),diag(-1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock)),
+                   cbind(diag(1,nrow = nstock),matrix(0,ncol = 1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock),diag(-1,nrow = nstock)),
+                   cbind(diag(1,nrow = nstock),matrix(0,ncol = 1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock),diag(1,nrow = nstock)))
+    lo1$A <- Matrix::Matrix(Amat_,sparse=TRUE)
+    lo1$bc <- rbind(blc = c(Amat_bvec$bvec[,'min'],rep(0,nstock),rep(-Inf,nstock),init_wgt),
+                    buc = c(Amat_bvec$bvec[,'max'],rep(0,nstock),init_wgt,rep(Inf,nstock)))
+    lo1$bx <- rbind(blx = c(mat_box$bvec[,'min'],gamma_,rep(-Inf,nstock),rep(0,nstock)),
+                    bux = c(mat_box$bvec[,'max'],gamma_,rep(Inf,nstock),rep(turnover_target,nstock)))
+    
+    lo1$cones <- matrix(list(), nrow=2, ncol=1)
+    rownames(lo1$cones) <- c("type","sub")
+    lo1$cones[,1] <- list("QUAD", c(nstock+1,(nstock+2):(2*nstock+1)))
+    
+    r <- Rmosek::mosek(lo1)
+    return(r$sol$itr$xx[1:nstock]) 
   }
-  
-  #add turnover constrain
-  R.matlab::setVariable(matlab,W0 = init_wgt,
-                        delta=turnover_target)
-  evalformula <- paste(evalformula," norm(w-W0,1)<=delta ;")
-  
-  evalformula <- paste(evalformula,"  cvx_end ;")
-  R.matlab::evaluate(matlab, evalformula) 
-  
-  res <- R.matlab::getVariable(matlab, "w")
-  return(res$w) 
+
 
 }
 
-
-mat_vec_bind <- function(dir=c('ge','le','gl'),...){
+# param dir  ge means greater than, le means less than,gl means both direction.
+# param eqsep means whether seprate amat_eq and bvec_eq.  
+mat_vec_bind <- function(dir=c('ge','le','gl'),eqsep=TRUE,...){
   dir <- match.arg(dir)
   
   rawdata <- list(...)
@@ -1086,18 +1145,20 @@ mat_vec_bind <- function(dir=c('ge','le','gl'),...){
     
   }
   
-  eqindex <- unname(which(bvec[,'min']==bvec[,'max']))
   amat_eq <- NULL
   bvec_eq <- NULL
-  if(length(eqindex)>0){
-    amat_eq <- amat[,eqindex,drop=FALSE]
-    bvec_eq <- bvec[eqindex,'min',drop=FALSE]
-    
-    amat <- amat[,-eqindex,drop=FALSE]
-    bvec <- bvec[-eqindex,,drop=FALSE]
+  
+  if(eqsep){
+    eqindex <- unname(which(bvec[,'min']==bvec[,'max']))
+    if(length(eqindex)>0){
+      amat_eq <- amat[,eqindex,drop=FALSE]
+      bvec_eq <- bvec[eqindex,'min',drop=FALSE]
+      
+      amat <- amat[,-eqindex,drop=FALSE]
+      bvec <- bvec[-eqindex,,drop=FALSE]
+    }
   }
-  
-  
+
   if(dir=='ge'){
     amat <- cbind(amat,amat*-1)
     bvec <- matrix(c(bvec[,'min'],bvec[,'max']*-1),ncol = 1)

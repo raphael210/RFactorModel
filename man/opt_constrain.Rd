@@ -20,7 +20,7 @@
 \alias{setConstr_trackingerror}
 \title{opt_constrain}
 \usage{
-constr_default(position = c(1, 1), box_each = c(0, 1))
+constr_default(position = c(1, 1), box_each = c(0, 0.1))
 
 clearConstr(constr, item)
 
@@ -38,8 +38,8 @@ addConstr_position(constr, position, relative = 0)
 addConstr_turnover(constr, turnover_target = 0.5, method = c("rmosek",
   "matlab"))
 
-addConstr_trackingerror(constr, trackingerror_ann = 0.08,
-  method = c("matlab"))
+addConstr_trackingerror(constr, trackingerror_ann = 0.05,
+  method = c("rmosek", "matlab"))
 
 setConstr_group(constr, ..., relative)
 

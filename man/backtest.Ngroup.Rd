@@ -99,8 +99,9 @@ chart.Ngroup.turnover return a ggplot object of "Turnover Rate of each rebalanci
 MC.table.Ngroup.overall return a matrix, which giving the statistics of the top-bottom spread of each \code{TSFR}.
 }
 \description{
-backtesting the factor with some tables and charts using the 'Ngroup' method. 
-  
+backtesting the factor with some tables and charts using the 'Ngroup' method.
+}
+\details{
 If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 }
 \examples{

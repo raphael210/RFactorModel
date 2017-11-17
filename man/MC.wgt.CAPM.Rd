@@ -39,9 +39,9 @@ mps <- getMPs_FactorLists(FactorLists,modelPar=mp)
 TSR <- Model.TSR(mp)
 TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.wgt.CAPM(TSFRs)
-MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')  
-MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10) 
+MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='risk')
+MC.wgt.CAPM(TSFRs,wgtmin=0.05,wgtmax=0.4,targetType='balance',riskaversion = 10)
 -----------------------------------------------------------------------------
-MC.wgt.CAPM(reg_results=reg_results) 
-MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results) 
+MC.wgt.CAPM(reg_results=reg_results)
+MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results)
 }

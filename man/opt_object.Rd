@@ -14,7 +14,7 @@ clearObj(obj, item)
 
 addObj_return(obj, method = c("mean", "event"))
 
-addObj_risk(obj, method = c("rmosek", "solve.QP"), risk_aversion = 1)
+addObj_risk(obj, method = c("rmosek", "solve.QP"), risk_aversion = 4)
 }
 \value{
 a list contain the objects

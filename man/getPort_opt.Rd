@@ -8,12 +8,24 @@ getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
   constr = constr_default(), obj = object_default(), init_port, delta)
 }
 \arguments{
-\item{init_port}{}
+\item{TSF}{a \bold{TSF} object,may contains multiple factors.}
 
-\item{delta}{}
+\item{fRtn}{a data frame of factor return,see \code{\link{getfRtn}} for detail.}
+
+\item{fCov}{a data frame of factor covariance,see \code{\link{getfCov}} for detail.}
+
+\item{bmk}{benchmark indexID code.}
+
+\item{constr}{constrain lists,see \code{\link{opt_constrain}}.}
+
+\item{obj}{object lists,see \code{\link{opt_object}}.}
+
+\item{init_port}{if constrain includes turnover,then init_port is required.}
+
+\item{delta}{if constrain includes tracking error,then delta is required.}
 }
 \value{
-a port
+a optimized port
 }
 \description{
 getPort_opt
