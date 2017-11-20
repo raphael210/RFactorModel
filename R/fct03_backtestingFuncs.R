@@ -442,10 +442,10 @@ table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
   IC.hit <- hitRatio(seri) 
   re <- c(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu)
   re <- matrix(re,length(re),1)
-  colnames(re) <- "IC"
+  colnames(re) <- "stat"
   rownames(re) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   return(re)
-}  
+}
 
 #' @rdname backtest.IC
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.
@@ -1118,6 +1118,35 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,relative=TRUE,
     scale_y_continuous(labels=scales::percent)
   return(re)
 }
+
+
+#' @rdname backtest.Ngroup
+#' @export
+chart.Ngroup.violin <- function(TSFR,N=5, sectorNe=NULL){
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = TRUE,sectorNe=sectorNe)
+  rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
+  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
+  rtnseri.melt$group <- substring(rtnseri.melt$variable,2)
+  re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
+    geom_violin(fill = "black", colour = "black")+
+    ggtitle("Relative return of each group")+
+    scale_y_continuous(labels=scales::percent)
+  return(re)
+}
+#' @rdname backtest.Ngroup
+#' @export
+chart.Ngroup.box <- function(TSFR,N=5, sectorNe=NULL){
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = TRUE,sectorNe=sectorNe)
+  rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
+  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
+  rtnseri.melt$group <- substring(rtnseri.melt$variable,2)
+  re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
+    geom_boxplot(fill = "gray", colour = "black")+
+    ggtitle("Relative return of each group")+
+    scale_y_continuous(labels=scales::percent)
+  return(re)
+}
+
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.seri_bar return a ggplot object of "return time series of the groups" with geom_bar
 #' @export
@@ -1177,19 +1206,6 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,relative=TRUE,
 }
 
 
-
-
-
-chart.Ngroup.box <- function(TSFR,N=5,relative=TRUE,
-                             Nbin="day",
-                             sectorNe=NULL,
-                             plotPar){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-    Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }
-  return(re)
-}
 
 
 #' @rdname backtest.Ngroup
@@ -1363,13 +1379,34 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
 }
 
 
-
-
-
-
-
-
-
+# --------------------- ~~ table.ICandNgroup --------------
+#' table.ICandNgroup
+#' 
+#' @export table.ICandNgroup
+table.ICandNgroup <- function(TSFR,
+                              stat=c("pearson","spearman"),
+                              N=5,
+                              sectorNe=NULL,
+                              fee=0,
+                              rtn_type = c("long-short","long-univ")){
+  re_IC <- table.IC(TSFR = TSFR, stat = stat)
+  re_Ngroup <- table.Ngroup.overall(TSFR = TSFR, N=N, relative = FALSE, sectorNe = sectorNe, bysector = NULL, fee = fee, rtn_type = rtn_type)[,1,drop=FALSE]
+  re <- rbind(re_IC,re_Ngroup)
+  return(re)
+}
+#' @rdname table.ICandNgroup
+#' @export MC.table.ICandNgroup
+MC.table.ICandNgroup <- function(TSFRs,
+                                 stat=c("pearson","spearman"),
+                                 N=5,
+                                 sectorNe=NULL,
+                                 fee=0,
+                                 rtn_type = c("long-short","long-univ")){
+  check.name_exist(TSFRs)
+  re <- plyr::laply(TSFRs, table.ICandNgroup, stat=stat, N=N, sectorNe = sectorNe, fee = fee, rtn_type = rtn_type)
+  rownames(re) <- names(TSFRs)
+  return(re)
+}
 
 
 
@@ -1685,8 +1722,7 @@ summary.factor_refine <- function(rawTSF, refinePar_lists, refinePar_names, resu
     # MC.chart.Ngroup.overall(mTSF2TSFs(core_mTSFR), N = group_N)
     # MC.chart.IC(mTSF2TSFs(core_mTSFR))
   }else if(result_type == "table"){
-    return(MC.table.Ngroup.overall(mTSF2TSFs(core_mTSFR), N = group_N))
-    # MC.table.IC(mTSF2TSFs(core_mTSFR))
+    return(MC.table.ICandNgroup(mTSF2TSFs(core_mTSFR), N = group_N))
   }else if(result_type == "data"){
     return(core_mTSFR)
   }
