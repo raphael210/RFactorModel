@@ -173,7 +173,7 @@ setmodelPar.univ <- function(modelPar, indexID, stocks, rm){
 #'                            factorFun="gf.pct_chg_per",
 #'                            factorPar=list(N=25),
 #'                            factorDir=-1,
-#'                            factorRefine= setrefinePar(refinePar_default("robust"),std_method="norm",na_method="median",outlier_method="mad"))
+#'                            factorRefine= setrefinePar(refinePar_default("scale"))
 modelPar.factor <- function(modelPar = modelPar.default() , 
                             factorFun = "gf_demo" ,
                             factorPar  = list() ,

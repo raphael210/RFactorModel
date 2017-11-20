@@ -39,7 +39,7 @@ RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 TS <- getTS(RebDates,indexID = 'EI000905')
 factorIDs <- c("F000006","F000008","F000012","F000015",
 "F000016")
-tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.NP_YOY",
                   factorPar=list(),
@@ -50,7 +50,7 @@ factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.G_MLL_Q",
                   factorPar=list(),
                   factorDir=1),
-  buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust")))
+  buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale")))
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 ----------------------VIF----------------------

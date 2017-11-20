@@ -99,7 +99,7 @@ kable(ftbale)
 #  
 #  #get factor wgt
 #  factorIDs <- c("F000006","F000008","F000013","F000017")
-#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 #  MPs <- getMPs_FactorLists(FactorLists, modelPar)
 #  TSFRs <- Model.TSFRs(MPs)
 #  wgt <- MC.wgt.CAPM(TSFRs,wgtmin = 0.05,wgtmax = 0.3)
@@ -107,9 +107,9 @@ kable(ftbale)
 #  #get port and backtest
 #  TS <- Model.TS(modelPar)
 #  TSF2 <- getMultiFactor(TS,FactorLists = FactorLists,wgts = wgt)
-#  port2 <- getPort(TSF2,topN = 100,sectorNe_pick = default_sectorAttr())
+#  port2 <- getPort(TSF2,topN = 100,sectorNe_pick = defaultsectorAttr())
 #  port2 <- port2[,c('date','stockID')]
-#  port2 <- addwgt2port(port2, sectorNe_wgt = default_sectorAttr(), wgtbmk = "EI000905")
+#  port2 <- addwgt2port(port2, sectorNe_wgt = defaultsectorAttr(), wgtbmk = "EI000905")
 #  re2 <- port.backtest(port2,fee.buy = 0.001)
 #  benchrtn2 <- getrtn.bmk(re2, bmk = "EI000905")
 #  allrtn2 <- addrtn.hedge(re2,benchrtn2)

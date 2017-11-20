@@ -4,14 +4,15 @@
 \alias{getPAData}
 \title{getPAData}
 \usage{
-getPAData(port, factorLists, bmk, sectorAttr = defaultSectorAttr())
+getPAData(port, factorLists, bmk = NULL, univ = "EI000985",
+  sectorAttr = defaultSectorAttr())
 }
 \description{
 getPAData
 }
 \examples{
-alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
-riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
+alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("scale"))
+riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("none"))
 PA_tables <- getPAData(port,c(alphaLists,riskLists))
-PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
+PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905',univ="EI000905")
 }

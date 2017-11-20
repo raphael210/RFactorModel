@@ -4,6 +4,7 @@
 \alias{backtest.Ngroup}
 \alias{seri.Ngroup.rtn}
 \alias{seri.Ngroup.turnover}
+\alias{seri.Ngroup.size}
 \alias{table.Ngroup.overall}
 \alias{table.Ngroup.spread}
 \alias{chart.Ngroup.overall}
@@ -12,47 +13,55 @@
 \alias{chart.Ngroup.seri_line}
 \alias{chart.Ngroup.spread}
 \alias{chart.Ngroup.turnover}
+\alias{chart.Ngroup.size}
 \alias{MF.chart.Ngroup.spread}
 \alias{MC.table.Ngroup.overall}
 \alias{MC.chart.Ngroup.overall}
 \title{backtest.Ngroup}
 \usage{
-seri.Ngroup.rtn(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
-  bysector = NULL, backtestPar)
+seri.Ngroup.rtn(TSFR, N = 5, relative = FALSE, include_univ = FALSE,
+  sectorNe = NULL, bysector = NULL, backtestPar)
 
 seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL, backtestPar)
 
-table.Ngroup.overall(TSFR, N = 5, sectorNe = NULL, bysector = NULL,
-  fee = 0, rtn_type = c("long-short", "long-univ"), backtestPar)
+seri.Ngroup.size(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
+  backtestPar)
+
+table.Ngroup.overall(TSFR, N = 5, relative = FALSE, sectorNe = NULL,
+  bysector = NULL, fee = 0, rtn_type = c("long-short", "long-univ"),
+  backtestPar)
 
 table.Ngroup.spread(TSFR, N = 5, sectorNe = NULL, fee = 0,
   rtn_type = c("long-short", "long-univ"), backtestPar)
 
-chart.Ngroup.overall(TSFR, N = 5, sectorNe = NULL, bysector = NULL,
-  plotPar)
-
-chart.Ngroup.seri_point(TSFR, N = 5, Nbin = "day", sectorNe = NULL,
-  plotPar)
-
-chart.Ngroup.seri_bar(TSFR, N = 5, Nbin = "day", sectorNe = NULL,
+chart.Ngroup.overall(TSFR, N = 5, relative = TRUE, sectorNe = NULL,
   bysector = NULL, plotPar)
 
-chart.Ngroup.seri_line(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
-  plotPar)
+chart.Ngroup.seri_point(TSFR, N = 5, relative = TRUE, Nbin = "day",
+  sectorNe = NULL, plotPar)
+
+chart.Ngroup.seri_bar(TSFR, N = 5, relative = TRUE, Nbin = "day",
+  sectorNe = NULL, bysector = NULL, plotPar)
+
+chart.Ngroup.seri_line(TSFR, N = 5, relative = TRUE, include_univ = TRUE,
+  sectorNe = NULL, plotPar)
 
 chart.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
   rtn_type = c("long-short", "long-univ"), plotPar)
 
 chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL, plotPar)
 
+chart.Ngroup.size(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
+  plotPar)
+
 MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL, Nbin = "day",
   facet_by = c("none", "date", "fname"))
 
 MC.table.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, fee = 0,
-  backtestPar)
+  rtn_type = c("long-short", "long-univ"), backtestPar)
 
-MC.chart.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, bysector = NULL,
-  ncol = 3, plotPar)
+MC.chart.Ngroup.overall(TSFRs, N = 5, relative = TRUE, sectorNe = NULL,
+  bysector = NULL, ncol = 3, plotPar)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
@@ -80,6 +89,8 @@ seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
 
 seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
 
+seri.Ngroup.size return a xts, which giving the mean market-cap seri of each group.
+
 table.Ngroup.overall return a matrix which giving the statistics of the rtn of each group, as well as the rtn of top-bottom spread.
 
 table.Ngroup.spread return a matrix which giving the statistics of the rtn of top-bottom spread in each year.
@@ -95,6 +106,8 @@ chart.Ngroup.seri_line return a ggplot object of "Cumulated return of each group
 chart.Ngroup.spread return and print a recordedplot object of "Performance Summary of top-bottom spread" .
 
 chart.Ngroup.turnover return a ggplot object of "Turnover Rate of each rebalancing point"
+
+chart.Ngroup.turnover return a line chart of "Mean mkt-cap of each group at each rebalancing point"
 
 MC.table.Ngroup.overall return a matrix, which giving the statistics of the top-bottom spread of each \code{TSFR}.
 }
@@ -119,6 +132,7 @@ chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.spread(TSFR,5)
 chart.Ngroup.spread(TSFR, rtn_type = "long-univ")
+chart.Ngroup.turnover(TSFR,5)
 chart.Ngroup.turnover(TSFR,5)
 mTSFR <- getMultiFactor(TSR)
 MF.chart.Ngroup.spread(mTSFR)

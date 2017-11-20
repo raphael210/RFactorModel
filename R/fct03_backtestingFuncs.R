@@ -286,7 +286,7 @@ MF.table.Fct_descr <- function(mTSF){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000006","F000008","F000012")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 #' mTSF <- getMultiFactor(TS,FactorLists = FactorLists)
 #' MF.chart.Fct_corr(mTSF)
 #' MF.chart.Fct_corr(mTSF,Nbin='year')
@@ -690,6 +690,40 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
 # ---------------------  backtesting with 'Ngroup' method --------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
+
+#' add_rank_and_group
+#' 
+#' add the rank and groups by factorscores 
+#' @export
+add_rank_and_group <- function(TSF,N=5,sectorNe=NULL,untie=1.5){
+  if(is.null(sectorNe)){
+    TSF <- data.table::data.table(TSF,key=c("date"))
+    TSF <- TSF[,rank:=rank(-factorscore, na.last="keep"), by="date"]
+    TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by="date"]
+    # abnormal grouping due to big ties. Untie them.
+    check_stat <- (table(TSF$group)) > nrow(TSF)/N*untie
+    if(any(check_stat)){
+      warning("There are big ties in groups!")
+      TSF <- TSF[,rank:=rank(-factorscore, na.last="keep", ties.method = "random"), by="date"]
+      TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by="date"]
+    }
+  } else {
+    TSF <- getSectorID(TSF,sectorAttr=sectorNe)
+    TSF <- data.table::data.table(TSF,key=c("date","sector"))
+    TSF <- TSF[,rank:=rank(-factorscore, na.last="keep"), by=c("date","sector")]
+    TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
+    # abnormal grouping due to big ties. Untie them.
+    check_stat <- (table(TSF$group)) > nrow(TSF)/N*untie
+    if(any(check_stat)){
+      warning("There are big ties in groups!")
+      TSF <- TSF[,rank:=rank(-factorscore, na.last="keep", ties.method = "random"), by=c("date","sector")]
+      TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
+    }
+  }
+  re <- as.data.frame(TSF)
+  return(re)
+}
+
 #' backtest.Ngroup
 #'
 #' backtesting the factor with some tables and charts using the 'Ngroup' method. 
@@ -712,6 +746,7 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
 #' re <- seri.Ngroup.rtn(TSFR,5)
 #' re2 <- seri.Ngroup.rtn(TSFR,5,include_univ=TRUE)
 seri.Ngroup.rtn <- function(TSFR,N=5,
+                            relative=FALSE,
                             include_univ=FALSE,
                             sectorNe=NULL,
                             bysector=NULL,
@@ -723,59 +758,57 @@ seri.Ngroup.rtn <- function(TSFR,N=5,
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
   }
   check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")]) 
+  TSFR <- na.omit(TSFR[,c("date","date_end","stockID","factorscore","periodrtn")]) 
   
   # ADD RANK AND GROUP
-  if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
-  } else {
-    TSFR <- renameCol(TSFR,"date_end","date")
-    TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
-    TSFR <- renameCol(TSFR,"date","date_end")
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
-    TSFR$sector <- NULL
-  }
+  TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
   
-  # GET RTN
+  # GET GROUP RTN
   if(is.null(bysector)){ # -- return a xts
-    data.table::setkeyv(TSFR,c("date_end","group"))
-    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","group")]
-    if(include_univ){
-      univ_rtn <- TSFR[,.(group = N+1, mean.rtn = mean(periodrtn)), by = "date_end"]
-      rtn.df <- rbind(rtn.df, univ_rtn)
-    }
+    TSFR <- data.table::data.table(TSFR,key=c("date_end","group"))
+    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn, na.rm = TRUE)), by=c("date_end","group")]
+    univ_rtn <- TSFR[,.(group = N+1, mean.rtn = mean(periodrtn, na.rm = TRUE)), by = "date_end"]
+    rtn.df <- rbind(rtn.df, univ_rtn)
     rtn.df <- as.data.frame(rtn.df)
     rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
-    rtn.xts <- xts::as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
-    colnames(rtn.xts) <- if(!include_univ) paste("Q",1:N,sep="") else c(paste("Q",1:N,sep=""),"univ")
-    result <- rtn.xts
-    
-  } else { # -- return a list of xts by sector
-    TSFR <- renameCol(TSFR,"date_end","date")
-    TSFR <- getSectorID(TSFR,sectorAttr=bysector)
-    TSFR <- renameCol(TSFR,"date","date_end")
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector","group"))
-    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn)), by=c("date_end","sector","group")]
-    if(include_univ){
-      univ_rtn <- TSFR[,.(group = N+1, mean.rtn = mean(periodrtn)), by = c("date_end","sector")]
-      rtn.df <- rbind(rtn.df, univ_rtn)
+    if(relative){
+      rtn.mat <- rtn.mat-rtn.mat[,N+1]
     }
+    rtn.xts <- xts::as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
+    if(!include_univ){
+      rtn.xts <- rtn.xts[,1:N]
+      colnames(rtn.xts) <- paste("Q",1:N,sep="")
+    } else {
+      colnames(rtn.xts) <- c(paste("Q",1:N,sep=""),"univ")
+    }
+    result <- rtn.xts
+  } else { # -- return a list of xts by sector
+    TSFR <- getSectorID(TSFR,sectorAttr=bysector)
+    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector","group"))
+    rtn.df <- TSFR[,list(mean.rtn=mean(periodrtn, na.rm = TRUE)), by=c("date_end","sector","group")]
+    univ_rtn <- TSFR[,.(group = N+1, mean.rtn = mean(periodrtn, na.rm = TRUE)), by = c("date_end","sector")]
+    rtn.df <- rbind(rtn.df, univ_rtn)
     rtn.df <- as.data.frame(rtn.df)
     rtn.mat <- reshape2::acast(rtn.df,date_end~sector~group,value.var="mean.rtn")
+    if(relative){
+      rtn.univ <- array(rep(rtn.mat[,,N+1],N+1), dim(rtn.mat))
+      rtn.mat <- rtn.mat-rtn.univ
+    }
     result <- list()
     for(ii in 1:dim(rtn.mat)[2]){
       rtn.xts <- xts::as.xts(rtn.mat[,ii,],as.Date(rownames(rtn.mat),tz=""))
-      colnames(rtn.xts) <- if(!include_univ) paste("Q",1:N,sep="") else c(paste("Q",1:N,sep=""),"univ")
+      if(!include_univ){
+        rtn.xts <- rtn.xts[,1:N]
+        colnames(rtn.xts) <- paste("Q",1:N,sep="")
+      } else {
+        colnames(rtn.xts) <- c(paste("Q",1:N,sep=""),"univ") 
+      }
       result <- c(result, list(rtn.xts))
     }
     names(result) <- dimnames(rtn.mat)[[2]]
   }
   # OUTPUT 
-  return(result)  
+  return(result)
 }
 
 
@@ -794,24 +827,14 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
     N <- getbacktestPar.Ngroup(backtestPar,"N")
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
   }
-  check.TSFR(TSFR)
-  # TSFR <- na.omit(TSFR[,c("date","stockID","factorscore","periodrtn")])
+  check.TSF(TSFR)
+  TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")]) 
   # ---- add the rank and groups of the factorscores 
-  if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date"]    
-  } else {
-    TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
-    TSFR <- data.table::data.table(TSFR,key=c("date","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]    
-  }
+  TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
+  
   # ---- turnover seri of each group
   for(i in 1:N){
-    groupI <- subset(TSFR,group==i)    
-    periodrtn <- reshape2::acast(groupI,date~stockID,value.var="periodrtn",fill=0)
-    periodrtn <- xts(periodrtn,as.Date(rownames(periodrtn),tz=""))
+    groupI <- subset(TSFR,group==i)
     wgt.ini <- reshape2::acast(groupI,date~stockID,value.var="group",fill=0)
     wgt.ini <- wgt.ini/rowSums(wgt.ini)
     wgt.ini <- xts(wgt.ini,as.Date(rownames(wgt.ini),tz=""))         
@@ -829,8 +852,11 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
   return(re)
 }
 
-# inner function
+#' @rdname backtest.Ngroup
+#' @return seri.Ngroup.size return a xts, which giving the mean market-cap seri of each group.
+#' @export
 seri.Ngroup.size <- function(TSFR,N=5,
+                             include_univ=FALSE,
                              sectorNe=NULL,
                              backtestPar){
   # ARGUMENTS CHECKING
@@ -838,36 +864,29 @@ seri.Ngroup.size <- function(TSFR,N=5,
     N <- getbacktestPar.Ngroup(backtestPar,"N")
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
   }
-  check.TSFR(TSFR)
-  TSFR <- TSFR[,c("date","date_end","stockID")]
-  TSFR <- getTech(TSFR, variables = "mkt_cap")
+  check.TSF(TSFR)
+  TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")])
+  TSFR <- gf_cap(TSFR, varname = "mkt_cap")
   
   # ADD RANK OR GROUP
-  if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-mkt_cap), by="date_end"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
-  } else {
-    TSFR <- renameCol(TSFR,"date_end","date")
-    TSFR <- getSectorID(TSFR,sectorAttr=sectorNe)
-    TSFR <- renameCol(TSFR,"date","date_end")
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-mkt_cap), by=c("date_end","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
-  }
+  TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
   
   # ORGANIZING 
-  data.table::setkeyv(TSFR,c("date_end","group"))
-  size.df <- TSFR[,list(mean.size=mean(mkt_cap)), by=c("date_end","group")]
-  univ_size <- TSFR[,.(group = N+1, mean.size = mean(mkt_cap)), by = "date_end"]
+  TSFR <- data.table::data.table(TSFR,key=c("date","group"))
+  size.df <- TSFR[,list(mean.size=mean(mkt_cap, na.rm = TRUE)), by=c("date","group")]
+  univ_size <- TSFR[,.(group = N+1, mean.size = mean(mkt_cap, na.rm = TRUE)), by = "date"]
   
   size.df <- rbind(size.df, univ_size)
   size.df <- as.data.frame(size.df)
-  size.mat <- reshape2::acast(size.df,date_end~group,value.var="mean.size")
+  size.mat <- reshape2::acast(size.df,date~group,value.var="mean.size")
   size.xts <- xts::as.xts(size.mat,as.Date(rownames(size.mat),tz=""))
   
   colnames(size.xts) <- c(paste("Q",1:N,sep=""),"univ")
-  result <- size.xts
+  if(include_univ){
+    result <- size.xts
+  } else {
+    result <- size.xts[,1:N]
+  }
   return(result)
 }
 
@@ -883,6 +902,7 @@ seri.Ngroup.size <- function(TSFR,N=5,
 #' re <- table.Ngroup.overall(TSFR,5,fee=0.002)
 #' re2 <- table.Ngroup.overall(TSFR, rtn_type = "long-univ")
 table.Ngroup.overall <- function(TSFR,N=5,
+                                 relative=FALSE,
                                  sectorNe=NULL,
                                  bysector=NULL,
                                  fee=0,
@@ -896,14 +916,14 @@ table.Ngroup.overall <- function(TSFR,N=5,
   }
   
   if(!is.null(bysector)){ # bysector result: a simple matrix which giving the annualized rtn of each group, by sectors.
-    rtnseri <- seri.Ngroup.rtn(TSFR,N=N,include_univ = FALSE,sectorNe=sectorNe,bysector=bysector,backtestPar=backtestPar)
+    rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = FALSE,sectorNe=sectorNe,bysector=bysector,backtestPar=backtestPar)
     annu_rtn <- plyr::laply(rtnseri,Return.annualized)
     rownames(annu_rtn) <- names(rtnseri)
     re <- annu_rtn
     return(re)
   }
   
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,include_univ = TRUE,sectorNe=sectorNe,bysector = NULL, backtestPar=backtestPar)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = TRUE,sectorNe=sectorNe,bysector = NULL, backtestPar=backtestPar)
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
   
   # --- Ngroups
@@ -959,9 +979,10 @@ table.Ngroup.overall <- function(TSFR,N=5,
   colnames(group_beta) <- colnames(re)
   
   # size
-  sizeseri <- seri.Ngroup.size(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
-  group_cap <- t(colMeans(sizeseri))
-  group_cap <- cbind(NA, group_cap)
+  sizeseri <- seri.Ngroup.size(TSFR,N=N,include_univ = TRUE,sectorNe=sectorNe,backtestPar=backtestPar)
+  group_cap <- t(colMeans(sizeseri,na.rm = TRUE))
+  spread_cap <- if(rtn_type=="long-short") group_cap[1]-group_cap[N] else group_cap[1]-group_cap[N+1]
+  group_cap <- cbind(spread_cap, group_cap)
   colnames(group_cap)[1] <- spreadNM
   row.names(group_cap) <- "Size"
   
@@ -992,13 +1013,16 @@ table.Ngroup.spread <- function(TSFR,N=5,
     fee <- getbacktestPar.fee(backtestPar,"secu")
   }
   
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,include_univ = TRUE, sectorNe=sectorNe, bysector = NULL, backtestPar=backtestPar)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = FALSE, include_univ = TRUE, sectorNe=sectorNe, bysector = NULL, backtestPar=backtestPar)
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR, N = N, include_univ = TRUE, sectorNe = sectorNe, backtestPar = backtestPar)
   
   if(rtn_type == "long-short"){
-    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]    
+    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
+    spreadsize <- sizeseri[,1]-sizeseri[,ncol(sizeseri)-1]
   }else if(rtn_type == "long-univ"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)]
+    spreadsize <- sizeseri[,1]-sizeseri[,ncol(sizeseri)]
   }
   
   yearlist <- as.character(unique(lubridate::year(TSFR$date)))
@@ -1020,9 +1044,11 @@ table.Ngroup.spread <- function(TSFR,N=5,
       # beta
       fit_ <- lm(spreadseri[yy]~rtnseri[yy,"univ"])
       beta_ <- t(fit_$coefficients[[2]])
+      # size
+      size_ <- mean(spreadsize[yy],na.rm = TRUE)
       #
-      tsub <- rbind(rtnsummary,turnover.annu,rtn.feecut,beta_)
-      rownames(tsub)[(nrow(tsub)-2):(nrow(tsub))] <- c("Annualized Turnover","Annualized Return (fee cut)","Beta")
+      tsub <- rbind(rtnsummary,turnover.annu,rtn.feecut,beta_,size_)
+      rownames(tsub)[(nrow(tsub)-3):(nrow(tsub))] <- c("Annualized Turnover","Annualized Return (fee cut)","Beta","Size")
       colnames(tsub) <- yy
     }
     if (ii==1L) {
@@ -1040,6 +1066,7 @@ table.Ngroup.spread <- function(TSFR,N=5,
 #' @examples 
 #' chart.Ngroup.overall(TSFR,5)
 chart.Ngroup.overall <- function(TSFR,N=5,
+                                 relative=TRUE,
                                  sectorNe=NULL,
                                  bysector=NULL,
                                  plotPar
@@ -1048,7 +1075,7 @@ chart.Ngroup.overall <- function(TSFR,N=5,
     N <- getplotPar.Ngroup(plotPar,"N")
   }  
   if(is.null(bysector)){
-    tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,sectorNe=sectorNe,bysector=NULL)
+    tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,relative = relative,sectorNe=sectorNe,bysector=NULL)
     rtn.annu <- tmptable[1,2:(N+1)]
     rtn.annu <- data.frame(group=as.integer(substring(names(rtn.annu),2)),rtn.annu=rtn.annu)
     re <- ggplot(rtn.annu,aes(x=group,y=rtn.annu))+
@@ -1057,7 +1084,7 @@ chart.Ngroup.overall <- function(TSFR,N=5,
       geom_text(aes(label=paste(round(rtn.annu*100,1),"%",sep="")),vjust=-0.5)+
       scale_y_continuous(labels=scales::percent)
   } else {
-    tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,sectorNe = sectorNe,bysector=bysector)
+    tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,relative = relative,sectorNe = sectorNe,bysector=bysector)
     tmptable <- cbind(sector=rownames(tmptable),as.data.frame(tmptable))
     tmptable <- reshape2::melt(tmptable, id.var="sector")
     re <- ggplot(tmptable, aes(x=sector,y=variable,fill=value))+ geom_tile() +
@@ -1071,14 +1098,15 @@ chart.Ngroup.overall <- function(TSFR,N=5,
 #' @export
 #' @examples 
 #' chart.Ngroup.seri_point(TSFR,5,"3 month")
-chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",
+chart.Ngroup.seri_point <- function(TSFR,N=5,relative=TRUE,
+                                    Nbin="day",
                                     sectorNe=NULL,
                                     plotPar){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
   }
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,sectorNe=sectorNe)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,sectorNe=sectorNe)
   rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
   rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
@@ -1095,7 +1123,8 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,Nbin="day",
 #' @export
 #' @examples 
 #' chart.Ngroup.seri_bar(TSFR,5,"3 month")
-chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
+chart.Ngroup.seri_bar <- function(TSFR,N=5,relative=TRUE,
+                                  Nbin="day",
                                   sectorNe=NULL,
                                   bysector=NULL,
                                   plotPar
@@ -1104,7 +1133,7 @@ chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
     N <- getplotPar.Ngroup(plotPar,"N")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
   }  
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,sectorNe=sectorNe,bysector = bysector)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,sectorNe=sectorNe,bysector = bysector)
   if(is.null(bysector)){
     rtn_aggr <- aggr.rtn(rtnseri,freq=Nbin)
     rtn_aggr.df <- data.frame(time=time(rtn_aggr),zoo::coredata(rtn_aggr))
@@ -1134,14 +1163,14 @@ chart.Ngroup.seri_bar <- function(TSFR,N=5,Nbin="day",
 #' @export
 #' @examples 
 #' chart.Ngroup.seri_line(TSFR,5)
-chart.Ngroup.seri_line <- function(TSFR,N=5,
+chart.Ngroup.seri_line <- function(TSFR,N=5,relative=TRUE,
                                    include_univ=TRUE,
                                    sectorNe=NULL,
                                    plotPar){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
   }  
-  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,include_univ=include_univ,sectorNe=sectorNe)
+  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,relative = relative,include_univ=include_univ,sectorNe=sectorNe)
   indexseri <- WealthIndex(rtnseri)
   re <- ggplot.ts.line(indexseri,main="Wealth index of each group",size=1)
   return(re)
@@ -1151,58 +1180,15 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,
 
 
 
-chart.Ngroup.box <- function(TSFR,N=5,Nbin="day",
+chart.Ngroup.box <- function(TSFR,N=5,relative=TRUE,
+                             Nbin="day",
                              sectorNe=NULL,
                              plotPar){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
     Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }  
-  
-  
-  
-  
-  check.TSFR(TSFR)
-  TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
-  # ---- add the rank and groups of the factorscores 
-  if(is.null(sectorNe)){
-    TSFR <- data.table::data.table(TSFR,key=c("date_end"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by="date_end"]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by="date_end"]
-  } else {
-    TSFR <- getSectorID(TSFR,sectorAttr=sectorAttr)
-    TSFR <- data.table::data.table(TSFR,key=c("date_end","sector"))
-    TSFR <- TSFR[,rank:=rank(-factorscore), by=c("date_end","sector")]
-    TSFR <- TSFR[,group:=cut(rank,N,labels=FALSE), by=c("date_end","sector")]
   }
-  
-
-  rtn.mat <- reshape2::acast(rtn.df,date_end~group,value.var="mean.rtn")
-  rtn.xts <- as.xts(rtn.mat,as.Date(rownames(rtn.mat),tz=""))
-  colnames(rtn.xts) <- paste("Q",1:N,sep="")   
-  result <- rtn.xts
-  
-  
-  
-  
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,sectorNe=sectorNe)
-  rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
-  rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
-  rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
-  rtnseri.melt$group <- as.integer(substring(rtnseri.melt$variable,2))
-  rtnseri.melt$time <- as.character(rtnseri.melt$time)
-  re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
-    geom_bar(position="dodge",stat="identity")+
-    facet_wrap(~ time, scales="free_y") +
-    ggtitle("Return of each group")+
-    scale_y_continuous(labels=scales::percent)
-  
-  
-  
-  p <- ggplot(data=TSFR,mapping = aes(x=factor(date),y=periodrtn, fill=factor(group)))+geom_boxplot()
   return(re)
-  
-  
 }
 
 
@@ -1221,7 +1207,7 @@ chart.Ngroup.spread <- function(TSFR,N=5,
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
   }  
-  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,sectorNe=sectorNe,include_univ = TRUE)
+  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,relative = FALSE,sectorNe=sectorNe,include_univ = TRUE)
   if(rtn_type == "long-short"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
     colnames(spreadseri) <- "spread"
@@ -1252,8 +1238,22 @@ chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
   return(re)
 }
 
-
-
+#' @rdname backtest.Ngroup
+#' @return chart.Ngroup.turnover return a line chart of "Mean mkt-cap of each group at each rebalancing point"
+#' @export
+#' @examples 
+#' chart.Ngroup.turnover(TSFR,5)
+chart.Ngroup.size <- function(TSFR,N=5,
+                              include_univ=TRUE,
+                              sectorNe=NULL,
+                              plotPar){
+  if(!missing(plotPar)){
+    N <- getplotPar.Ngroup(plotPar,"N")
+  }  
+  size_seri <- seri.Ngroup.size(TSFR=TSFR,N=N,include_univ=include_univ,sectorNe=sectorNe)
+  re <- ggplot.ts.line(size_seri,main="Mean mkt-cap of each group",size=1)
+  return(re)
+}
 
 #' @param mTSFR a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.
 #' @rdname backtest.Ngroup
@@ -1287,11 +1287,9 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
       geom_line(size=1) +
       coord_trans(y="log")
   }else if(facet_by=='date'){
-    
     rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
     rtnseri <- rtnseri %>% dplyr::group_by(fname,date) %>% dplyr::summarise(rtn=prod(1+rtn)-1) %>%
       dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
-    
     ggplot(rtnseri, aes(x=fname, y=rtn,fill=fname)) +
       geom_bar(stat = 'identity')+facet_wrap(~date)
   }else if(facet_by=='fname'){
@@ -1321,14 +1319,16 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
 MC.table.Ngroup.overall <- function(TSFRs,N=5,
                                     sectorNe=NULL,
                                     fee=0,
+                                    rtn_type=c("long-short", "long-univ"),
                                     backtestPar){
   check.name_exist(TSFRs)
+  rtn_type <- match.arg(rtn_type)
   if(!missing(backtestPar)){
     N <- getbacktestPar.Ngroup(backtestPar,"N")
     fee <- getbacktestPar.fee(backtestPar,"secu")
     sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
   } 
-  overall.table <- plyr::laply(TSFRs,function(x) {table.Ngroup.overall(TSFR=x,N=N,fee=fee,sectorNe=sectorNe)[ , 1, drop=FALSE]})
+  overall.table <- plyr::laply(TSFRs,function(x) {table.Ngroup.overall(TSFR=x,N=N,relative = FALSE,fee=fee,sectorNe=sectorNe,rtn_type=rtn_type)[ , 1, drop=FALSE]})
   NMs <- names(TSFRs)
   rownames(overall.table) <- NMs
   return(overall.table)
@@ -1341,6 +1341,7 @@ MC.table.Ngroup.overall <- function(TSFRs,N=5,
 #' @examples 
 #' MC.chart.Ngroup.overall(TSFRs)
 MC.chart.Ngroup.overall <- function(TSFRs,N=5,
+                                    relative=TRUE,
                                     sectorNe=NULL,
                                     bysector=NULL,
                                     ncol=3,plotPar
@@ -1353,7 +1354,7 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
   } 
   NMs <- names(TSFRs)
   Ngroup.charts <- mapply(function(x,nm){
-    chart.Ngroup.overall(x,N=N,sectorNe=sectorNe,bysector=bysector)+  
+    chart.Ngroup.overall(x,N=N,relative = relative,sectorNe=sectorNe,bysector=bysector)+  
       ggtitle(nm) +
       theme(axis.title.x= element_blank(),axis.title.y= element_blank())
   },TSFRs,NMs,SIMPLIFY = FALSE )
@@ -1658,14 +1659,13 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
 #' @param result_type Currently supports 3 possible results : chart, table, data
 #' @param group_N The argument passed into Ngroup.overall, etc.
 #' @author Han.Qian
-#' @export
+#' @export summary.factor_refine
 #' @examples 
 #' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 #' TS <- getTS(RebDates,'EI000300')
 #' refinePar_lists <- list(refinePar_default(type = "none"),
 #'                         refinePar_default(type = "reg"),
-#'                         refinePar_default(type = "old_robust"),
-#'                         refinePar_default(type = "robust"))
+#'                         refinePar_default(type = "scale"))
 #' rawTSF <- gf.NP_YOY(TS, src = "fin")
 #' summary.factor_refine(rawTSF, refinePar_lists)
 summary.factor_refine <- function(rawTSF, refinePar_lists, refinePar_names, result_type = c("chart","table","data"), group_N = 5){

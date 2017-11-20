@@ -95,7 +95,7 @@ addConstr_fctExp_sector <- function(constr, each, ..., relative=2,
 #' @param min a vector with the same length of FactorLists, or a scalar
 #' @param max a vector with the same length of FactorLists, or a scalar
 #' @examples
-#' factorlists <- buildFactorLists_lcfs(factorIDs = c("F000001","F000002"),factorRefine=refinePar_default("robust"))
+#' factorlists <- buildFactorLists_lcfs(factorIDs = c("F000001","F000002"),factorRefine=refinePar_default("scale"))
 #' addConstr_fctExp_style(constr,factorlists,-0.1,0.1)
 addConstr_fctExp_style <- function(constr,FactorLists,min,max,relative=1){
   if(length(FactorLists)>0){
@@ -471,13 +471,13 @@ get_exp_rtn <- function(TSF){
 #' @export
 #' @examples 
 #' TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
-#' TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine=refinePar_default("robust")))
+#' TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine=refinePar_default("scale")))
 #' TSF <- renameCol(TSF,"factorscore","combfct")
 #' # constrain setting
 #' constr <- constr_default()
 #' constr <- addConstr_box(constr,each = c(0,0.02))
 #' constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-#' conslist <- buildFactorLists_lcfs("F000002_1",factorRefine=refinePar_default("robust",NULL))
+#' conslist <- buildFactorLists_lcfs("F000002_1",factorRefine=refinePar_default("scale",NULL))
 #' # with bmk
 #' constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
 #' port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr)

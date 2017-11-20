@@ -10,9 +10,9 @@ getRAData(port, factorLists, bmk, sectorAttr = defaultSectorAttr())
 getRAData
 }
 \examples{
-alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
+alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("scale"))
 alphaLists <- c(tmp,alphaLists)
-riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
+riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("none"))
 RA_tables <- getRAData(port,c(alphaLists,riskLists))
 RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 }

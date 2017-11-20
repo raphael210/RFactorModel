@@ -169,12 +169,12 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
 #' TS <- getTS(RebDates,indexID = 'EI000985')
 #' factorIDs <- c("F000002","F000006","F000008")
-#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#' FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 #' FactorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'   factorRefine=refinePar_default("robust"))
+#'   factorRefine=refinePar_default("scale"))
 #' FactorLists <- c(tmp,FactorLists)
 #' re <- reg.TS(TS)
 #' re <- reg.TS(TS,FactorLists)
@@ -192,7 +192,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
     warning('NAs in TSFR!')
     TSFR <- na.omit(TSFR)  # omit the NAs 
   }
-  factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore')
+  factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore',silence=TRUE)
   
   if(!is.null(sectorAttr)){
     if(identical(sectorAttr,"existing")){
@@ -206,8 +206,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf_lcfs",factorPar=list(factorID='F000001'),
-                      factorRefine=setrefinePar(refinePar_default(type="none",sectorAttr = NULL),na_method="median"))
+        TSw <- gf_cap(TSFR[,c('date','stockID')],var="float_cap",na_fill=TRUE)
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
         TSFR <- merge.x(TSFR,TSw,by =c("date","stockID"))
@@ -293,7 +292,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
   
   TS <- getTS(RebDates,indexID)
   factorIDs <- CT_FactorLists()$factorID
-  tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+  tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
   FactorLists <- buildFactorLists(
     buildFactorList(factorFun="gf.ln_mkt_cap",
                     factorPar=list(),
@@ -313,7 +312,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
     buildFactorList(factorFun="gf.ROE_ttm",
                     factorPar=list(),
                     factorDir=1),
-    factorRefine=refinePar_default("robust"))
+    factorRefine=refinePar_default("scale"))
   FactorLists <- c(tmp,FactorLists)
   TSF <- getMultiFactor(TS,FactorLists)
   TSFR <- na.omit(getTSR(TSF))
@@ -348,7 +347,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
 #' TS <- getTS(RebDates,indexID = 'EI000905')
 #' factorIDs <- c("F000006","F000008","F000012","F000015",
 #' "F000016")
-#' tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#' tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 #' factorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
@@ -359,7 +358,7 @@ reg.factorlists_recommend <- function(indexID,begT,endT,rebFreq = "month",rsqBar
 #'   buildFactorList(factorFun="gf.G_MLL_Q",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'   buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust")))
+#'   buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale")))
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' ----------------------VIF----------------------
@@ -575,7 +574,6 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
 
 
 
-
 #inner function 
 lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
   check.colnames(data,c('date','stockID'))
@@ -589,17 +587,13 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
     secdf <- data %>% dplyr::group_by(date,sector) %>% 
       dplyr::summarise(n=1) %>% dplyr::ungroup()
     secdf <- reshape2::dcast(secdf,date~sector,fill = 0,value.var = 'n')
-    secNum <- ncol(secdf)-1
-    for(i in 1:nrow(secdf)){
-      secdf$rowtag[i] <- strtoi(paste(secdf[i,2:(1+secNum)],collapse = ''),base=2)
-    }
+    secdf <- tidyr::unite(secdf,rowtag,-date,sep='',remove = FALSE)
     
     while(nrow(secdf)>0){
-      tmp.secdf <- secdf[secdf$rowtag==max(secdf$rowtag),]
-      tmp.secdf$rowtag <- NULL
-      tmp.secdf <- tmp.secdf[,c(TRUE,colSums(tmp.secdf[,-1])>0)]
-      secNames <- colnames(tmp.secdf)[-1]
-      tmp.data <- data[data$date %in% tmp.secdf$date,]
+      secdf_ <- secdf %>% dplyr::filter(rowtag==dplyr::first(rowtag)) %>% dplyr::select(-rowtag)
+      secdf_ <- secdf_[,c(TRUE,colSums(secdf_[,-1])>0)]
+      secNames <- colnames(secdf_)[-1]
+      data_ <- data %>% dplyr::filter(date %in% secdf_$date)
       
       if(length(secNames)>1){
         fml <- formula(paste(y," ~ ", paste(c(x,secNames), collapse= "+"),"-1",sep=''))
@@ -608,20 +602,20 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
       }
       
       if(lmtype=='lm'){
-        models <- tmp.data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .))
+        models <- data_ %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .))
       }else{
-        models <- tmp.data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt))
+        models <- data_ %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt))
       }
       rsq <- rbind(rsq,dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared))
       coef <- rbind(coef,data.frame(models %>% broom::tidy(mod)))
-      tmp.resd <- models %>% broom::augment(mod)
-      resd <- rbind(resd,cbind(tmp.data[,c('date','stockID')],tmp.resd[,c('.fitted','.resid')]))
+      suppressWarnings(resd_ <- models %>% broom::augment(mod))
+      resd <- rbind(resd,cbind(data_[,c('date','stockID')],resd_[,c('.fitted','.resid')]))
       
-      secdf <- secdf[secdf$rowtag<max(secdf$rowtag),]
+      secdf <- secdf %>% dplyr::filter((!date %in% secdf_$date))
     }
     rsq <- dplyr::arrange(rsq,date)
     coef <- dplyr::arrange(coef,date,term)
-    resd <- merge.x(data[,c("date","stockID")],resd,by=c("date","stockID"))
+    resd <- dplyr::left_join(data[,c("date","stockID")],resd,by=c("date","stockID"))
     
   }else{
     fml <- formula(paste(y," ~ ", paste(x, collapse= "+"),sep=''))
@@ -639,7 +633,6 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
   colnames(resd) <- c('date','stockID','fitted','res')
   return(list(rsq=rsq,coef=coef,resd=resd))
 }
-
 
 
 
@@ -1079,10 +1072,8 @@ biasTest <- function(reg_results,portID){
 #' 
 #' @export
 exposure.TSWF <- function(TSWF) {
-  # factorNames <- setdiff(names(TSWF),c("stockID","date","date_end","periodrtn","wgt","sector"))
-  factorNames <- guess_factorNames(TSWF)
-  
-  TSWF <- dplyr::select(TSWF,one_of(c("stockID","date","wgt",factorNames)))
+  factorNames <- guess_factorNames(TSWF, silence = TRUE)
+  TSWF <- dplyr::select(TSWF,dplyr::one_of(c("stockID","date","wgt",factorNames)))
   TSWF <- na.omit(TSWF)  # omit the NA value
   dates <- unique(TSWF$date)
   factorexp <- data.frame()
@@ -1096,21 +1087,59 @@ exposure.TSWF <- function(TSWF) {
 
 #' calculate port exposure
 #' 
-#' @export
-exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
-  dates <- unique(port$date)
-  TS <- getTS(dates,indexID = 'EI801003')   # get TSFR within rebDates==dates & univ==EI000985
-  TSF <- getMultiFactor(TS,factorLists)
-  TSWF <- merge.x(port,TSF,by=c('date','stockID'))
-  TSWF <- na.omit(TSWF)
+#' @export exposure.port
+exposure.port <- function(port,factorLists,bmk=NULL,univ=NULL,
+                          sectorAttr = defaultSectorAttr()){
+  # get active wgt if bmk is provided.
+  if(!is.null(bmk)){
+    port <- getActivewgt(port = port,bmk = bmk,res = "all")
+  }
+  
+  # univ is nessecary when any of factorStd is not 'none'.
+  if(!is.null(univ)){ # get factorscore in univ
+    dates <- unique(port$date)
+    TS <- getTS(dates,indexID = univ)
+    TSF <- getMultiFactor(TS,factorLists)
+    TSWF <- merge.x(port,TSF,by=c('date','stockID'))
+  } else { # get factorscore only in port
+    factorSTD <- sapply(factorLists, function(x){x$factorRefine$std$method})
+    if(any(factorSTD != "none")){
+      warning("univ is nessecary when any of factorStd is not 'none'!")
+    }
+    TSWF <- getMultiFactor(port,factorLists)
+  }
+  
   if(!is.null(sectorAttr)){
     TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
   }
   
-  fexp <- exposure.TSWF(TSWF) 
-  fexp <- dplyr::arrange(fexp,date)
+  # arrange exposure
+  if(!is.null(bmk)){
+    # bmk
+    TSWF_bmk <- subset(TSWF, select = -c(portwgt,actwgt))
+    TSWF_bmk <- dplyr::rename(TSWF_bmk, wgt = benchwgt)
+    fexp_bmk <- exposure.TSWF(TSWF_bmk)
+    fexp_bmk <- reshape2::melt(fexp_bmk, id = "date")
+    fexp_bmk <- dplyr::rename(fexp_bmk, bmk_exposure = value)
+    # port
+    TSWF_port <- subset(TSWF, select = -c(benchwgt,actwgt))
+    TSWF_port <- dplyr::rename(TSWF_port, wgt = portwgt)
+    fexp_port <- exposure.TSWF(TSWF_port) 
+    fexp_port <- reshape2::melt(fexp_port, id = "date")
+    fexp_port <- dplyr::rename(fexp_port, port_exposure = value)
+    # merge and compute act
+    fexp <- merge(fexp_bmk, fexp_port, by = c("date", "variable"))
+    fexp <- dplyr::rename(fexp, fName = variable)
+    fexp$act_exposure <- fexp$port_exposure - fexp$bmk_exposure
+    fexp <- dplyr::arrange(fexp, fName, date)
+  }else{
+    fexp <- exposure.TSWF(TSWF)
+    fexp <- dplyr::arrange(fexp,date)
+    fexp <- reshape2::melt(fexp, id.vars="date", variable.name="fName", value.name="exposure")
+  }
   return(fexp)
 }
+
 
 
 
@@ -1120,21 +1149,22 @@ exposure.port <- function(port,factorLists,sectorAttr = defaultSectorAttr()){
 #' 
 #' @export
 #' @examples 
-#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
-#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
+#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("scale"))
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("none"))
 #' PA_tables <- getPAData(port,c(alphaLists,riskLists))
-#' PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905')
-getPAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
+#' PA_tables <- getPAData(port,c(alphaLists,riskLists),bmk='EI000905',univ="EI000905")
+getPAData <- function(port,factorLists,bmk=NULL,univ="EI000985",
+                      sectorAttr = defaultSectorAttr()){
   
-  # get active wgt, if necessary
-  if(!missing(bmk)){
+  # get active wgt if bmk is provided.
+  if(!is.null(bmk)){
     port <- getActivewgt(port = port,bmk = bmk,res = "active")
     port <- dplyr::rename(port,wgt=actwgt)
   }
   
   # calculate factor return 
   dates <- unique(port$date)
-  TS <- getTS(dates,indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
+  TS <- getTS(dates,indexID = univ)
   TSR <- getTSR(TS)
   TSFR <- getMultiFactor(TSR,factorLists)
   regdata <- reg.TSFR(TSFR = TSFR,regType = "glm",sectorAttr = sectorAttr,secRtnOut = TRUE)
@@ -1279,9 +1309,9 @@ chart.PA.attr <- function(PA_tables,riskfnames,plotInd=FALSE,attributeAnn=TRUE){
 #' 
 #' @export
 #' @examples 
-#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("robust"))
+#' alphaLists <- buildFactorLists_lcfs(c("F000012","F000008"),factorRefine=refinePar_default("scale"))
 #' alphaLists <- c(tmp,alphaLists)
-#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("robust"))
+#' riskLists <- buildFactorLists_lcfs(c("F000002","F000006"),factorRefine=refinePar_default("none"))
 #' RA_tables <- getRAData(port,c(alphaLists,riskLists))
 #' RA_tables <- getRAData(port,c(alphaLists,riskLists),bmk='EI000905')
 getRAData <- function(port,factorLists,bmk,sectorAttr = defaultSectorAttr()){
@@ -1361,7 +1391,6 @@ getActivewgt <- function(port,bmk,res=c("all","active")) {
   res <- match.arg(res)
   benchdata <- getIndexCompWgt(indexID = bmk,endT = unique(port$date))
   colnames(benchdata) <- c('date','stockID','benchwgt')
-  # colnames(port) <- c('date','stockID','portwgt')
   port <- renameCol(port,"wgt","portwgt")
   port <- merge(benchdata,port,by=c('date','stockID'),all=TRUE)
   port[is.na(port$portwgt),'portwgt'] <- 0

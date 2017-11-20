@@ -26,8 +26,7 @@ RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
 TS <- getTS(RebDates,'EI000300')
 refinePar_lists <- list(refinePar_default(type = "none"),
                         refinePar_default(type = "reg"),
-                        refinePar_default(type = "old_robust"),
-                        refinePar_default(type = "robust"))
+                        refinePar_default(type = "scale"))
 rawTSF <- gf.NP_YOY(TS, src = "fin")
 summary.factor_refine(rawTSF, refinePar_lists)
 }
