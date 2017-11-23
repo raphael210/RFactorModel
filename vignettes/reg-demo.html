@@ -12,7 +12,7 @@
 
 <meta name="author" content="量化投资部" />
 
-<meta name="date" content="2017-11-13" />
+<meta name="date" content="2017-11-21" />
 
 <title>国投瑞银多因子研究体系</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">国投瑞银多因子研究体系</h1>
 <h4 class="author"><em>量化投资部</em></h4>
-<h4 class="date"><em>2017-11-13</em></h4>
+<h4 class="date"><em>2017-11-21</em></h4>
 
 
 
@@ -88,7 +88,7 @@ ftable &lt;-<span class="st"> </span><span class="kw">sample_n</span>(ftable[,<s
 <div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2010-12-31'</span>)
 endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2017-08-31'</span>)
 RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT,<span class="dt">rebFreq =</span> <span class="st">'month'</span>)
-indexID &lt;-<span class="st"> 'EI000906'</span>
+indexID &lt;-<span class="st"> 'EI000985'</span>
 TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,indexID)
 TSF &lt;-<span class="st"> </span><span class="kw">gf.F_target_rtn</span>(TS,<span class="dt">con_type =</span> <span class="st">&quot;1,2&quot;</span>)
 TSF &lt;-<span class="st"> </span><span class="kw">transform</span>(TSF,<span class="dt">stock_code=</span><span class="ot">NULL</span>)
@@ -110,17 +110,8 @@ TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)</code></p
 <div class="section level2">
 <h2>合成大类因子</h2>
 <p>单因子的波动率较高，并且同一类型的单因子相关性较高，需要将同一类型的单因子合并为大类因子。下面以一致预期因子为例。</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(
-  <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.F_target_rtn&quot;</span>,
-                  <span class="dt">factorPar=</span><span class="kw">list</span>(<span class="dt">con_type =</span> <span class="st">&quot;1,2&quot;</span>),
-                  <span class="dt">factorDir=</span><span class="dv">1</span>),
-  <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.F_NP_chg&quot;</span>,
-                  <span class="dt">factorPar=</span><span class="kw">list</span>(<span class="dt">span=</span><span class="st">&quot;w13&quot;</span>,<span class="dt">con_type=</span><span class="st">&quot;1,2&quot;</span>),
-                  <span class="dt">factorDir=</span><span class="dv">1</span>),
-  <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.F_rank_chg&quot;</span>,
-                  <span class="dt">factorPar=</span><span class="kw">list</span>(<span class="dt">lag=</span><span class="dv">60</span>,<span class="dt">con_type=</span><span class="st">&quot;1,2&quot;</span>),
-                  <span class="dt">factorDir=</span><span class="dv">1</span>)
-)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000010&quot;</span>,<span class="st">&quot;F000011&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000015&quot;</span>,<span class="st">&quot;F000013&quot;</span>,<span class="st">&quot;F000004&quot;</span>,<span class="st">&quot;F000009&quot;</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">'scale'</span>))
 mTSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
 mTSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(mTSF)
 TSFRs &lt;-<span class="st"> </span><span class="kw">mTSF2TSFs</span>(mTSFR)</code></pre></div>
@@ -184,11 +175,11 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 </div>
 <div class="section level2">
 <h2>组合优化</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2015-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-07-31'</span>))
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2014-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-07-31'</span>))
 TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,<span class="dt">indexID =</span> <span class="st">'EI000985'</span>)
-tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;old_fashion&quot;</span>)))
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>)))
 factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>)
-FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;old_fashion&quot;</span>))
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>))
 FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
 TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
 TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
@@ -200,8 +191,8 @@ constr &lt;-<span class="st"> </span><span class="kw">constr_default</span>(<spa
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_box</span>(constr,<span class="dt">ES33480000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.05</span>),<span class="dt">ES33490000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.03</span>))
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_group</span>(constr,<span class="dt">EI000300=</span><span class="kw">c</span>(<span class="fl">0.8</span>,<span class="fl">0.95</span>))
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_sector</span>(constr,<span class="dt">each =</span> <span class="kw">c</span>(<span class="op">-</span><span class="fl">0.05</span>,<span class="fl">0.05</span>))
-conslist &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(<span class="st">&quot;F000002&quot;</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;old_fashion&quot;</span>))
-constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_style</span>(constr,conslist,<span class="op">-</span><span class="fl">0.05</span>,<span class="fl">0.05</span>,<span class="dt">relative =</span> <span class="dv">0</span>)
+conslist &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(<span class="st">&quot;F000002&quot;</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_style</span>(constr,conslist,<span class="op">-</span><span class="fl">0.1</span>,<span class="dv">1</span>)
 
 <span class="co">#max return</span>
 port_opt4 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr)
@@ -212,11 +203,10 @@ obj &lt;-<span class="st"> </span><span class="kw">addObj_risk</span>(obj)
 port_opt5 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj)
 
 <span class="co"># add turnover constraint</span>
-constr &lt;-<span class="st"> </span><span class="kw">addConstr_turnover</span>(constr)
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_turnover</span>(constr,<span class="dt">turnover_target =</span> <span class="fl">0.25</span>)
 port_opt6 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj)
 
 <span class="co"># add trackingerror constraint</span>
-constr &lt;-<span class="st"> </span><span class="kw">clearConstr</span>(constr,<span class="st">'turnover'</span>)
 constr &lt;-<span class="st"> </span><span class="kw">addConstr_trackingerror</span>(constr)
 delta &lt;-<span class="st"> </span>rtn_cov_delta<span class="op">$</span>Delta
 port_opt7 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj,<span class="dt">delta=</span>delta)

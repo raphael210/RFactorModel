@@ -35,7 +35,7 @@ addConstr_box(constr, each, ..., relative = 0)
 
 addConstr_position(constr, position, relative = 0)
 
-addConstr_turnover(constr, turnover_target = 0.5, method = c("rmosek",
+addConstr_turnover(constr, turnover_target = 0.25, method = c("rmosek",
   "matlab"))
 
 addConstr_trackingerror(constr, trackingerror_ann = 0.05,

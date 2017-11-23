@@ -4,7 +4,8 @@
 \alias{exposure.port}
 \title{calculate port exposure}
 \usage{
-exposure.port(port, FactorLists, sectorAttr = defaultSectorAttr())
+exposure.port(port, factorLists, bmk = NULL, univ = NULL,
+  sectorAttr = defaultSectorAttr())
 }
 \description{
 calculate port exposure

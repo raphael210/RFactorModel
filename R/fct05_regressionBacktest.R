@@ -307,7 +307,7 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 #' TS <- getTS(RebDates,indexID = 'EI000905')
 #' factorIDs <- c("F000006","F000008","F000012","F000015",
 #' "F000016")
-#' tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust"))
+#' tmp <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
 #' factorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.NP_YOY",
 #'                   factorPar=list(),
@@ -318,7 +318,7 @@ reg.TS <- function(TS,FactorLists,dure=months(1),regType=c('glm','lm'),glm_wgt=c
 #'   buildFactorList(factorFun="gf.G_MLL_Q",
 #'                   factorPar=list(),
 #'                   factorDir=1),
-#'   buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("robust")))
+#'   buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale")))
 #' factorLists <- c(tmp,factorLists)
 #' TSF <- getMultiFactor(TS,FactorLists = factorLists)
 #' ----------------------VIF----------------------
@@ -828,8 +828,8 @@ getfRtn <- function(dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),nwi
   }else{
     rtndata <- get_frtn_res(reg_results=reg_results)
   }
-  rtndata <- transform(rtndata,date_end=trday.offset(date,dure))
-  rtndata <- reshape2::dcast(rtndata,date_end~fname,value.var = 'frtn')
+  #rtndata <- transform(rtndata,date_end=trday.offset(date,dure))
+  rtndata <- reshape2::dcast(rtndata,date~fname,value.var = 'frtn')
   
   if(rtntype=='mean'){
     if(!rolling) nwin <- nrow(rtndata)
@@ -840,14 +840,14 @@ getfRtn <- function(dure=months(1),rolling=FALSE,rtntype=c('mean','forcast'),nwi
     
   }else{
     if(rolling){
-      RebDates <- rtndata$date_end
+      RebDates <- rtndata$date
     }else{
-      RebDates <- max(rtndata$date_end)
+      RebDates <- max(rtndata$date)
     }
     
     result <- data.frame()
     for(i in 1:length(RebDates)){
-      rtndata_ <- rtndata %>% dplyr::filter(date_end<RebDates[i]) %>% dplyr::select(-date_end)
+      rtndata_ <- rtndata %>% dplyr::filter(date<RebDates[i]) %>% dplyr::select(-date)
       if(rolling && nrow(rtndata_)<nwin) next
       for(j in 1:ncol(rtndata_)){
         myts <- ts(data= rtndata_[,j])
@@ -878,18 +878,18 @@ getfCov <- function(dure=months(1),rolling=FALSE,covtype=c('shrink','simple'),
     rtndata <- get_frtn_res(reg_results=reg_results)
   }
   
-  rtndata <- transform(rtndata,date_end=trday.offset(date,dure))
-  rtndata <- reshape2::dcast(rtndata,date_end~fname,value.var = 'frtn')
+  #rtndata <- transform(rtndata,date_end=trday.offset(date,dure))
+  rtndata <- reshape2::dcast(rtndata,date~fname,value.var = 'frtn')
   
   if(rolling){
-    RebDates <- rtndata$date_end
+    RebDates <- rtndata$date
   }else{
-    RebDates <- max(rtndata$date_end)
+    RebDates <- max(rtndata$date)
   }
   
   result <- data.frame()
   for(i in 1:length(RebDates)){
-    rtnmat <- rtndata %>% dplyr::filter(date_end<=RebDates[i]) %>% dplyr::select(-date_end)
+    rtnmat <- rtndata %>% dplyr::filter(date<=RebDates[i]) %>% dplyr::select(-date)
     rtnmat <- as.matrix(rtnmat)
     if(rolling && nrow(rtnmat)<nwin) next
     if(covtype=='simple'){
@@ -919,20 +919,20 @@ getDelta <- function(dure=months(1),rolling=FALSE,nwin=24,reg_results){
     resdata <- get_frtn_res(reg_results=reg_results,outtype = 'res')
   }
   
-  resdata <- transform(resdata,date_end=trday.offset(date,dure))
-  resdata <- reshape2::dcast(resdata,date_end~stockID,value.var = 'res')
+  #resdata <- transform(resdata,date_end=trday.offset(date,dure))
+  resdata <- reshape2::dcast(resdata,date~stockID,value.var = 'res')
   if(rolling){
-    RebDates <- resdata$date_end
+    RebDates <- resdata$date
   }else{
-    RebDates <- max(resdata$date_end)
+    RebDates <- max(resdata$date)
   }
   
   result <- data.frame()
   for(i in 1:length(RebDates)){
-    resdata_ <- resdata %>% dplyr::filter(date_end<=RebDates[i])
+    resdata_ <- resdata %>% dplyr::filter(date<=RebDates[i])
     if(rolling && nrow(resdata_)<nwin) next
 
-    resdata_ <- reshape2::melt(resdata_,id.vars='date_end',variable.name = "stockID", na.rm = TRUE,value.name = "res")
+    resdata_ <- reshape2::melt(resdata_,id.vars='date',variable.name = "stockID", na.rm = TRUE,value.name = "res")
     
     result_ <- resdata_ %>% dplyr::group_by(stockID) %>% dplyr::summarise(n =n(),var = var(res))
     
@@ -1032,17 +1032,56 @@ exposure.TSWF <- function(TSWF) {
 
 #' calculate port exposure
 #' 
-#' @export
-exposure.port <- function(port,FactorLists,sectorAttr = defaultSectorAttr()){
-  TS <- getTS(unique(port$date),indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
-  TSF <- getMultiFactor(TS,FactorLists)
-  TSWF <- merge.x(port,TSF,by=c('date','stockID'))
-  TSWF <- na.omit(TSWF)
+#' @export exposure.port
+exposure.port <- function(port,factorLists,bmk=NULL,univ=NULL,
+                          sectorAttr = defaultSectorAttr()){
+  # get active wgt if bmk is provided.
+  if(!is.null(bmk)){
+    port <- getActivewgt(port = port,bmk = bmk,res = "all")
+  }
+  
+  # univ is nessecary when any of factorStd is not 'none'.
+  if(!is.null(univ)){ # get factorscore in univ
+    dates <- unique(port$date)
+    TS <- getTS(dates,indexID = univ)
+    TSF <- getMultiFactor(TS,factorLists)
+    TSWF <- merge.x(port,TSF,by=c('date','stockID'))
+  } else { # get factorscore only in port
+    factorSTD <- sapply(factorLists, function(x){x$factorRefine$std$method})
+    if(any(factorSTD != "none")){
+      warning("univ is nessecary when any of factorStd is not 'none'!")
+    }
+    TSWF <- getMultiFactor(port,factorLists)
+  }
+  
   if(!is.null(sectorAttr)){
     TSWF <- gf_sector(TSWF,sectorAttr = sectorAttr)
   }
-  fexp <- exposure.TSWF(TSWF) 
-  fexp <- dplyr::arrange(fexp,date)
+  
+  # arrange exposure
+  if(!is.null(bmk)){
+    # bmk
+    TSWF_bmk <- subset(TSWF, select = -c(portwgt,actwgt))
+    TSWF_bmk <- dplyr::rename(TSWF_bmk, wgt = benchwgt)
+    fexp_bmk <- exposure.TSWF(TSWF_bmk)
+    fexp_bmk <- reshape2::melt(fexp_bmk, id = "date")
+    fexp_bmk <- dplyr::rename(fexp_bmk, bmk_exposure = value)
+    # port
+    TSWF_port <- subset(TSWF, select = -c(benchwgt,actwgt))
+    TSWF_port <- dplyr::rename(TSWF_port, wgt = portwgt)
+    fexp_port <- exposure.TSWF(TSWF_port) 
+    fexp_port <- reshape2::melt(fexp_port, id = "date")
+    fexp_port <- dplyr::rename(fexp_port, port_exposure = value)
+    # merge and compute act
+    fexp <- merge(fexp_bmk, fexp_port, by = c("date", "variable"))
+    fexp <- dplyr::rename(fexp, fName = variable)
+    fexp$act_exposure <- fexp$port_exposure - fexp$bmk_exposure
+    fexp <- dplyr::arrange(fexp, fName, date)
+  }else{
+    fexp <- exposure.TSWF(TSWF)
+    fexp <- dplyr::arrange(fexp,date)
+    fexp <- reshape2::melt(fexp, id.vars="date", variable.name="fName", value.name="exposure")
+  }
   return(fexp)
 }
 

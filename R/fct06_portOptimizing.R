@@ -175,7 +175,7 @@ addConstr_position <- function(constr,position,relative=0){
 #' @rdname opt_constrain
 #' @examples
 #' addConstr_turnover(constr,turnover_target=0.5)
-addConstr_turnover <- function(constr,turnover_target=0.5,method=c('rmosek','matlab')){
+addConstr_turnover <- function(constr,turnover_target=0.25,method=c('rmosek','matlab')){
   method <- match.arg(method)
   cons <- data.frame(ID="turnover",target=turnover_target,method=method,stringsAsFactors = FALSE)
   constr$turnover <- rbind(constr$turnover,cons)
@@ -526,20 +526,18 @@ get_bmk_wgt <- function(TS,bmk=NULL,byTS=TRUE,rmbmkSus=FALSE){
     benchdata <- getIndexCompWgt(indexID = bmk,endT = unique(TS$date))
     if(rmbmkSus){
       benchdata <- is_suspend(benchdata,nearby = 1)
-      benchdata <- benchdata[benchdata$sus==FALSE,]
-      benchdata <- dplyr::select(benchdata,-sus)
+      benchdata <- benchdata %>% dplyr::filter(sus==FALSE) %>% dplyr::select(-sus)
     }
     
     #deal with total weight not equal to 1
     benchdata <- port_wgt_roundto(benchdata)
-    colnames(benchdata) <- c('date','stockID','wgt_bmk')
+    benchdata <- dplyr::rename(benchdata,wgt_bmk=wgt)
     if(byTS){
       TS <- merge.x(TS,benchdata,by=c('date','stockID'))
-      TS[is.na(TS$wgt_bmk),'wgt_bmk'] <- 0
     }else{
       TS <- dplyr::full_join(TS,benchdata,by=c('date','stockID'))
-      TS[is.na(TS$wgt_bmk),'wgt_bmk'] <- 0
     }
+    TS[is.na(TS$wgt_bmk),'wgt_bmk'] <- 0
   }
   return(TS)
 }
@@ -549,23 +547,12 @@ get_exp_rtn <- function(TSF){
 }
 
 port_wgt_roundto <- function(port,target=1,digits=5){
-  add_date_tag <- FALSE
-  if(!('date' %in% colnames(port))){
-    port <- transform(port,date=Sys.Date())
-    add_date_tag <- TRUE
-  }
-  
-  newport <- dplyr::arrange(port,date,desc(wgt))
-  newport <- newport %>% dplyr::group_by(date) %>% dplyr::mutate(wgt=wgt/sum(wgt)*target,id=seq(1,length(date))) %>% dplyr::ungroup()
-  newport <- transform(newport,wgt=round(wgt,digits))
-  errdata <- newport %>% dplyr::group_by(date) %>% dplyr::summarise(exwgt=round(sum(wgt)-target,digits)) %>% dplyr::ungroup()
+  newport <- port %>% dplyr::arrange(date,desc(wgt)) %>% dplyr::group_by(date) %>% 
+    dplyr::mutate(wgt=round(wgt/sum(wgt)*target,digits),id=seq(1,length(date))) %>% dplyr::ungroup()
+  errdata <- newport %>% dplyr::group_by(date) %>% dplyr::summarise(exwgt=sum(wgt)-target) %>% dplyr::ungroup()
   newport <- dplyr::left_join(newport,errdata,by='date')
-  newport[,'wgt'] <- ifelse(newport$id==1,newport$wgt-newport$exwgt,newport$wgt)
+  newport <- transform(newport,wgt=ifelse(id==1,wgt-exwgt,wgt))
   port <- dplyr::left_join(port[,c('date','stockID')],newport[,c('date','stockID','wgt')],by=c('date','stockID'))
-  
-  if(add_date_tag){
-    port <- port[,c('stockID','wgt')]
-  }
   return(port)
 }
 
@@ -587,13 +574,13 @@ port_wgt_roundto <- function(port,target=1,digits=5){
 #' @export
 #' @examples 
 #' TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
-#' TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine = refinePar_default("robust")))
+#' TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine = refinePar_default("scale")))
 #' TSF <- renameCol(TSF,"factorscore","combfct")
 #' # constrain setting
 #' constr <- constr_default(box_each = c(0,0.02))
 #' constr <- addConstr_box(constr,each = c(0,0.02))
 #' constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-#' conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("robust"))
+#' conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("scale"))
 #' # with bmk
 #' constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
 #' port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'combfct')
@@ -1033,7 +1020,7 @@ solver_trackingerror_simple <- function(dvec,Dmat,mat_vec_list,constr,...){
     
   }else if(constr$trackingerror[,'method']=='rmosek'){
 
-    Amat_bvec <- mat_vec_bind(dir='gl',eqsep = FALSE,mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
+    Amat_bvec <- mat_vec_bind(dir='gl',mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style,eqsep = FALSE)
     nstock <- length(dvec)
     nconstr <- ncol(Amat_bvec$amat)
     Gmat <-  Matrix::chol(Dmat)
@@ -1060,7 +1047,11 @@ solver_trackingerror_simple <- function(dvec,Dmat,mat_vec_list,constr,...){
 }
 
 solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,init_wgt,turnover_target,...){
-  
+  mat_position <- mat_vec_list$mat_position
+  mat_box <- mat_vec_list$mat_box
+  mat_group <- mat_vec_list$mat_group
+  mat_fctExp_sector <- mat_vec_list$mat_fctExp_sector
+  mat_fctExp_style <- mat_vec_list$mat_fctExp_style
   if(constr$trackingerror[,'method']=='matlab'){
     dotlits <- list(...)
     matlab <- dotlits[['matlab']]
@@ -1099,7 +1090,7 @@ solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,init_wgt
     return(res$w) 
     
   }else{
-    Amat_bvec <- mat_vec_bind(dir='gl',eqsep = FALSE,mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style)
+    Amat_bvec <- mat_vec_bind(dir='gl',mat_position,mat_group,mat_fctExp_sector,mat_fctExp_style,eqsep = FALSE)
     nstock <- length(dvec)
     nconstr <- ncol(Amat_bvec$amat)
     Gmat <-  Matrix::chol(Dmat)
@@ -1110,10 +1101,11 @@ solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,init_wgt
     Amat_ <- rbind(cbind(t(Amat_bvec$amat),matrix(0,ncol = 1,nrow = nconstr),matrix(0,ncol = nstock,nrow = nconstr),matrix(0,ncol = nstock,nrow = nconstr)),
                    cbind(Gmat,matrix(0,ncol = 1,nrow = nstock),diag(-1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock)),
                    cbind(diag(1,nrow = nstock),matrix(0,ncol = 1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock),diag(-1,nrow = nstock)),
-                   cbind(diag(1,nrow = nstock),matrix(0,ncol = 1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock),diag(1,nrow = nstock)))
+                   cbind(diag(1,nrow = nstock),matrix(0,ncol = 1,nrow = nstock),matrix(0,ncol = nstock,nrow = nstock),diag(1,nrow = nstock)),
+                   cbind(matrix(0,ncol=nstock,nrow=1),matrix(0,ncol = nstock+1,nrow = 1),matrix(1,ncol = nstock,nrow=1)))
     lo1$A <- Matrix::Matrix(Amat_,sparse=TRUE)
-    lo1$bc <- rbind(blc = c(Amat_bvec$bvec[,'min'],rep(0,nstock),rep(-Inf,nstock),init_wgt),
-                    buc = c(Amat_bvec$bvec[,'max'],rep(0,nstock),init_wgt,rep(Inf,nstock)))
+    lo1$bc <- rbind(blc = c(Amat_bvec$bvec[,'min'],rep(0,nstock),rep(-Inf,nstock),init_wgt,0),
+                    buc = c(Amat_bvec$bvec[,'max'],rep(0,nstock),init_wgt,rep(Inf,nstock),turnover_target))
     lo1$bx <- rbind(blx = c(mat_box$bvec[,'min'],gamma_,rep(-Inf,nstock),rep(0,nstock)),
                     bux = c(mat_box$bvec[,'max'],gamma_,rep(Inf,nstock),rep(turnover_target,nstock)))
     
@@ -1130,7 +1122,7 @@ solver_trackingerror_turnover <- function(dvec,Dmat,mat_vec_list,constr,init_wgt
 
 # param dir  ge means greater than, le means less than,gl means both direction.
 # param eqsep means whether seprate amat_eq and bvec_eq.  
-mat_vec_bind <- function(dir=c('ge','le','gl'),eqsep=TRUE,...){
+mat_vec_bind <- function(dir=c('ge','le','gl'),...,eqsep=TRUE){
   dir <- match.arg(dir)
   
   rawdata <- list(...)

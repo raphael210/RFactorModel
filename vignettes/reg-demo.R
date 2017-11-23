@@ -15,7 +15,7 @@ knitr::opts_chunk$set(
 #  begT <- as.Date('2010-12-31')
 #  endT <- as.Date('2017-08-31')
 #  RebDates <- getRebDates(begT,endT,rebFreq = 'month')
-#  indexID <- 'EI000906'
+#  indexID <- 'EI000985'
 #  TS <- getTS(RebDates,indexID)
 #  TSF <- gf.F_target_rtn(TS,con_type = "1,2")
 #  TSF <- transform(TSF,stock_code=NULL)
@@ -41,17 +41,8 @@ knitr::opts_chunk$set(
 #  chart.Ngroup.spread(TSFR)
 
 ## ----mfactorstat,echo=TRUE-----------------------------------------------
-#  FactorLists <- buildFactorLists(
-#    buildFactorList(factorFun="gf.F_target_rtn",
-#                    factorPar=list(con_type = "1,2"),
-#                    factorDir=1),
-#    buildFactorList(factorFun="gf.F_NP_chg",
-#                    factorPar=list(span="w13",con_type="1,2"),
-#                    factorDir=1),
-#    buildFactorList(factorFun="gf.F_rank_chg",
-#                    factorPar=list(lag=60,con_type="1,2"),
-#                    factorDir=1)
-#  )
+#  factorIDs <- c("F000010","F000011","F000008","F000015","F000013","F000004","F000009")
+#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine = refinePar_default('scale'))
 #  mTSF <- getMultiFactor(TS,FactorLists)
 #  mTSFR <- getTSR(mTSF)
 #  TSFRs <- mTSF2TSFs(mTSFR)
@@ -120,11 +111,11 @@ knitr::opts_chunk$set(
 #  table.reg.fRtn(reg_results)
 
 ## ----portOpt-------------------------------------------------------------
-#  RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-07-31'))
+#  RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2017-07-31'))
 #  TS <- getTS(RebDates,indexID = 'EI000985')
-#  tmp <- buildFactorLists(buildFactorList(factorFun = 'gf.NP_YOY',factorDir = 1,factorRefine = refinePar_default("old_fashion")))
+#  tmp <- buildFactorLists(buildFactorList(factorFun = 'gf.NP_YOY',factorDir = 1,factorRefine = refinePar_default("scale")))
 #  factorIDs <- c("F000006","F000008","F000013")
-#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine = refinePar_default("old_fashion"))
+#  FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine = refinePar_default("scale"))
 #  FactorLists <- c(tmp,FactorLists)
 #  TSF <- getMultiFactor(TS,FactorLists)
 #  TSFR <- getTSR(TSF)
@@ -136,8 +127,8 @@ knitr::opts_chunk$set(
 #  constr <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.03))
 #  constr <- addConstr_group(constr,EI000300=c(0.8,0.95))
 #  constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-#  conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("old_fashion"))
-#  constr <- addConstr_fctExp_style(constr,conslist,-0.05,0.05,relative = 0)
+#  conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("scale"))
+#  constr <- addConstr_fctExp_style(constr,conslist,-0.1,1)
 #  
 #  #max return
 #  port_opt4 <- getPort_opt(TSF,fRtn = fRtn,bmk="EI000300",constr = constr)
@@ -148,11 +139,10 @@ knitr::opts_chunk$set(
 #  port_opt5 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
 #  
 #  # add turnover constraint
-#  constr <- addConstr_turnover(constr)
+#  constr <- addConstr_turnover(constr,turnover_target = 0.25)
 #  port_opt6 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
 #  
 #  # add trackingerror constraint
-#  constr <- clearConstr(constr,'turnover')
 #  constr <- addConstr_trackingerror(constr)
 #  delta <- rtn_cov_delta$Delta
 #  port_opt7 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj,delta=delta)
