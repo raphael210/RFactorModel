@@ -5,7 +5,8 @@
 \title{getPort_opt}
 \usage{
 getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
-  constr = constr_default(), obj = object_default(), init_port, delta)
+  constr = constr_default(), obj = object_default(), init_port, delta,
+  min_wgt = 0.001)
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object,may contains multiple factors.}
@@ -23,6 +24,8 @@ getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
 \item{init_port}{if constrain includes turnover,then init_port is required.}
 
 \item{delta}{if constrain includes tracking error,then delta is required.}
+
+\item{min_wgt}{stock's minimum weight in optimized portfolio.}
 }
 \value{
 a optimized port
