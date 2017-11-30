@@ -21,10 +21,27 @@ lcdb.update.RegTables(begT, endT, FactorLists)
 build and update local database's regression result tables
 }
 \examples{
-begT <- as.Date('2010-01-01')
-endT <- as.Date('2012-12-31')
+begT <- as.Date('2005-01-01')
+endT <- as.Date('2009-12-31')
+FactorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.SIZE"),
+  buildFactorList(factorFun="gf.GROWTH"),
+  buildFactorList(factorFun="gf.TRADING"),
+  buildFactorList(factorFun="gf.EARNINGYIELD"),
+  buildFactorList(factorFun="gf.VALUE"),
+  buildFactorList(factorFun="gf.QUALITY"),
+  buildFactorList(factorFun="gf.OTHER"))
 lcdb.build.RegTables(begT,endT,FactorLists)
-begT <- as.Date('2012-06-01')
+begT <- as.Date('2010-01-01')
 endT <- as.Date('2014-12-31')
+FactorLists <- buildFactorLists(
+  buildFactorList(factorFun="gf.SIZE"),
+  buildFactorList(factorFun="gf.GROWTH"),
+  buildFactorList(factorFun="gf.TRADING"),
+  buildFactorList(factorFun="gf.FORECAST"),
+  buildFactorList(factorFun="gf.EARNINGYIELD"),
+  buildFactorList(factorFun="gf.VALUE"),
+  buildFactorList(factorFun="gf.QUALITY"),
+  buildFactorList(factorFun="gf.OTHER"))
 lcdb.update.RegTables(begT,endT,FactorLists)
 }

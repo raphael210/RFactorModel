@@ -27,7 +27,7 @@
 #' @export
 chart.Fct_hist <- function(TSF,bins=NULL,ncol=NULL){
   ggplot(TSF, aes(factorscore)) + 
-    geom_histogram(colour = "black", fill = "white",bins = bins)+
+    geom_histogram(colour = "black", fill = "gray",bins = bins)+
     facet_wrap(~date,scales = "free",ncol = ncol)
 }
 
@@ -45,7 +45,7 @@ chart.Fct_box <- function(TSF){
   #facet by dates
   TSF$date <- as.factor(TSF$date)
   ggplot(TSF, aes(date,factorscore)) + 
-    geom_boxplot()+
+    geom_boxplot(fill = "gray", colour = "black")+
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 }
 
@@ -703,8 +703,8 @@ add_rank_and_group <- function(TSF,N=5,sectorNe=NULL,untie=1.5){
     # abnormal grouping due to big ties. Untie them.
     check_stat <- (table(TSF$group)) > nrow(TSF)/N*untie
     if(any(check_stat)){
-      warning("There are big ties in groups!")
-      TSF <- TSF[,rank:=rank(-factorscore, na.last="keep", ties.method = "random"), by="date"]
+      warning("There are big ties in groups. The ties will be ranked randomly!")
+      TSF <- TSF[,rank:=as.numeric(rank(-factorscore, na.last="keep", ties.method = "random")), by="date"]
       TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by="date"]
     }
   } else {
@@ -715,8 +715,8 @@ add_rank_and_group <- function(TSF,N=5,sectorNe=NULL,untie=1.5){
     # abnormal grouping due to big ties. Untie them.
     check_stat <- (table(TSF$group)) > nrow(TSF)/N*untie
     if(any(check_stat)){
-      warning("There are big ties in groups!")
-      TSF <- TSF[,rank:=rank(-factorscore, na.last="keep", ties.method = "random"), by=c("date","sector")]
+      warning("There are big ties in groups. The ties will be ranked randomly!")
+      TSF <- TSF[,rank:=as.numeric(rank(-factorscore, na.last="keep", ties.method = "random")), by=c("date","sector")]
       TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
     }
   }

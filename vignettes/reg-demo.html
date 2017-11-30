@@ -10,11 +10,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<meta name="author" content="UBSSDIC Quant Group" />
+<meta name="author" content="量化投资部" />
 
-<meta name="date" content="2017-02-08" />
+<meta name="date" content="2017-11-30" />
 
-<title>Multiple factors model using regression</title>
+<title>国投瑞银多因子研究体系</title>
 
 
 
@@ -68,229 +68,85 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 
 
-<h1 class="title toc-ignore">Multiple factors model using regression</h1>
-<h4 class="author"><em>UBSSDIC Quant Group</em></h4>
-<h4 class="date"><em>2017-02-08</em></h4>
+<h1 class="title toc-ignore">国投瑞银多因子研究体系</h1>
+<h4 class="author"><em>量化投资部</em></h4>
+<h4 class="date"><em>2017-11-30</em></h4>
 
 
 
-<p>This vignette aims to help you work with the regression method in multiple factors model. We will seperate the help file in following part:</p>
-<ul>
-<li>local regression tables</li>
-<li>regression result show</li>
-<li>portfolio optimization</li>
-<li>traditional portfolio construction</li>
-</ul>
-<div id="local-regression-tables" class="section level2">
-<h2>local regression tables</h2>
-<p>Local database’s factorlist table is as below.</p>
-<table>
-<thead>
-<tr class="header">
-<th align="left">factorID</th>
-<th align="left">factorName</th>
-<th align="left">factorFun</th>
-<th align="left">factorPar</th>
-<th align="right">factorDir</th>
-<th align="left">factorType</th>
-<th align="left">factorDesc</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td align="left">F000001</td>
-<td align="left">float_cap_</td>
-<td align="left">gf.float_cap</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left">mkt</td>
-<td align="left">流通市值</td>
-</tr>
-<tr class="even">
-<td align="left">F000002</td>
-<td align="left">mkt_cap_</td>
-<td align="left">gf.mkt_cap</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left">mkt</td>
-<td align="left">总市值</td>
-</tr>
-<tr class="odd">
-<td align="left">F000003</td>
-<td align="left">F_NP_chg_w13</td>
-<td align="left">gf.F_NP_chg</td>
-<td align="left">span=“w13”</td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000004</td>
-<td align="left">F_target_rtn_1_2</td>
-<td align="left">gf.F_target_rtn</td>
-<td align="left">con_type=“1,2”</td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000005</td>
-<td align="left">PE_lyr_</td>
-<td align="left">gf.PE_lyr</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000006</td>
-<td align="left">PB_mrq_</td>
-<td align="left">gf.PB_mrq</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000007</td>
-<td align="left">PE_ttm_</td>
-<td align="left">gf.PE_ttm</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000008</td>
-<td align="left">pct_chg_per_60_</td>
-<td align="left">gf.pct_chg_per</td>
-<td align="left">N=60</td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000009</td>
-<td align="left">F_rank_chg_60_1_2</td>
-<td align="left">gf.F_rank_chg</td>
-<td align="left">lag=60,con_type=“1,2”</td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000010</td>
-<td align="left">F_PE_1_</td>
-<td align="left">gf.F_PE</td>
-<td align="left">con_type=“1”</td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000011</td>
-<td align="left">F_ROE_1</td>
-<td align="left">gf.F_ROE</td>
-<td align="left">con_type=“1”</td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000012</td>
-<td align="left">GG_OR_Q</td>
-<td align="left">gf.GG_OR_Q</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000013</td>
-<td align="left">G_SCF_Q</td>
-<td align="left">gf.G_SCF_Q</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000014</td>
-<td align="left">G_MLL_Q</td>
-<td align="left">gf.G_MLL_Q</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000015</td>
-<td align="left">liquidity_</td>
-<td align="left">gf.liquidity</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000016</td>
-<td align="left">beta_</td>
-<td align="left">gf.beta</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000017</td>
-<td align="left">IVR_</td>
-<td align="left">gf.IVR</td>
-<td align="left"></td>
-<td align="right">-1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000018</td>
-<td align="left">NP_YOY</td>
-<td align="left">gf.NP_YOY</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000019</td>
-<td align="left">G_OCF</td>
-<td align="left">gf.G_OCF</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="even">
-<td align="left">F000020</td>
-<td align="left">G_scissor_Q</td>
-<td align="left">gf.G_scissor_Q</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-<tr class="odd">
-<td align="left">F000021</td>
-<td align="left">GG_NP_Q</td>
-<td align="left">gf.GG_NP_Q</td>
-<td align="left"></td>
-<td align="right">1</td>
-<td align="left"></td>
-<td align="left"></td>
-</tr>
-</tbody>
-</table>
+<p>该文档旨在介绍国投瑞银量化投资部的多因子体系。</p>
+<div class="section level2">
+<h2>因子分类</h2>
+<p>由于因子众多，我们根据因子的数据源、因子特征，将因子分成8大类，涵盖市值、成长、估值、一致预期、盈利能力、交易行为、财务质量及其他。因子分类部分结果展示如下表。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">ftable &lt;-<span class="st"> </span><span class="kw">CT_GroupFactorLists</span>()
+ftable &lt;-<span class="st"> </span><span class="kw">sample_n</span>(ftable[,<span class="kw">c</span>(<span class="st">&quot;factorType&quot;</span>,<span class="st">&quot;groupDesc&quot;</span>,<span class="st">&quot;factorFun&quot;</span>,<span class="st">&quot;factorDesc&quot;</span>,<span class="st">&quot;wgt&quot;</span>)],<span class="dv">10</span>)
+<span class="kw">kable</span>(ftable,<span class="dt">row.names =</span> <span class="ot">FALSE</span>)</code></pre></div>
+</div>
+<div class="section level2">
+<h2>单因子检验</h2>
+<p>单因子检验是多因子研究的第一步。以预期类的一致预期目标涨幅因子为例，简单的展示单因子检验的流程，一致预期均采用朝阳永续的数据库。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2010-12-31'</span>)
+endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2017-08-31'</span>)
+RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT,<span class="dt">rebFreq =</span> <span class="st">'month'</span>)
+indexID &lt;-<span class="st"> 'EI000985'</span>
+TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,indexID)
+TSF &lt;-<span class="st"> </span><span class="kw">gf.F_target_rtn</span>(TS,<span class="dt">con_type =</span> <span class="st">&quot;1,2&quot;</span>)
+TSF &lt;-<span class="st"> </span><span class="kw">transform</span>(TSF,<span class="dt">stock_code=</span><span class="ot">NULL</span>)
+TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)</code></pre></div>
+<p>一致预期目标涨幅因子部分数据如下表。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">kable</span>(<span class="kw">sample_n</span>(TSF,<span class="dv">15</span>),<span class="dt">row.names =</span> <span class="ot">FALSE</span>)</code></pre></div>
+<p>从上面表格中可以看到，一致预期目标涨幅因子数据存在一定的缺失，因子缺失比例如下图所示。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.Fct_NA</span>(TSF)</code></pre></div>
+<p>一致预期目标涨幅因子得分部分时间段的分布直方图如下所示。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">TSF_sample &lt;-<span class="st"> </span>TSF[TSF$date %in%<span class="st"> </span><span class="kw">sample</span>(RebDates,<span class="dv">5</span>),]
+<span class="kw">chart.Fct_hist</span>(TSF_sample)</code></pre></div>
+<p>一致预期目标涨幅因子历史IC如下图。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.IC</span>(TSFR)</code></pre></div>
+<p>一致预期目标涨幅因子历史分组收益率如下图。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.Ngroup.overall</span>(TSFR)</code></pre></div>
+<p>一致预期目标涨幅因子历史分组收益率如下图。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.Ngroup.spread</span>(TSFR)</code></pre></div>
+</div>
+<div class="section level2">
+<h2>合成大类因子</h2>
+<p>单因子的波动率较高，并且同一类型的单因子相关性较高，需要将同一类型的单因子合并为大类因子。下面以一致预期因子为例。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000010&quot;</span>,<span class="st">&quot;F000011&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000015&quot;</span>,<span class="st">&quot;F000013&quot;</span>,<span class="st">&quot;F000004&quot;</span>,<span class="st">&quot;F000009&quot;</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">'scale'</span>))
+mTSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
+mTSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(mTSF)
+TSFRs &lt;-<span class="st"> </span><span class="kw">mTSF2TSFs</span>(mTSFR)</code></pre></div>
+<p>一致预期类单因子的IC如下图所示。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">MF.chart.IC</span>(mTSFR,<span class="dt">facet_by =</span> <span class="st">'fname'</span>)</code></pre></div>
+<p>一致预期类单因子的分组多空收益如下图所示。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">MF.chart.Ngroup.spread</span>(mTSFR)</code></pre></div>
+<p>单因子合成为大类因子，支持多种合成方式。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co">#maximize IC' sharpe</span>
+<span class="kw">MC.wgt.CAPM</span>(TSFRs)
+<span class="co">#minimize IC' volatility</span>
+<span class="kw">MC.wgt.CAPM</span>(TSFRs,<span class="dt">targetType =</span> <span class="st">'risk'</span>)
+<span class="co">#control single factor's exposure in combined factor</span>
+<span class="kw">MC.wgt.CAPM</span>(TSFRs,<span class="dt">wgtmin =</span> <span class="fl">0.05</span>,<span class="dt">wgtmax =</span> <span class="fl">0.5</span>)
+
+<span class="co">#get group factor</span>
+forTSF &lt;-<span class="st"> </span><span class="kw">gf.FORECAST</span>(TS)
+forTSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(forTSF)</code></pre></div>
+<p>合成的预期类因子的IC如下图所示，IC的稳定性明显提升。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.IC</span>(forTSFR)</code></pre></div>
+<p>合成的预期类因子的分组收益如下图所示，分组的单调性明显提升。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.Ngroup.overall</span>(forTSFR)</code></pre></div>
+<p>合成的预期类因子的分组多空收益如下图所示。</p>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">chart.Ngroup.spread</span>(forTSFR)</code></pre></div>
 <p>Build and update local database’s regression result tables.</p>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># get recommended factorlists</span>
-FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recommend</span>(<span class="dt">indexID =</span> <span class="st">'EI000985'</span>)
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="kw">MF.chart.Fct_box</span>(mTSF)
+<span class="kw">MF.chart.Fct_corr</span>(mTSF)
+<span class="kw">MF.chart.Fct_density</span>(TSF)
+
+
+<span class="co">#dealing with factor correlation</span>
+TSF &lt;-<span class="st"> </span><span class="kw">factor_orthogon_single</span>(TSF,<span class="dt">y=</span><span class="st">'ILLIQ'</span>,<span class="dt">x =</span> <span class="st">'ln_mkt_cap_'</span>,<span class="dt">sectorAttr =</span> <span class="ot">NULL</span>)
+TSF &lt;-<span class="st"> </span><span class="kw">factor_orthogon_single</span>(TSF,<span class="dt">y=</span><span class="st">'volatility_'</span>,<span class="dt">x =</span> <span class="st">'liquidity_'</span>,<span class="dt">sectorAttr =</span> <span class="ot">NULL</span>)
+TSFR &lt;-<span class="st"> </span><span class="kw">na.omit</span>(<span class="kw">getTSR</span>(TSF))
+
 
 <span class="co"># build local database's regression tables</span>
 <span class="kw">system.time</span>(<span class="kw">lcdb.build.RegTables</span>(<span class="dt">FactorLists=</span>FactorLists))
@@ -298,26 +154,12 @@ FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recom
 <span class="co"># update local database's regression tables</span>
 <span class="kw">system.time</span>(<span class="kw">lcdb.update.RegTables</span>(<span class="dt">FactorLists =</span> FactorLists))</code></pre></div>
 </div>
-<div id="regression-result-show" class="section level2">
-<h2>regression result show</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># parameter setting</span>
-begT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2012-01-31'</span>)
-endT &lt;-<span class="st"> </span><span class="kw">as.Date</span>(<span class="st">'2016-12-31'</span>)
-RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(begT,endT)
-indexID &lt;-<span class="st"> 'EI000985'</span>
-
-<span class="co"># get TS,TSF,TSFR</span>
-TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,indexID)
-FactorLists &lt;-<span class="st"> </span><span class="kw">reg.factorlists.recommend</span>(indexID)
-TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,<span class="dt">FactorLists =</span> FactorLists)
-TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
-
-<span class="co"># get regression result</span>
+<div class="section level2">
+<h2>多因子检验</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># get regression result</span>
 reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 
 ## show regression result
-<span class="co"># factor correlation plot</span>
-<span class="kw">MC.chart.fCorr</span>(TSF,<span class="dt">Nbin=</span><span class="st">'year'</span>)
 <span class="co"># regression's rsquare plot</span>
 <span class="kw">chart.reg.rsquare</span>(reg_results)
 <span class="co"># regression's rsquare table</span>
@@ -331,41 +173,60 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 <span class="co"># summarise table of pure factor's return </span>
 <span class="kw">table.reg.fRtn</span>(reg_results)</code></pre></div>
 </div>
-<div id="portfolio-optimization" class="section level2">
-<h2>portfolio optimization</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r"><span class="co"># set factor's exposure</span>
-fNames &lt;-<span class="st"> </span><span class="kw">sapply</span>(FactorLists, <span class="st">'[['</span>,<span class="st">'factorName'</span>)
-fexp &lt;-<span class="st"> </span><span class="kw">data.frame</span>(<span class="dt">fname=</span>fNames,
-                   <span class="dt">low=</span><span class="kw">c</span>(-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>,-<span class="fl">0.01</span>),
-                   <span class="dt">up=</span><span class="kw">c</span>(     <span class="dv">1</span>, <span class="fl">0.01</span>,  <span class="dv">100</span>,  <span class="dv">100</span>,  <span class="dv">2</span>,    <span class="dv">100</span>))
-<span class="co"># set alpha factor</span>
-alphaf &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;disposition_&quot;</span>,<span class="st">&quot;beta_&quot;</span>,<span class="st">&quot;ln_mkt_cap_&quot;</span>,<span class="st">&quot;NP_YOY&quot;</span> )
+<div class="section level2">
+<h2>组合优化</h2>
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2014-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-07-31'</span>))
+TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,<span class="dt">indexID =</span> <span class="st">'EI000985'</span>)
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>)))
+factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>)
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>))
+FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
+TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
+TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
+re &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
+rtn_cov_delta &lt;-<span class="st"> </span><span class="kw">f_rtn_cov_delta</span>(<span class="dt">reg_results=</span>re)
+fRtn &lt;-<span class="st"> </span>rtn_cov_delta$fRtn
+fCov &lt;-<span class="st"> </span>rtn_cov_delta$fCov
+constr &lt;-<span class="st"> </span><span class="kw">constr_default</span>(<span class="dt">box_each =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.01</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_box</span>(constr,<span class="dt">ES33480000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.05</span>),<span class="dt">ES33490000 =</span> <span class="kw">c</span>(<span class="dv">0</span>,<span class="fl">0.03</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_group</span>(constr,<span class="dt">EI000300=</span><span class="kw">c</span>(<span class="fl">0.8</span>,<span class="fl">0.95</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_sector</span>(constr,<span class="dt">each =</span> <span class="kw">c</span>(-<span class="fl">0.05</span>,<span class="fl">0.05</span>))
+conslist &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(<span class="st">&quot;F000002&quot;</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>))
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_fctExp_style</span>(constr,conslist,-<span class="fl">0.1</span>,<span class="dv">1</span>)
 
-<span class="co"># get factor return</span>
-fRtn &lt;-<span class="st"> </span><span class="kw">getfRtn</span>(RebDates,alphaf,<span class="dt">rollavg =</span> T,<span class="dt">reg_results =</span> reg_results)
-<span class="co"># get factor covariance</span>
-fCov &lt;-<span class="st"> </span><span class="kw">calfCov</span>(RebDates,alphaf,<span class="dt">rollavg=</span>T,<span class="dt">reg_results =</span> reg_results)
+<span class="co">#max return</span>
+port_opt4 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr)
 
-<span class="co"># Date Alignment</span>
-tmp.date1 &lt;-<span class="st"> </span><span class="kw">max</span>(<span class="kw">min</span>(fRtn$date),<span class="kw">min</span>(fCov$date))
-tmp.date2 &lt;-<span class="st"> </span><span class="kw">min</span>(<span class="kw">max</span>(fRtn$date),<span class="kw">max</span>(fCov$date))
-fRtn &lt;-<span class="st"> </span><span class="kw">subset</span>(fRtn,date&gt;=tmp.date1,date&lt;=tmp.date2)
-fCov &lt;-<span class="st"> </span><span class="kw">subset</span>(fCov,date&gt;=tmp.date1,date&lt;=tmp.date2)
-TSF &lt;-<span class="st"> </span><span class="kw">subset</span>(TSF,date&gt;=tmp.date1,date&lt;=tmp.date2)
+<span class="co">#max return minus risk</span>
+obj &lt;-<span class="st"> </span><span class="kw">object_default</span>()
+obj &lt;-<span class="st"> </span><span class="kw">addObj_risk</span>(obj)
+port_opt5 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj)
 
-## portfolio demo
-<span class="co"># industry neutral,maximize return</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'Ind'</span>))
-<span class="co"># industry and style neutral,maximize return</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp,<span class="dt">addEvent =</span> F))
-<span class="co"># industry and style neutral,risk return balance</span>
-<span class="kw">system.time</span>(port_opt &lt;-<span class="st"> </span><span class="kw">OptWgt</span>(TSF,<span class="dt">alphaf =</span> alphaf,fRtn,fCov,<span class="dt">target =</span> <span class="st">'return-risk'</span>,<span class="dt">constr=</span><span class="st">'IndSty'</span>,<span class="dt">fexp=</span>fexp))
+<span class="co"># add turnover constraint</span>
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_turnover</span>(constr,<span class="dt">turnover_target =</span> <span class="fl">0.25</span>)
+port_opt6 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj)
+
+<span class="co"># add trackingerror constraint</span>
+constr &lt;-<span class="st"> </span><span class="kw">addConstr_trackingerror</span>(constr)
+delta &lt;-<span class="st"> </span>rtn_cov_delta$Delta
+port_opt7 &lt;-<span class="st"> </span><span class="kw">getPort_opt</span>(TSF,<span class="dt">fRtn =</span> fRtn,<span class="dt">fCov=</span>fCov,<span class="dt">bmk=</span><span class="st">&quot;EI000300&quot;</span>,<span class="dt">constr =</span> constr,<span class="dt">obj =</span> obj,<span class="dt">delta=</span>delta)
+
+
 
 
 <span class="co"># port backtest and return summary</span>
-portrtn &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
-benchrtn &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(portrtn, <span class="dt">bmk =</span> <span class="st">&quot;EI000905&quot;</span>)
-allrtn &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(portrtn,benchrtn)
+rtn1 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt4,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+rtn2 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt5,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+rtn3 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt6,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+rtn4 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port_opt7,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
+bmk &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(rtn1,<span class="dt">bmk =</span> <span class="st">'EI000300'</span>)
+rtn1 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn1,bmk)
+rtn2 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn2,bmk)
+rtn3 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn3,bmk)
+rtn4 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(rtn4,bmk)
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(rtn1[,<span class="st">'hedge'</span>],rtn2[,<span class="st">'hedge'</span>])
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn3[,<span class="st">'hedge'</span>])
+allrtn &lt;-<span class="st"> </span><span class="kw">merge</span>(allrtn,rtn4[,<span class="st">'hedge'</span>])
 <span class="kw">ggplot.WealthIndex</span>(allrtn)
 <span class="kw">rtn.summary</span>(allrtn)
 <span class="kw">rtn.periods</span>(allrtn)</code></pre></div>
@@ -379,15 +240,14 @@ modelPar &lt;-<span class="st"> </span><span class="kw">setmodelPar.univ</span>(
 
 <span class="co">#get factor wgt</span>
 factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>,<span class="st">&quot;F000017&quot;</span>)
-tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorStd=</span><span class="st">&quot;norm&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;mean&quot;</span>)
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs)
 FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(
   <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.NP_YOY&quot;</span>,
                   <span class="dt">factorPar=</span><span class="kw">list</span>(),
                   <span class="dt">factorDir=</span><span class="dv">1</span>),
     <span class="kw">buildFactorList</span>(<span class="dt">factorFun=</span><span class="st">&quot;gf.ln_mkt_cap&quot;</span>,
                   <span class="dt">factorPar=</span><span class="kw">list</span>(),
-                  <span class="dt">factorDir=</span><span class="dv">1</span>),
-  <span class="dt">factorStd=</span><span class="st">&quot;norm&quot;</span>,<span class="dt">factorNA =</span> <span class="st">&quot;median&quot;</span>)
+                  <span class="dt">factorDir=</span><span class="dv">1</span>))
 FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
 MPs &lt;-<span class="st"> </span><span class="kw">getMPs_FactorLists</span>(FactorLists, modelPar)
 TSFRs &lt;-<span class="st"> </span><span class="kw">Model.TSFRs</span>(MPs)
@@ -402,6 +262,7 @@ port2 &lt;-<span class="st"> </span><span class="kw">addwgt2port</span>(port2, <
 re2 &lt;-<span class="st"> </span><span class="kw">port.backtest</span>(port2,<span class="dt">fee.buy =</span> <span class="fl">0.001</span>)
 benchrtn2 &lt;-<span class="st"> </span><span class="kw">getrtn.bmk</span>(re2, <span class="dt">bmk =</span> <span class="st">&quot;EI000905&quot;</span>)
 allrtn2 &lt;-<span class="st"> </span><span class="kw">addrtn.hedge</span>(re2,benchrtn2)
+allrtn2sum &lt;-<span class="st"> </span><span class="kw">tables.longshort</span>(allrtn2)
 <span class="kw">ggplot.WealthIndex</span>(allrtn2)
 <span class="kw">rtn.summary</span>(allrtn2)
 <span class="kw">rtn.periods</span>(allrtn2)</code></pre></div>
