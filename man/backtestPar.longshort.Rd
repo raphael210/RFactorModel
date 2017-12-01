@@ -8,12 +8,12 @@
 backtestPar.longshort(backtestPar = backtestPar.default(), topN = 50,
   topQ = NA, sectorNe_pick = NULL, force_in = 0, buffer_keep = 0,
   buffer_rate = 0, init_port = NULL, holdingEndT = Sys.Date(),
-  wgtType = "eq", sectorNe_wgt = NULL, wgt.max = NA, bmk = "EI000300",
+  wgtType = "eq", sectorNe_wgt = NULL, max_wgt = NULL, bmk = "EI000300",
   hedge.rebFreq = "month", hedge.posi = 1, hitFreq = "month")
 
 setbacktestPar.longshort(backtestPar, topN, topQ, sectorNe_pick, force_in,
   buffer_keep, buffer_rate, init_port, holdingEndT, wgtType, sectorNe_wgt,
-  wgt.max, bmk, hedge.rebFreq, hedge.posi, hitFreq)
+  max_wgt, bmk, hedge.rebFreq, hedge.posi, hitFreq)
 }
 \arguments{
 \item{backtestPar}{a \bold{backtestPar} object}
@@ -28,7 +28,7 @@ setbacktestPar.longshort(backtestPar, topN, topQ, sectorNe_pick, force_in,
 
 \item{sectorNe_wgt}{a logic. If true, the wgt will be neutralized by sector.}
 
-\item{wgt.max}{a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port.substitute}}.}
+\item{max_wgt}{a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port_limitwgt}}.}
 
 \item{bmk}{a character string,giving the stockID of the benchmark index, eg. "EI000300".}
 
@@ -45,7 +45,7 @@ a \bold{backtestPar} object
 set the long-short related parametres of the backtesting
 }
 \seealso{
-\code{\link{getPort}}, \code{\link{addwgt2port}}, \code{\link{port.substitute}}, \code{\link{port.backtest}}, \code{\link{getrtn.LSH}}, \code{\link{getrtn.LBH}}, \code{\link{tables.longshort}}
+\code{\link{getPort}}, \code{\link{addwgt2port}}, \code{\link{port_limitwgt}}, \code{\link{port.backtest}}, \code{\link{getrtn.LSH}}, \code{\link{getrtn.LBH}}, \code{\link{tables.longshort}}
 
 Other backtestPar setting functions: \code{\link{backtestPar.IC}},
   \code{\link{backtestPar.Ngroup}},

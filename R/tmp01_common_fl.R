@@ -3,14 +3,14 @@
 fls_growth <- function(factorRefine){
   buildFactorLists_lcfs(factorIDs = c("F000018","F000012","F000019"), factorRefine=factorRefine)
 }
-fl_growth <- function(factorRefine,factorRefine_sub,wgts="eq"){
+fl_growth <- function(factorRefine,factorRefine_sub=factorRefine,wgts="eq"){
   re <- buildFactorList_combi(fls_growth(factorRefine_sub),wgts = wgts,
                               factorRefine=factorRefine,
                               factorDir = 1,
                               factorName = "GROWTH")
 }
 
-# 
+
 # #-VALUE
 # factorLists_value <- buildFactorLists_lcfs(factorIDs = c("F000006_1","F000007_1","F000010_1"),
 #                                            factorRefine=factorRefine)

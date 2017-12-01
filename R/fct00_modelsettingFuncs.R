@@ -750,13 +750,13 @@ setbacktestPar.Ngroup <- function(backtestPar ,
 #' @param holdingEndT the ending date of the holding portfolio.
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
 #' @param sectorNe_wgt a logic. If true, the wgt will be neutralized by sector.
-#' @param wgt.max a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port.substitute}}.
+#' @param max_wgt a integer, giving the max weight limit which could be set on a single stock. If NA(the default value), with no limit. See \code{\link{port_limitwgt}}.
 #' @param bmk a character string,giving the stockID of the benchmark index, eg. "EI000300".
 #' @param hedge.rebFreq giving the rebalance freq when computing the hedged rtn.
 #' @param hedege.posi a numeric, giving the position of the hedging assets
 #' @param hitFreq indicating the interval when computing the hitRatio of rtn. An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s".See \code{\link{cut.Date}} for detail.
 #' @return a \bold{backtestPar} object
-#' @seealso \code{\link{getPort}}, \code{\link{addwgt2port}}, \code{\link{port.substitute}}, \code{\link{port.backtest}}, \code{\link{getrtn.LSH}}, \code{\link{getrtn.LBH}}, \code{\link{tables.longshort}}
+#' @seealso \code{\link{getPort}}, \code{\link{addwgt2port}}, \code{\link{port_limitwgt}}, \code{\link{port.backtest}}, \code{\link{getrtn.LSH}}, \code{\link{getrtn.LBH}}, \code{\link{tables.longshort}}
 #' @author Ruifei.Yin
 #' @export
 #' @family backtestPar setting functions
@@ -771,7 +771,7 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                   holdingEndT = Sys.Date(),
                                   wgtType = "eq", 
                                   sectorNe_wgt = NULL,
-                                  wgt.max = NA,
+                                  max_wgt = NULL,
                                   bmk="EI000300",
                                   hedge.rebFreq="month",
                                   hedge.posi=1,
@@ -786,7 +786,7 @@ backtestPar.longshort <- function(backtestPar = backtestPar.default(),
                                holdingEndT  = holdingEndT,
                                wgtType      = wgtType,
                                sectorNe_wgt = sectorNe_wgt,
-                               wgt.max      = wgt.max,                               
+                               max_wgt      = max_wgt,
                                bmk          = bmk,
                                hedge.rebFreq= hedge.rebFreq,
                                hedge.posi   = hedge.posi,
@@ -806,7 +806,7 @@ setbacktestPar.longshort <- function(backtestPar,
                                      holdingEndT,
                                      wgtType,
                                      sectorNe_wgt,
-                                     wgt.max ,
+                                     max_wgt,
                                      bmk,
                                      hedge.rebFreq,
                                      hedge.posi,
@@ -827,7 +827,7 @@ setbacktestPar.longshort <- function(backtestPar,
   if(!missing(holdingEndT)) backtestPar$longshort$holdingEndT <- holdingEndT
   if(!missing(wgtType)) backtestPar$longshort$wgtType <- wgtType
   if(!missing(sectorNe_wgt)) backtestPar$longshort$sectorNe_wgt <- sectorNe_wgt
-  if(!missing(wgt.max)) backtestPar$longshort$wgt.max <- wgt.max
+  if(!missing(max_wgt)) backtestPar$longshort$max_wgt <- max_wgt
   if(!missing(bmk)) backtestPar$longshort$bmk <- bmk
   if(!missing(hedge.rebFreq)) backtestPar$longshort$hedge.rebFreq <- hedge.rebFreq
   if(!missing(hedge.posi)) backtestPar$longshort$hedge.posi <- hedge.posi

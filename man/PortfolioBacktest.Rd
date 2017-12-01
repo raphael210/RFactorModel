@@ -4,7 +4,7 @@
 \alias{PortfolioBacktest}
 \alias{getPort}
 \alias{addwgt2port}
-\alias{port.substitute}
+\alias{port_limitwgt}
 \alias{getPort_throughout}
 \alias{port.backtest}
 \alias{getPB}
@@ -15,16 +15,15 @@ getPort(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
   dir = c("long", "short"))
 
 addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
-  "ffvsqrt"), sectorNe_wgt = NULL, wgtbmk = "EI000300", backtestPar,
-  tolerance = 0.2)
+  "ffvsqrt"), sectorNe_wgt = NULL, wgtbmk = "EI000300", max_wgt = NULL,
+  backtestPar, tolerance = 0.2)
 
-port.substitute(port, TSF, wgt.max = NA, sectorAttr = defaultSectorAttr(),
-  backtestPar, dir = c("long", "short"))
+port_limitwgt(port, max_wgt = NULL)
 
 getPort_throughout(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL,
   force_in = 0, buffer_keep = 0, buffer_rate = 0, init_port = NULL,
   wgtType = "eq", sectorNe_wgt = NULL, wgtbmk = "EI000300",
-  wgt.max = NA, backtestPar, dir = c("long", "short"))
+  max_wgt = NULL, backtestPar, dir = c("long", "short"))
 
 port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
   backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
@@ -32,7 +31,7 @@ port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
 
 getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
   buffer_keep = 0, buffer_rate = 0, init_port = NULL, wgtType = "eq",
-  sectorNe_wgt = NULL, wgtbmk = "EI000300", wgt.max = NA,
+  sectorNe_wgt = NULL, wgtbmk = "EI000300", max_wgt = NULL,
   holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = fee.buy, backtestPar,
   dir = c("long", "short"))
 }
@@ -55,9 +54,9 @@ getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
 
 \item{wgtType}{a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".}
 
-\item{tolerance}{a numeric, only used when \code{sectorNe_wgt} is not null, Giving the tolerance of absent sectors weights in the portfolio.}
+\item{max_wgt}{a numeric or NA, giving the maximum of weight which could be set on a single stock. If NA(the default value), with no limit, return \code{port} itself without doing anything.}
 
-\item{wgt.max}{a numeric or NA, giving the maximum of weight which could be set on a single stock. If NA(the default value), with no limit, return \code{port} itself without doing anything.}
+\item{tolerance}{a numeric, only used when \code{sectorNe_wgt} is not null, Giving the tolerance of absent sectors weights in the portfolio.}
 
 \item{holdingEndT}{a Date object, giving the ending date of the holding portfolio}
 
@@ -67,16 +66,12 @@ getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
 
 \item{rtn_get}{a character string of "loop","whole","simple". "loop" and "whole" get the dailyrtn, where as "simple" get the periodrtn.}
 
-\item{dir}{a character string of "long" or "short". In \code{port.substitute}, indicating the port direction. If "long",the port will be look as a long portfolio, and will import stocks from the top of the TSF; vise versa.}
-
 \item{dir}{a character string of "long" or "short". In \code{port.backtest}, if "long", the port will be look as asset, the fee will be cut from the asset; if "short", the port will be look as liability, the fee will be added to the liability.}
 }
 \value{
 \code{getPort} return a \bold{Port}('portfolio') objects,which are of dataframe class containing at least 2 cols("date","stockID")
 
 \code{addwgt2port} return a \bold{Port} object which are of dataframe class containing at least 3 cols("date","stockID","wgt").
-
-\code{port.substitute} return a \bold{Port} object
 
 \code{getPort_throughout} return a \bold{Port} object, which contain the col of 'wgt'.
 
@@ -92,22 +87,16 @@ portfolio building and backtesting
 
 \code{addwgt2port} add the weights to the \bold{Port} object.
 
-\code{port.substitute} redistribute the extra weight to other stocks to reduce the risk of concentration,when too much weight on single stock. 
-
-TSF is used when the stocks in \code{port} is not enough to share the extra weights. In that case, stock in TSF, which is in the same sector, will be imported into the port to share the extra weights.
-
-\code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, get \bold{Port} object from \bold{TSF}, with further treatment.
+\code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, get \bold{Port} object from \bold{TSF}, with further treatment.
 
 \code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
 
-\code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
+\code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
 }
 \note{
 Note that \code{topN} and \code{topQ} should at least have one and only have one.
 
 Note that if use bufferring, the length of topN (or topQ) should be 1.
-
-If the \code{port} and \code{TSF} originally contain the column "sector", it will be droped before the new sector imported according to the specified auguments.
 }
 \examples{
 modelPar <- modelPar.default()
@@ -140,10 +129,11 @@ pt6 <- getPort(tsf,topQ = 0.4,buffer_rate =  0.5,sectorNe_pick =defaultSectorAtt
 # -- add wgt to port
 port <- getPort(TSF,20)
 port <- addwgt2port(port,"fv")
+port <- addwgt2port(port,"fv",max_wgt=0.08)
 # -- reduce the risk of concentration
-port <- port.substitute(port,TSF,wgt.max=0.08)
+port <- port_limitwgt(port,max_wgt=0.08)
 # -- get Port object from TSF throughout
-Port_throut <- getPort_throughout(TSF, topN=20, wgt.max=0.8, dir="long")
+Port_throut <- getPort_throughout(TSF, topN=20, max_wgt=0.8, dir="long")
 # -- backtest the Port object
 PB <- port.backtest(port)
 turnover <- attr(PB,"turnover")

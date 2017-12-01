@@ -1122,15 +1122,18 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,relative=TRUE,
 
 #' @rdname backtest.Ngroup
 #' @export
-chart.Ngroup.violin <- function(TSFR,N=5, sectorNe=NULL){
+chart.Ngroup.violin <- function(TSFR,N=5, sectorNe=NULL, jitter=TURE){
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = TRUE,sectorNe=sectorNe)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
   rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
   rtnseri.melt$group <- substring(rtnseri.melt$variable,2)
   re <- ggplot(rtnseri.melt,aes(x=group,y=value))+
-    geom_violin(fill = "black", colour = "black")+
+    geom_violin(fill = "gray", colour = "white",draw_quantiles = c(0.25, 0.5, 0.75))+
     ggtitle("Relative return of each group")+
     scale_y_continuous(labels=scales::percent)
+  if(jitter){
+    re <- re + geom_jitter(height = 0, width = 0.1, size=1)
+  }
   return(re)
 }
 #' @rdname backtest.Ngroup

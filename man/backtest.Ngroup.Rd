@@ -42,7 +42,7 @@ chart.Ngroup.overall(TSFR, N = 5, relative = TRUE, sectorNe = NULL,
 chart.Ngroup.seri_point(TSFR, N = 5, relative = TRUE, Nbin = "day",
   sectorNe = NULL, plotPar)
 
-chart.Ngroup.violin(TSFR, N = 5, sectorNe = NULL)
+chart.Ngroup.violin(TSFR, N = 5, sectorNe = NULL, jitter = TURE)
 
 chart.Ngroup.box(TSFR, N = 5, sectorNe = NULL)
 
