@@ -49,7 +49,6 @@
 #' ts <- getTS(as.Date(c("2016-03-31","2016-04-29")),indexID = "EI000016")
 #' tsf <- getTSF(ts,"gf_lcfs",list("F000008"),factorDir = -1) 
 #' pt <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5)
-#' factorList <- buildFactorList(factorFun = "gf.mkt_cap", factorRefine=refinePar_default("scale"))
 #' pt2 <- getPort(tsf,20,force_in = 0.5,buffer_keep = 0.5,sectorNe_pick = defaultSectorAttr())
 #' # -- with buffer_rate
 #' pt3 <- getPort(tsf,20,buffer_rate =  0.5,sectorNe_pick =NULL)

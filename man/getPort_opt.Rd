@@ -4,7 +4,7 @@
 \alias{getPort_opt}
 \title{getPort_opt}
 \usage{
-getPort_opt(TSF, fRtn, fCov, exp_rtn = "exp_rtn", bmk = NULL,
+getPort_opt(TSF, fRtn, fCov, exp_rtn = "factorscore", bmk = NULL,
   constr = constr_default(), obj = object_default(), init_port, delta,
   min_wgt = 0.001)
 }
@@ -36,20 +36,19 @@ getPort_opt
 \examples{
 TS <- getTS(RebDates = as.Date("2017-03-31"),indexID = "EI000300")
 TSF <- getTSF(TS,FactorList = buildFactorList_lcfs("F000006",factorRefine = refinePar_default("scale")))
-TSF <- renameCol(TSF,"factorscore","combfct")
 # constrain setting
 constr <- constr_default(box_each = c(0,0.02))
 constr <- addConstr_box(constr,each = c(0,0.02))
 constr <- addConstr_fctExp_sector(constr,each = c(-0.05,0.05))
-conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("scale"))
+conslist <- buildFactorLists_lcfs("F000002",factorRefine = refinePar_default("scale",NULL))
 # with bmk
 constr <- addConstr_fctExp_style(constr,conslist,-0.1,0.1)
-port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'combfct')
+port_opt <- getPort_opt(TSF,bmk = "EI399330",constr = constr,exp_rtn = 'factorscore')
 # without bmk
 constr2 <- setConstr_fctExp_sector(constr,each = c(0,0.1),relative = 0)
-port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2,exp_rtn = 'combfct')
+port_opt2 <- getPort_opt(TSF,bmk=NULL,constr = constr2,exp_rtn = 'factorscore')
 # long-short port
 constr3 <- setConstr_position(constr_default(),position = c(0,0),relative = 0)
 constr3 <- setConstr_box(constr3,each=c(-0.05,0.05),relative=0)
-port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3,exp_rtn = 'combfct')
+port_opt3 <- getPort_opt(TSF,bmk="EI000300",constr = constr3,exp_rtn = 'factorscore')
 }

@@ -76,7 +76,7 @@ build, set, add, clear constrains
 constr <- constr_default()
 clearConstr(constr,"box")
 addConstr_fctExp_sector(constr, each=c(-0.05,0.05),ES33480000=c(-0.15,0.15))
-factorlists <- buildFactorLists_lcfs(factorIDs = c("F000001","F000002"),factorStd = "sectorNe")
+factorlists <- buildFactorLists_lcfs(factorIDs = c("F000001","F000002"),factorRefine=refinePar_default("scale",NULL))
 addConstr_fctExp_style(constr,factorlists,-0.1,0.1)
 addConstr_group(constr,EI000905=c(0, 0.8))
 addConstr_group(constr,EI000001=c(0.5, 0.5))

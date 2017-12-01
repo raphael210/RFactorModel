@@ -11,7 +11,7 @@ vignette: >
 
 
 ```{r setup,echo=FALSE,include=FALSE}
-library(quantbox)
+library(RFactorModel)
 library(knitr)
 knitr::opts_chunk$set(
   eval = FALSE,
@@ -181,11 +181,11 @@ table.reg.fRtn(reg_results)
 ## 组合优化
 
 ```{r portOpt}
-RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2017-07-31'))
+RebDates <- getRebDates(as.Date('2015-01-31'),as.Date('2017-01-31'))
 TS <- getTS(RebDates,indexID = 'EI000985')
-tmp <- buildFactorLists(buildFactorList(factorFun = 'gf.NP_YOY',factorDir = 1,factorRefine = refinePar_default("scale")))
+tmp <- buildFactorLists(buildFactorList(factorFun = 'gf.NP_YOY',factorDir = 1,factorRefine = refinePar_default("scale",NULL)))
 factorIDs <- c("F000006","F000008","F000013")
-FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine = refinePar_default("scale"))
+FactorLists <- buildFactorLists_lcfs(factorIDs,factorRefine = refinePar_default("scale",NULL))
 FactorLists <- c(tmp,FactorLists)
 TSF <- getMultiFactor(TS,FactorLists)
 TSFR <- getTSR(TSF)

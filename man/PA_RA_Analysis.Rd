@@ -8,7 +8,8 @@
 \alias{chart.RA.attr}
 \title{PA_RA_Analysis}
 \usage{
-getPAData(port, FactorLists, bmk, sectorAttr = defaultSectorAttr())
+getPAData(port, FactorLists, bmk = NULL, univ = "EI000985",
+  sectorAttr = defaultSectorAttr())
 
 chart.PA.exposure(PA_tables, plotInd = FALSE)
 

@@ -45,33 +45,33 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
   if(RSQLite::dbExistsTable(con, "Reg_RSquare")) RSQLite::dbRemoveTable(con,'Reg_RSquare')
   
   RSQLite::dbGetQuery(con,"CREATE TABLE Reg_FactorRtn (
-              date int  NOT NULL,
-              fname TEXT NOT NULL,
-              frtn_d1 decimal(10,6) NULL,
-              tstat_d1 decimal(10,4) NULL,
-              frtn_w1 decimal(10,6) NULL,
-              tstat_w1 decimal(10,4) NULL,
-              frtn_w2 decimal(10,6) NULL,
-              tstat_w2 decimal(10,4) NULL,
-              frtn_m1 decimal(10,6) NULL,
-              tstat_m1 decimal(10,4) NULL)")
+                      date int  NOT NULL,
+                      fname TEXT NOT NULL,
+                      frtn_d1 decimal(10,6) NULL,
+                      tstat_d1 decimal(10,4) NULL,
+                      frtn_w1 decimal(10,6) NULL,
+                      tstat_w1 decimal(10,4) NULL,
+                      frtn_w2 decimal(10,6) NULL,
+                      tstat_w2 decimal(10,4) NULL,
+                      frtn_m1 decimal(10,6) NULL,
+                      tstat_m1 decimal(10,4) NULL)")
   RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_FactorRtn ON Reg_FactorRtn(date,fname)")
   
   RSQLite::dbGetQuery(con,"CREATE TABLE Reg_Residual (
-              date int  NOT NULL,
-             stockID TEXT NOT NULL,
-             res_d1 decimal(10,8) NULL,
-             res_w1 decimal(10,8) NULL,
-             res_w2 decimal(10,8) NULL,
-             res_m1 decimal(10,8) NULL)")
+                      date int  NOT NULL,
+                      stockID TEXT NOT NULL,
+                      res_d1 decimal(10,8) NULL,
+                      res_w1 decimal(10,8) NULL,
+                      res_w2 decimal(10,8) NULL,
+                      res_m1 decimal(10,8) NULL)")
   RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_Residual ON Reg_Residual(date,stockID)")
   
   RSQLite::dbGetQuery(con,"CREATE TABLE Reg_RSquare (
-             date int  NOT NULL,
-             rsquare_d1 decimal(10,4) NULL,
-             rsquare_w1 decimal(10,4) NULL,
-             rsquare_w2 decimal(10,4) NULL,
-             rsquare_m1 decimal(10,4) NULL)")
+                      date int  NOT NULL,
+                      rsquare_d1 decimal(10,4) NULL,
+                      rsquare_w1 decimal(10,4) NULL,
+                      rsquare_w2 decimal(10,4) NULL,
+                      rsquare_m1 decimal(10,4) NULL)")
   RSQLite::dbGetQuery(con,"CREATE UNIQUE INDEX IX_Reg_RSquare ON Reg_RSquare(date)")
   
   
@@ -84,14 +84,14 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
   dates <- getRebDates(begT,endT,rebFreq = 'day')
   dates <- split(dates,cut(dates,'month'))
   plyr::l_ply(dates,lcdb.subfun.regtables,FactorLists,.progress = plyr::progress_text(style=3))
-
+  
   return('Done!')
 }
 
 
 #inner function
 lcdb.subfun.regtables <- function(dates,FactorLists){
-
+  
   cat(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...\n')
   TS <- getTS(dates,indexID = 'EI000985')
   TSF <- getMultiFactor(TS,FactorLists)
@@ -145,11 +145,11 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
   tmp.dates <- transform(tmp.dates,mindate=intdate2r(mindate),maxdate=intdate2r(maxdate))
   if(begT<= tmp.dates$maxdate && endT>= tmp.dates$mindate){
     RSQLite::dbGetQuery(con, paste("delete from Reg_FactorRtn WHERE date>=",rdate2int(begT),
-                          " and date<=",rdate2int(endT)))
+                                   " and date<=",rdate2int(endT)))
     RSQLite::dbGetQuery(con, paste("delete from Reg_RSquare WHERE date>=",rdate2int(begT),
-                          " and date<=",rdate2int(endT)))
+                                   " and date<=",rdate2int(endT)))
     RSQLite::dbGetQuery(con, paste("delete from Reg_Residual WHERE date>=",rdate2int(begT),
-                          " and date<=",rdate2int(endT)))
+                                   " and date<=",rdate2int(endT)))
   }
   RSQLite::dbDisconnect(con)
   
@@ -224,8 +224,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- getTSF(TSFR[,c('date','stockID')],factorFun="gf.float_cap",factorPar=list(),
-                      factorRefine=setrefinePar(refinePar_default(type="none",sectorAttr = NULL),na_method="median"))
+        TSw <- gf_cap(TSFR[,c('date','stockID')],var="float_cap",na_fill=TRUE)
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
         TSFR <- merge.x(TSFR,TSw,by =c("date","stockID"))
@@ -253,7 +252,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   
   RSquare <- re$rsq
   colnames(RSquare) <- c('date','RSquare')
-    
+  
   # # pure-factor-port wgt
   # tmp.x <- as.matrix(tmp.tsfr[,c(factorNames)])
   # tmp.w <- as.matrix(tmp.tsfr[,"glm_wgt"])
@@ -491,7 +490,7 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
   if(!is.null(sectorAttr) && !identical(sectorAttr,"existing")){
     TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
-
+  
   if(is.null(sectorAttr)){
     re <- lm_NPeriod(TSF,y,x)
   }else{
@@ -549,7 +548,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
       dplyr::summarise(n=1) %>% dplyr::ungroup()
     secdf <- reshape2::dcast(secdf,date~sector,fill = 0,value.var = 'n')
     secdf <- tidyr::unite(secdf,rowtag,-date,sep='',remove = FALSE)
-
+    
     while(nrow(secdf)>0){
       secdf_ <- secdf %>% dplyr::filter(rowtag==dplyr::first(rowtag)) %>% dplyr::select(-rowtag)
       secdf_ <- secdf_[,c(TRUE,colSums(secdf_[,-1])>0)]
@@ -623,9 +622,9 @@ table.reg.rsquare <- function(reg_results){
   RSquare <- reg_results$RSquare
   re <- round(summary(RSquare$RSquare),3)
   re <- data.frame(cbind(begT=min(RSquare$date),
-                   endT=max(RSquare$date),
-                   NPeriod=nrow(RSquare),
-                   t(re)))
+                         endT=max(RSquare$date),
+                         NPeriod=nrow(RSquare),
+                         t(re)))
   re <- transform(re,begT=as.Date(begT,origin='1970-01-01'),
                   endT=as.Date(endT,origin='1970-01-01'))
   colnames(re) <- c("begT","endT","NPeriod","Min","Qu.1st","Median","Mean","Qu.3rd","Max")
@@ -641,7 +640,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
   fRtn <- reg_results$fRtn
   
   tstat <- fRtn %>% dplyr::group_by(fname) %>% dplyr::summarise(avgT=mean(abs(Tstat)),
-                     TPer=sum(Tstat>2)/length(Tstat))
+                                                                TPer=sum(Tstat>2)/length(Tstat))
   colnames(tstat) <- c("fname","mean(abs(T))","percent T>2")
   tstat$fname <- as.character(tstat$fname)
   
@@ -703,7 +702,7 @@ chart.reg.fRtnBar <- function(reg_results){
 chart.reg.rsquare <- function(reg_results){
   RSquare <- reg_results$RSquare
   Nperiod <- nrow(RSquare)
-
+  
   if(Nperiod>12){
     RSquare <- xts::xts(RSquare[,-1],RSquare[,1])
     colnames(RSquare) <- c('RSquare')
@@ -715,7 +714,7 @@ chart.reg.rsquare <- function(reg_results){
   }else{
     ggplot(RSquare, aes(x=date, y=RSquare))+geom_line(color="#D55E00") + ggtitle('RSquare')
   }
-
+  
 }
 
 
@@ -762,9 +761,9 @@ f_rtn_cov_delta <- function(dure=months(1),rolling=FALSE,rtntype=c('mean','forca
   covtype <- match.arg(covtype)
   
   fRtn <- getfRtn(dure=dure,rolling=rolling,rtntype=rtntype,
-                      nwin=nwin,reg_results)
+                  nwin=nwin,reg_results)
   fCov <- getfCov(dure=dure,rolling=rolling,covtype=covtype,
-                              nwin=nwin,reg_results)
+                  nwin=nwin,reg_results)
   Delta <- getDelta(dure=dure,rolling=rolling,nwin=nwin,reg_results)
   
   re <- list(fRtn=fRtn,fCov=fCov,Delta=Delta)
@@ -795,11 +794,11 @@ get_frtn_res <- function(begT,endT,dure,reg_results,outtype=c('frtn','res')){
     con <- db.local()
     if(outtype=='frtn'){
       qr <- paste("SELECT date,fname,",dbname," 'frtn'
-                FROM Reg_FactorRtn where date>=",rdate2int(begT),
+                  FROM Reg_FactorRtn where date>=",rdate2int(begT),
                   " and date<=",rdate2int(endT))
     }else if(outtype=='res'){
       qr <- paste("SELECT date,stockID,",dbname," 'res'
-                FROM Reg_Residual where date>=",rdate2int(begT),
+                  FROM Reg_Residual where date>=",rdate2int(begT),
                   " and date<=",rdate2int(endT))
     }
     re <- dbGetQuery(con,qr)
@@ -931,7 +930,7 @@ getDelta <- function(dure=months(1),rolling=FALSE,nwin=24,reg_results){
   for(i in 1:length(RebDates)){
     resdata_ <- resdata %>% dplyr::filter(date<=RebDates[i])
     if(rolling && nrow(resdata_)<nwin) next
-
+    
     resdata_ <- reshape2::melt(resdata_,id.vars='date',variable.name = "stockID", na.rm = TRUE,value.name = "res")
     
     result_ <- resdata_ %>% dplyr::group_by(stockID) %>% dplyr::summarise(n =n(),var = var(res))
@@ -1111,16 +1110,16 @@ NULL
 #'   buildFactorList(factorFun="gf.QUALITY"))
 #' PA_tables <- getPAData(port,FactorLists)
 #' PA_tables <- getPAData(port,FactorLists,bmk='EI000905')
-getPAData <- function(port,FactorLists,bmk,sectorAttr = defaultSectorAttr()){
+getPAData <- function(port,FactorLists,bmk=NULL,univ="EI000985",sectorAttr = defaultSectorAttr()){
   
   # get active wgt, if necessary
-  if(!missing(bmk)){
+  if(!is.null(bmk)){
     port <- getActivewgt(port = port,bmk = bmk,res = "active")
     port <- dplyr::rename(port,wgt=actwgt)
   }
   
   # calculate factor return 
-  TS <- getTS(unique(port$date),indexID = 'EI000985')   # get TSFR within rebDates==dates & univ==EI000985
+  TS <- getTS(unique(port$date),indexID = univ)   # get TSFR within rebDates==dates & univ==univ
   TSF <- getMultiFactor(TS,FactorLists)
   fnames <- guess_factorNames(TSF,silence = TRUE)
   TSFR <- getTSR(TSF)
@@ -1192,7 +1191,7 @@ getPAData <- function(port,FactorLists,bmk,sectorAttr = defaultSectorAttr()){
 #' chart.PA.exposure(PA_tables,plotInd=TRUE)
 chart.PA.exposure <- function(PA_tables,plotInd=FALSE){
   factorexp <- PA_tables$fexp
- 
+  
   #plot factor exposure
   fnames <- guess_factorNames(factorexp,silence = TRUE)
   indnames <- fnames[stringr::str_detect(fnames,'^ES\\d')]
@@ -1226,7 +1225,7 @@ chart.PA.attr <- function(PA_tables,plotInd=FALSE,attributeAnn=TRUE){
   fnames <- guess_factorNames(perfattr,no_factorname = 'res',silence = TRUE)
   indnames <- fnames[stringr::str_detect(fnames,'^ES\\d')]
   fnames <- setdiff(fnames,indnames)
-
+  
   #plot summary factor performance attribution
   if(!plotInd){
     perfattr <- perfattr[,c('date',fnames,'res')]
@@ -1243,8 +1242,8 @@ chart.PA.attr <- function(PA_tables,plotInd=FALSE,attributeAnn=TRUE){
   
   rtnsum <- data.frame(factorName=names(rtnsum),factorAttribution=unname(rtnsum),stringsAsFactors = FALSE)
   rtnsum <- transform(rtnsum,
-                        factorName=ifelse(factorName %in% indnames,sectorID2name(factorName),factorName),
-                        tag=ifelse(factorName %in% c(fnames,'res'),'style','industry'))
+                      factorName=ifelse(factorName %in% indnames,sectorID2name(factorName),factorName),
+                      tag=ifelse(factorName %in% c(fnames,'res'),'style','industry'))
   
   p1 <- ggplot(rtnsum,aes(x=reorder(factorName,-factorAttribution),y=factorAttribution,fill=tag))+
     geom_bar(stat = "identity")+

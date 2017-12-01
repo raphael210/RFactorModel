@@ -12,7 +12,7 @@
 
 <meta name="author" content="量化投资部" />
 
-<meta name="date" content="2017-11-21" />
+<meta name="date" content="2017-12-01" />
 
 <title>国投瑞银多因子研究体系</title>
 
@@ -70,7 +70,7 @@ code > span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Inf
 
 <h1 class="title toc-ignore">国投瑞银多因子研究体系</h1>
 <h4 class="author"><em>量化投资部</em></h4>
-<h4 class="date"><em>2017-11-21</em></h4>
+<h4 class="date"><em>2017-12-01</em></h4>
 
 
 
@@ -175,11 +175,11 @@ reg_results &lt;-<span class="st"> </span><span class="kw">reg.TSFR</span>(TSFR)
 </div>
 <div class="section level2">
 <h2>组合优化</h2>
-<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2014-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-07-31'</span>))
+<div class="sourceCode"><pre class="sourceCode r"><code class="sourceCode r">RebDates &lt;-<span class="st"> </span><span class="kw">getRebDates</span>(<span class="kw">as.Date</span>(<span class="st">'2015-01-31'</span>),<span class="kw">as.Date</span>(<span class="st">'2017-01-31'</span>))
 TS &lt;-<span class="st"> </span><span class="kw">getTS</span>(RebDates,<span class="dt">indexID =</span> <span class="st">'EI000985'</span>)
-tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>)))
+tmp &lt;-<span class="st"> </span><span class="kw">buildFactorLists</span>(<span class="kw">buildFactorList</span>(<span class="dt">factorFun =</span> <span class="st">'gf.NP_YOY'</span>,<span class="dt">factorDir =</span> <span class="dv">1</span>,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>,<span class="ot">NULL</span>)))
 factorIDs &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;F000006&quot;</span>,<span class="st">&quot;F000008&quot;</span>,<span class="st">&quot;F000013&quot;</span>)
-FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>))
+FactorLists &lt;-<span class="st"> </span><span class="kw">buildFactorLists_lcfs</span>(factorIDs,<span class="dt">factorRefine =</span> <span class="kw">refinePar_default</span>(<span class="st">&quot;scale&quot;</span>,<span class="ot">NULL</span>))
 FactorLists &lt;-<span class="st"> </span><span class="kw">c</span>(tmp,FactorLists)
 TSF &lt;-<span class="st"> </span><span class="kw">getMultiFactor</span>(TS,FactorLists)
 TSFR &lt;-<span class="st"> </span><span class="kw">getTSR</span>(TSF)
