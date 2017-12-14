@@ -2,7 +2,6 @@
 # -------------------- Factor descriptive statistics --------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
-
 #' Factor descriptive statistics
 #' 
 #' draw factor's histogram and boxplot,and summarize factor's statistics value.
@@ -25,15 +24,21 @@
 #' MF.chart.Fct_density(mTSF)
 #' re2 <- MF.table.Fct_descr(mTSF)
 #' @export
-chart.Fct_hist <- function(TSF,bins=NULL,ncol=NULL){
+chart.Fct_hist <- function(TSF,sample=NULL,bins=NULL,ncol=NULL){
+  if(!is.null(sample)){
+    TSF <- TS_filter(TSF,sample_N=sample)
+  }
   ggplot(TSF, aes(factorscore)) + 
-    geom_histogram(colour = "black", fill = "gray",bins = bins)+
+    geom_histogram(colour = "white", fill = "black",bins = bins)+
     facet_wrap(~date,scales = "free",ncol = ncol)
 }
 
 #' @rdname factor_descriptive_statistics
 #' @export
-chart.Fct_density <- function(TSF){
+chart.Fct_density <- function(TSF,sample=NULL){
+  if(!is.null(sample)){
+    TSF <- TS_filter(TSF,sample_N=sample)
+  }
   ggplot(TSF, aes(factorscore,color=as.factor(date))) + 
     geom_density()
 }
@@ -41,8 +46,10 @@ chart.Fct_density <- function(TSF){
 
 #' @rdname factor_descriptive_statistics
 #' @export
-chart.Fct_box <- function(TSF){
-  #facet by dates
+chart.Fct_box <- function(TSF,sample=NULL){
+  if(!is.null(sample)){
+    TSF <- TS_filter(TSF,sample_N=sample)
+  }
   TSF$date <- as.factor(TSF$date)
   ggplot(TSF, aes(date,factorscore)) + 
     geom_boxplot(fill = "gray", colour = "black")+
@@ -51,7 +58,10 @@ chart.Fct_box <- function(TSF){
 
 #' @rdname factor_descriptive_statistics
 #' @export
-table.Fct_descr <- function(TSF){
+table.Fct_descr <- function(TSF,sample=NULL){
+  if(!is.null(sample)){
+    TSF <- TS_filter(TSF,sample_N=sample)
+  }
   re <- TSF %>% group_by(date) %>%
     dplyr::summarise(Obs=length(factorscore),
                      NAs=sum(is.na(factorscore)),
@@ -73,7 +83,10 @@ table.Fct_descr <- function(TSF){
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
 #' chart.FctRtn_scatter(TSFR,25)
-chart.FctRtn_scatter <- function(TSFR,ncol=NULL){
+chart.FctRtn_scatter <- function(TSFR,sample=NULL,ncol=NULL){
+  if(!is.null(sample)){
+    TSFR <- TS_filter(TSFR,sample_N=sample)
+  }
   ggplot(TSFR, aes(factorscore,periodrtn)) + 
     geom_point()+
     geom_smooth()+
@@ -112,7 +125,10 @@ table.Fct_anova <- function(TSF, sectorAttr_lists, sectorAttr_names,
   # ARGUMENTS CHECKING
   sec_attr_length <- length(sectorAttr_lists)
   if(missing(sectorAttr_names)){
-    sectorAttr_names <- paste0("sec_",1:sec_attr_length)
+    sectorAttr_names <- names(sectorAttr_lists)
+    if(is.null(sectorAttr_names)){
+      sectorAttr_names <- paste0("sec_",1:sec_attr_length)
+    }
   }else{
     if(length(sectorAttr_lists) != length(sectorAttr_names)){
       stop("The length of sectorAttr_names does not match the length of sectorAttr_lists")
@@ -197,7 +213,7 @@ chart.Fct_NA <- function(TSF){
   TSF <- data.table::setkeyv(TSF, cols= "date")
   TSF <- TSF[,.(percent_NA = mean(is.na(factorscore))), by = date]
   TSF.xts <- xts::as.xts(TSF$percent_NA, order.by = TSF$date)
-  result <- ggplot.ts.line(TSF.xts, main = "NA percentage", show.legend = FALSE)
+  result <- ggplot.ts.line(TSF.xts, main = "NA percentage", show.legend = FALSE, size=1)
   return(result)
 }
 
@@ -217,7 +233,7 @@ MF.chart.Fct_NA <- function(mTSF){
     result <- rbind(result, re_)
   }
   result.xts <- xts::as.xts(result[,fnames], order.by = result$date_)
-  result.plot <- ggplot.ts.line(result.xts, main = "NA percentage")
+  result.plot <- ggplot.ts.line(result.xts, main = "NA percentage", size=1)
   return(result.plot)
 }
 
@@ -226,11 +242,14 @@ MF.chart.Fct_NA <- function(mTSF){
 # ---------------------  ~~ Multi-factor - descriptive stat --------------
 #' @rdname factor_descriptive_statistics
 #' @export
-MF.chart.Fct_hist <- function(mTSF){
+MF.chart.Fct_hist <- function(mTSF,sample=NULL){
+  if(!is.null(sample)){
+    mTSF <- TS_filter(mTSF,sample_N=sample)
+  }
   fnames <- guess_factorNames(mTSF)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore)) + 
-    geom_histogram(colour = "black", fill = "white")+
+    geom_histogram(colour = "white", fill = "black")+
     facet_grid(date~fname,scales="free")
   
 }
@@ -238,7 +257,10 @@ MF.chart.Fct_hist <- function(mTSF){
 
 #' @rdname factor_descriptive_statistics
 #' @export
-MF.chart.Fct_density <- function(mTSF,ncol=NULL){
+MF.chart.Fct_density <- function(mTSF,sample=NULL,ncol=NULL){
+  if(!is.null(sample)){
+    mTSF <- TS_filter(mTSF,sample_N=sample)
+  }
   fnames <- guess_factorNames(mTSF)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore,color=fname)) + 
@@ -249,7 +271,10 @@ MF.chart.Fct_density <- function(mTSF,ncol=NULL){
 #' @rdname factor_descriptive_statistics
 #' 
 #' @export
-MF.chart.Fct_box <- function(mTSF,ncol=NULL){
+MF.chart.Fct_box <- function(mTSF,sample=NULL,ncol=NULL){
+  if(!is.null(sample)){
+    mTSF <- TS_filter(mTSF,sample_N=sample)
+  }
   fnames <- guess_factorNames(mTSF)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(fname,factorscore)) + 
@@ -260,7 +285,10 @@ MF.chart.Fct_box <- function(mTSF,ncol=NULL){
 
 #' @rdname factor_descriptive_statistics
 #' @export
-MF.table.Fct_descr <- function(mTSF){
+MF.table.Fct_descr <- function(mTSF,sample=NULL){
+  if(!is.null(sample)){
+    mTSF <- TS_filter(mTSF,sample_N=sample)
+  }
   fnames <- guess_factorNames(mTSF)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   re <- mTSF %>% group_by(date,fname) %>%
@@ -274,7 +302,6 @@ MF.table.Fct_descr <- function(mTSF){
                      skewness=PerformanceAnalytics::skewness(factorscore,na.rm = TRUE),
                      kurtosis=PerformanceAnalytics::kurtosis(factorscore,na.rm = TRUE))
   return(re)
-  
 }
 
 
@@ -812,7 +839,24 @@ seri.Ngroup.rtn <- function(TSFR,N=5,
 }
 
 
-
+#' @rdname backtest.Ngroup
+#' @return seri.Ngroup.spread return a xts, which giving the spread return seri of "long-short" or "long-univ"
+#' @export
+#' @examples
+#' re <- seri.Ngroup.spread(TSFR,5)
+seri.Ngroup.spread <- function(TSFR,N=5,
+                               sectorNe=NULL,
+                               rtn_type = c("long-short", "long-univ")){
+  rtn_type <- match.arg(rtn_type)
+  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,relative = FALSE,sectorNe=sectorNe,include_univ = TRUE)
+  if(rtn_type == "long-short"){
+    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
+  }else if(rtn_type == "long-univ"){
+    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)]
+  }
+  colnames(spreadseri) <- "spread"
+  return(spreadseri)
+}
 
 
 #' @rdname backtest.Ngroup
@@ -1122,7 +1166,7 @@ chart.Ngroup.seri_point <- function(TSFR,N=5,relative=TRUE,
 
 #' @rdname backtest.Ngroup
 #' @export
-chart.Ngroup.violin <- function(TSFR,N=5, sectorNe=NULL, jitter=TURE){
+chart.Ngroup.violin <- function(TSFR,N=5, sectorNe=NULL, jitter=TRUE){
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = TRUE,sectorNe=sectorNe)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
   rtnseri.melt <- reshape2::melt(rtnseri.df,id.vars="time")
@@ -1209,8 +1253,6 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,relative=TRUE,
 }
 
 
-
-
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.spread return and print a recordedplot object of "Performance Summary of top-bottom spread" . 
 #' @export
@@ -1223,20 +1265,15 @@ chart.Ngroup.spread <- function(TSFR,N=5,
                                 plotPar
                                 ){
   rtn_type <- match.arg(rtn_type)
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-  }  
-  rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,relative = FALSE,sectorNe=sectorNe,include_univ = TRUE)
+  spreadseri <- seri.Ngroup.spread(TSFR = TSFR, N=N, sectorNe=sectorNe, rtn_type = rtn_type)
   if(rtn_type == "long-short"){
-    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
-    colnames(spreadseri) <- "spread"
-    re <- ggplots.PerformanceSummary(spreadseri,var.cum=list(1),var.dd=list(1),var.bar=list(1),bar.freq="day",main="Performance Summary of top-bottom spread")
+    main <- "Performance Summary of top-bottom spread"
   }else if(rtn_type == "long-univ"){
-    spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)]
-    colnames(spreadseri) <- "spread"
-    re <- ggplots.PerformanceSummary(spreadseri,var.cum=list(1),var.dd=list(1),var.bar=list(1),bar.freq="day",main="Performance Summary of top-univ spread")
+    main <- "Performance Summary of top-univ spread"
   }
+  re <- ggplots.PerformanceSummary(spreadseri,var.cum=list(1),var.dd=list(1),var.bar=list(1),bar.freq="day",main=main)
 }
+
 #' @rdname backtest.Ngroup
 #' @param group a integer, indicating the group whose turnover be plotted
 #' @return chart.Ngroup.turnover return a ggplot object of "Turnover Rate of each rebalancing point"
@@ -1274,6 +1311,10 @@ chart.Ngroup.size <- function(TSFR,N=5,
   return(re)
 }
 
+
+
+
+
 #' @param mTSFR a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.
 #' @rdname backtest.Ngroup
 #' @export
@@ -1282,39 +1323,34 @@ chart.Ngroup.size <- function(TSFR,N=5,
 #' MF.chart.Ngroup.spread(mTSFR)
 MF.chart.Ngroup.spread <- function(mTSFR,N=5,
                                    sectorNe=NULL,
-                                   Nbin="day",
-                                   facet_by=c("none","date","fname")){
-  fnames <- guess_factorNames(mTSFR)
-  TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
-    as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
-                        factorscore=x,periodrtn=mTSFR[,'periodrtn']))
-  },mTSFR=mTSFR)
-  
+                                   rtn_type = c("long-short", "long-univ"),
+                                   relative = FALSE,
+                                   facet_by=c("none","date","fname"),
+                                   Nbin="year"){
+  rtn_type <- match.arg(rtn_type)
   facet_by <- match.arg(facet_by)
+  fnames <- guess_factorNames(mTSFR, silence = TRUE)
+  TSFRs <- mTSF2TSFs(mTSFR)
   
-  rtnseri <- plyr::llply(TSFRs,seri.Ngroup.rtn,N=N,sectorNe=sectorNe)
-  rtnseri <- lapply(rtnseri,function(ts){
-    rtn <- ts[,1]-ts[,ncol(ts)]
-    wealth <- WealthIndex(rtn)
-    spread <- data.frame(date=zoo::index(wealth),zoo::coredata(rtn),zoo::coredata(wealth))
-    colnames(spread) <- c('date','rtn','wealth')
-    return(spread)})
-  rtnseri <- dplyr::bind_rows(rtnseri,.id = 'fname')
-  
+  rtnseri <- plyr::llply(TSFRs, seri.Ngroup.spread, N=N, sectorNe=sectorNe, rtn_type = rtn_type)
+  rtnseri <- do.call(merge,rtnseri)
+  colnames(rtnseri) <- fnames
+  if(relative){
+    avgseri <- rowMeans(rtnseri)
+    rtnseri <- rtnseri-avgseri
+  }
   if(facet_by=='none'){
-    ggplot(rtnseri, aes(x=date, y=wealth, color=fname)) +
-      geom_line(size=1) +
-      coord_trans(y="log")
+    ggplot.WealthIndex(rtnseri,size=1)
   }else if(facet_by=='date'){
-    rtnseri$date <- cut.Date2(rtnseri$date,Nbin)
-    rtnseri <- rtnseri %>% dplyr::group_by(fname,date) %>% dplyr::summarise(rtn=prod(1+rtn)-1) %>%
-      dplyr::ungroup() %>% dplyr::mutate(date=as.Date(date))
-    ggplot(rtnseri, aes(x=fname, y=rtn,fill=fname)) +
-      geom_bar(stat = 'identity')+facet_wrap(~date)
+    rtn_aggr <- aggr.rtn(rtnseri,freq=Nbin)
+    rtn_aggr.df <- data.frame(time=time(rtn_aggr),zoo::coredata(rtn_aggr))
+    rtn_aggr.melt <- reshape2::melt(rtn_aggr.df,id.vars="time",variable.name="fname")
+    ggplot(rtn_aggr.melt,aes(x=fname,y=value,fill=fname))+
+      geom_bar(position="dodge",stat="identity")+
+      facet_wrap(~ time, scales="free_y") +
+      scale_y_continuous(labels=scales::percent)
   }else if(facet_by=='fname'){
-    ggplot(rtnseri, aes(x=date, y=wealth)) +
-      geom_line(size=1)+facet_wrap(~fname)+
-      coord_trans(y="log")
+    ggplot.WealthIndex(rtnseri,facet=TRUE,size=1)
   }
 }
 

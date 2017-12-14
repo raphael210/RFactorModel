@@ -417,6 +417,36 @@ buildFactorLists_lcfs <- function(factorIDs, factorRefine = refinePar_default("n
 
 
 
+#' fl2tbl
+#' 
+#' turn factorlist or factorlists to 2-D table.
+#' 
+#' @param fl FactorList
+#' @param fls FactorLists
+#' @return a 2-D table with elements of list class.
+#' @export fl2tbl
+#' @examples 
+#' fl <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20,M="test"))
+#' fls <- c(buildFactorLists_lcfs(c("F000001","F000003","F000008","F000009")),list(fl))
+#' re1 <- fl2tbl(fl)
+#' re2 <- fls2tbl(fls)
+fl2tbl <- function(fl){
+  nm <- names(fl)
+  re <- t(tibble::tibble(fl))
+  colnames(re) <- nm
+  rownames(re) <- NULL
+  return(re)
+}
+#' @export
+#' @rdname fl2tbl
+fls2tbl <- function(fls){
+  fname <- sapply(fls,"[[","factorName")
+  names(fls) <- fname
+  colname <- names(fls[[1]])
+  tb <- t(tibble::as_tibble(fls))
+  colnames(tb) <- colname
+  return(tb)
+}
 
 
 

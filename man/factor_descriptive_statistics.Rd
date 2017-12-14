@@ -15,21 +15,21 @@
 \alias{MF.table.Fct_corr}
 \title{Factor descriptive statistics}
 \usage{
-chart.Fct_hist(TSF, bins = NULL, ncol = NULL)
+chart.Fct_hist(TSF, sample = NULL, bins = NULL, ncol = NULL)
 
-chart.Fct_density(TSF)
+chart.Fct_density(TSF, sample = NULL)
 
-chart.Fct_box(TSF)
+chart.Fct_box(TSF, sample = NULL)
 
-table.Fct_descr(TSF)
+table.Fct_descr(TSF, sample = NULL)
 
-MF.chart.Fct_hist(mTSF)
+MF.chart.Fct_hist(mTSF, sample = NULL)
 
-MF.chart.Fct_density(mTSF, ncol = NULL)
+MF.chart.Fct_density(mTSF, sample = NULL, ncol = NULL)
 
-MF.chart.Fct_box(mTSF, ncol = NULL)
+MF.chart.Fct_box(mTSF, sample = NULL, ncol = NULL)
 
-MF.table.Fct_descr(mTSF)
+MF.table.Fct_descr(mTSF, sample = NULL)
 
 MF.chart.Fct_corr(mTSF, Nbin)
 
