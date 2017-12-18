@@ -4,7 +4,7 @@
 \alias{chart.FctRtn_scatter}
 \title{chart.FctRtn_scatter}
 \usage{
-chart.FctRtn_scatter(TSFR, ncol = NULL)
+chart.FctRtn_scatter(TSFR, sample = NULL, ncol = NULL)
 }
 \description{
 chart.FctRtn_scatter

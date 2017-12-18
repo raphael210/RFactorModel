@@ -221,9 +221,11 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 #' # -- add wgt to port
 #' port <- getPort(TSF,20)
 #' port <- addwgt2port(port,"fv")
+#' port <- addwgt2port(port,"fv",max_wgt=0.08)
 addwgt2port <- function (port,
                          wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                          sectorNe_wgt=NULL, wgtbmk="EI000300",
+                         max_wgt=NULL,
                          backtestPar,                       
                          tolerance=0.2) {  
   wgtType <- match.arg(wgtType)
@@ -231,6 +233,7 @@ addwgt2port <- function (port,
     wgtType <- getbacktestPar.longshort(backtestPar,"wgtType")
     sectorNe_wgt <- getbacktestPar.longshort(backtestPar,"sectorNe_wgt") 
     wgtbmk <- getbacktestPar.longshort(backtestPar,"bmk")
+    max_wgt <- getbacktestPar.longshort(backtestPar,"max_wgt")
   }     
   if (wgtType=="custom") {
     coltest <- c("date","stockID","wgt")    
@@ -238,6 +241,7 @@ addwgt2port <- function (port,
     coltest <- c("date","stockID")
   }
   check.colnames(port,coltest)
+  
   # ---- add weights
   if (wgtType=="eq") {
     port <- plyr::ddply(port,"date",transform,wgt=1/length(stockID))    
@@ -260,6 +264,7 @@ addwgt2port <- function (port,
     }   
     port$factorscore <- NULL
   }
+  
   # ---- neutrualizing wgt by sectors 
   if (!is.null(sectorNe_wgt)) {
     # --- get the bmk sector wgt
@@ -282,89 +287,51 @@ addwgt2port <- function (port,
       port <- plyr::ddply(port,"date",transform,wgt=wgt/sum(wgt,na.rm=TRUE))
     } 
   }
+  
+  # ---- port_limitwgt
+  port <- port_limitwgt(port=port, max_wgt=max_wgt)
   return(port)
 }
 
 
 
 
-
-#' @details \code{port.substitute} redistribute the extra weight to other stocks to reduce the risk of concentration,when too much weight on single stock. 
-#' 
-#' TSF is used when the stocks in \code{port} is not enough to share the extra weights. In that case, stock in TSF, which is in the same sector, will be imported into the port to share the extra weights.
 #' @rdname PortfolioBacktest
-#' @param wgt.max a numeric or NA, giving the maximum of weight which could be set on a single stock. If NA(the default value), with no limit, return \code{port} itself without doing anything.
-#' @param dir a character string of "long" or "short". In \code{port.substitute}, indicating the port direction. If "long",the port will be look as a long portfolio, and will import stocks from the top of the TSF; vise versa.
-#' @return \code{port.substitute} return a \bold{Port} object
-#' @note If the \code{port} and \code{TSF} originally contain the column "sector", it will be droped before the new sector imported according to the specified auguments.
+#' @param max_wgt a numeric or NA, giving the maximum of weight which could be set on a single stock. If NA(the default value), with no limit, return \code{port} itself without doing anything.
 #' @export
 #' @examples
 #' # -- reduce the risk of concentration
-#' port <- port.substitute(port,TSF,wgt.max=0.08)
-port.substitute <- function(port,TSF,
-                            wgt.max=NA,
-                            sectorAttr=defaultSectorAttr(),
-                            backtestPar,
-                            dir=c("long","short")){
-  dir <- match.arg(dir)
-  if(!missing(backtestPar)){
-    wgt.max <- getbacktestPar.longshort(backtestPar,"wgt.max")
-    sectorAttr <- getbacktestPar.longshort(backtestPar,"sectorNe_wgt")
-  }
-  if(is.na(wgt.max)){ # 
+#' port <- port_limitwgt(port,max_wgt=0.08)
+port_limitwgt <- function(port,max_wgt=NULL){
+  if(is.null(max_wgt)){  
     return(port)
-  }  
-  check.Port(port)
-  port <- getSectorID(port,sectorAttr=sectorAttr)  
-  port <- dplyr::arrange(port,date,sector,desc(wgt))  
-  check.TSF(TSF)
-  TSF <- getSectorID(TSF,sectorAttr=sectorAttr)
-  subfun <- function(subT){
-    wgt.ex <- 0
-    need.TSF <- TRUE
-    for (i in 1:nrow(subT)) {
-      subT[i,"wgt"] <- subT[i,"wgt"] + wgt.ex
-      if (subT[i,"wgt"] > wgt.max) {
-        wgt.ex <- subT[i,"wgt"]-wgt.max
-        subT[i,"wgt"] <- wgt.max            
-      } else {      
-        need.TSF <- FALSE
-        break
-      }  
-    }
-    if (need.TSF) { # -- the weight is so much that the stocks in the port is not enough to share. Need to import more stocks from the TSF. 
-      subTSF <- subset(TSF,date==subT[1,"date"] & sector==subT[1,"sector"],
-                       select=c("date","sector","stockID","factorscore"))
-      subTSF <- subset(subTSF,!(stockID %in% subT$stockID))
-      subTSF <- if(dir=="long") dplyr::arrange(subTSF,desc(factorscore)) else dplyr::arrange(subTSF,factorscore)
-      N <- wgt.ex %/% wgt.max + 1
-      if(N > nrow(subTSF)){
-        stop(paste("There are not enough stocks in TSF to share the extra weight in sector",subTSF[1,"sector"],"on",subTSF[1,"date"],"!"))
-      } else {
-        subTSF <- head(subTSF,N)
-        subTSF[1:N-1,"wgt"] <- wgt.max
-        subTSF[N,"wgt"] <- wgt.ex %% wgt.max
-        subT <- plyr::rbind.fill(subT,subTSF)
-        warning(paste("Too much weight is set on single stocks in sector",subT[1,"sector"],"on",subT[1,"date"],".\n",
-                      N,"more stocks are imported to share",round(wgt.ex,4),"extra weight."))
-      }      
-    }
-    return(subT)
   }
-  port <- plyr::ddply(port,c("date","sector"),subfun)
+  check.Port(port)
+  dates <- unique(port$date)
+  for(dt in dates){
+    wgt <- port[port$date==dt,"wgt"]
+    while(any(wgt > max_wgt)){
+      over_flag <- wgt>=max_wgt
+      total_over <- sum((wgt-max_wgt)[over_flag])
+      total_remain <- sum(wgt[!over_flag])
+      wgt[over_flag] <- max_wgt
+      wgt[!over_flag] <- wgt[!over_flag]*(1+total_over/total_remain)
+    }
+    port[port$date==dt,"wgt"] <- wgt
+  }
   return(port)
 }
 
 
 
 
-#' @details \code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, get \bold{Port} object from \bold{TSF}, with further treatment.
+#' @details \code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, get \bold{Port} object from \bold{TSF}, with further treatment.
 #' @rdname PortfolioBacktest
 #' @export
 #' @return \code{getPort_throughout} return a \bold{Port} object, which contain the col of 'wgt'.
 #' @examples
 #' # -- get Port object from TSF throughout
-#' Port_throut <- getPort_throughout(TSF, topN=20, wgt.max=0.8, dir="long")
+#' Port_throut <- getPort_throughout(TSF, topN=20, max_wgt=0.8, dir="long")
 getPort_throughout <- function (TSF,
                                 # getPort
                                 topN=NA, topQ=NA, 
@@ -373,8 +340,7 @@ getPort_throughout <- function (TSF,
                                 # addwgt2port
                                 wgtType= "eq",
                                 sectorNe_wgt=NULL, wgtbmk="EI000300",
-                                # port.substitute
-                                wgt.max=NA, 
+                                max_wgt=NULL, 
                                 
                                 backtestPar,
                                 dir=c("long","short")) {
@@ -389,12 +355,8 @@ getPort_throughout <- function (TSF,
                       wgtType=wgtType, 
                       sectorNe_wgt=sectorNe_wgt,                       
                       wgtbmk=wgtbmk, 
+                      max_wgt=max_wgt,
                       backtestPar=backtestPar)
-  
-  Port <- port.substitute(port=Port, TSF=TSF, 
-                          wgt.max=wgt.max, 
-                          sectorAttr=sectorNe_wgt, 
-                          dir=dir, backtestPar=backtestPar)
   
   return(Port)
 }
@@ -494,7 +456,7 @@ port.backtest <- function(port,
 }
 
 
-#' @details \code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port.substitute}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
+#' @details \code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
 #' @rdname PortfolioBacktest
 #' @export
 #' @return \code{getPB} return a \bold{PB}("PortfolioBacktest") object.
@@ -509,8 +471,7 @@ getPB <- function (TSF,
                    # addwgt2port
                    wgtType= "eq",
                    sectorNe_wgt=NULL, wgtbmk="EI000300",
-                   # port.substitute
-                   wgt.max=NA, 
+                   max_wgt=NULL, 
                    # port.backtest
                    holdingEndT=Sys.Date(), fee.buy=0, fee.sell=fee.buy,
                    
@@ -526,13 +487,9 @@ getPB <- function (TSF,
   Port <- addwgt2port(Port, 
                       wgtType=wgtType, 
                       sectorNe_wgt=sectorNe_wgt,                       
-                      wgtbmk=wgtbmk, 
+                      wgtbmk=wgtbmk,
+                      max_wgt=max_wgt,
                       backtestPar=backtestPar)
-  
-  Port <- port.substitute(port=Port, TSF=TSF, 
-                          wgt.max=wgt.max, 
-                          sectorAttr=sectorNe_wgt, 
-                          dir=dir, backtestPar=backtestPar)
   
   PB <- port.backtest(Port, 
                       holdingEndT= holdingEndT, 

@@ -3,6 +3,7 @@
 \name{backtest.Ngroup}
 \alias{backtest.Ngroup}
 \alias{seri.Ngroup.rtn}
+\alias{seri.Ngroup.spread}
 \alias{seri.Ngroup.turnover}
 \alias{seri.Ngroup.size}
 \alias{table.Ngroup.overall}
@@ -24,6 +25,9 @@
 seri.Ngroup.rtn(TSFR, N = 5, relative = FALSE, include_univ = FALSE,
   sectorNe = NULL, bysector = NULL, backtestPar)
 
+seri.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
+  rtn_type = c("long-short", "long-univ"))
+
 seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL, backtestPar)
 
 seri.Ngroup.size(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
@@ -42,7 +46,7 @@ chart.Ngroup.overall(TSFR, N = 5, relative = TRUE, sectorNe = NULL,
 chart.Ngroup.seri_point(TSFR, N = 5, relative = TRUE, Nbin = "day",
   sectorNe = NULL, plotPar)
 
-chart.Ngroup.violin(TSFR, N = 5, sectorNe = NULL)
+chart.Ngroup.violin(TSFR, N = 5, sectorNe = NULL, jitter = TRUE)
 
 chart.Ngroup.box(TSFR, N = 5, sectorNe = NULL)
 
@@ -60,8 +64,9 @@ chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL, plotPar)
 chart.Ngroup.size(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
   plotPar)
 
-MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL, Nbin = "day",
-  facet_by = c("none", "date", "fname"))
+MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL,
+  rtn_type = c("long-short", "long-univ"), relative = FALSE,
+  facet_by = c("none", "date", "fname"), Nbin = "year")
 
 MC.table.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, fee = 0,
   rtn_type = c("long-short", "long-univ"), backtestPar)
@@ -92,6 +97,8 @@ MC.chart.Ngroup.overall(TSFRs, N = 5, relative = TRUE, sectorNe = NULL,
 }
 \value{
 seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
+
+seri.Ngroup.spread return a xts, which giving the spread return seri of "long-short" or "long-univ"
 
 seri.Ngroup.turnover return a xts, which giving the (one side) num or wgt turnover seri of each group
 
@@ -127,6 +134,7 @@ modelPar <- modelPar.default()
 TSFR <- Model.TSFR(modelPar)
 re <- seri.Ngroup.rtn(TSFR,5)
 re2 <- seri.Ngroup.rtn(TSFR,5,include_univ=TRUE)
+re <- seri.Ngroup.spread(TSFR,5)
 re <- seri.Ngroup.turnover(TSFR,5)
 re <- table.Ngroup.overall(TSFR,5,fee=0.002)
 re2 <- table.Ngroup.overall(TSFR, rtn_type = "long-univ")
