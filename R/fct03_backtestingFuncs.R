@@ -308,6 +308,7 @@ MF.table.Fct_descr <- function(mTSF,sample=NULL){
 
 #' @name factor_descriptive_statistics
 #' @param Nbin the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.
+#' @param out_type "mat" or "seri"
 #' @examples
 #' # ---  raw_factor_correlation
 #' RebDates <- getRebDates(as.Date('2014-01-31'),as.Date('2016-09-30'))
@@ -318,9 +319,14 @@ MF.table.Fct_descr <- function(mTSF,sample=NULL){
 #' MF.chart.Fct_corr(mTSF)
 #' MF.chart.Fct_corr(mTSF,Nbin='year')
 #' @export
-MF.chart.Fct_corr <- function(mTSF,Nbin){
-  corr <- MF.table.Fct_corr(mTSF,Nbin)
-  ggplot.corr(corr)
+MF.chart.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
+  out_type <- match.arg(out_type)
+  corr <- MF.table.Fct_corr(mTSF,Nbin,out_type)
+  if(out_type=="seri"){
+    ggplot.ts.line(corr,size=1)
+  } else {
+    ggplot.corr(corr)
+  }
 }
 
 
@@ -330,9 +336,8 @@ MF.chart.Fct_corr <- function(mTSF,Nbin){
 #' MF.table.Fct_corr(mTSF)
 #' MF.table.Fct_corr(mTSF,Nbin='year')
 #' @export
-MF.table.Fct_corr <- function(mTSF,Nbin){
-  
-  # fnames <- setdiff(colnames(mTSF),c('date','stockID','date_end','periodrtn'))
+MF.table.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
+  out_type <- match.arg(out_type)
   fnames <- guess_factorNames(mTSF)
   mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
   
@@ -343,29 +348,42 @@ MF.table.Fct_corr <- function(mTSF,Nbin){
   cordata <- transform(cordata,fname=as.character(fname),
                        fnamecor=as.character(fnamecor))
   
-  if(missing(Nbin)){
-    cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- dplyr::arrange(cordata_by,fname,fnamecor)
-    cordata_by <- reshape2::dcast(cordata_by,fname~fnamecor)
-    rownames(cordata_by) <- cordata_by$fname
-    cordata_by <- as.matrix(cordata_by[,-1])
-  }else{
-    cordata$tmp <- cut.Date2(cordata$date,Nbin)
-    cordata_by <- dplyr::group_by(cordata,tmp,fname,fnamecor)
-    cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
-    cordata_by <- dplyr::arrange(cordata_by,tmp,fname,fnamecor)
-    cordata_by <- reshape2::dcast(cordata_by,tmp+fname~fnamecor)
-    cordata_by <- split(cordata_by[,-1],cordata_by$tmp)
-    cordata_by <- plyr::llply(cordata_by,function(df){
-      rownames(df) <- df$fname
-      df <- as.matrix(df[,-1])
-      return(df)
-    })
+  if(out_type=="seri"){ 
+    seridata <- tidyr::unite(cordata,fnames,fname,fnamecor,sep = ".",remove = TRUE)
+    comb_names <- combn(fnames,2)
+    comb_names <- paste(comb_names[1,],comb_names[2,],sep =".")
+    seridata <- dplyr::filter(seridata,fnames %in% comb_names)
+    seridata <- reshape2::dcast(seridata,date~fnames,value.var = "value")
+    seridata <- as.xts(seridata[,-1,drop=FALSE],seridata[,1])
+    if(!missing(Nbin)){
+      by <- cut.Date2(zoo::index(seridata),Nbin)
+      seridata <- aggregate(seridata,as.Date(by),mean,na.rm=TRUE)
+    }
+    return(seridata)
+  } else if(out_type=="mat"){
+    if(missing(Nbin)){
+      cordata_by <- dplyr::group_by(cordata,fname,fnamecor)
+      cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+      cordata_by <- dplyr::arrange(cordata_by,fname,fnamecor)
+      cordata_by <- reshape2::dcast(cordata_by,fname~fnamecor)
+      rownames(cordata_by) <- cordata_by$fname
+      cordata_by <- as.matrix(cordata_by[,-1])
+    }else{
+      cordata$tmp <- cut.Date2(cordata$date,Nbin)
+      cordata_by <- dplyr::group_by(cordata,tmp,fname,fnamecor)
+      cordata_by <- dplyr::summarise(cordata_by,value=round(mean(value,trim=0.05),2))
+      cordata_by <- dplyr::arrange(cordata_by,tmp,fname,fnamecor)
+      cordata_by <- reshape2::dcast(cordata_by,tmp+fname~fnamecor)
+      cordata_by <- split(cordata_by[,-1],cordata_by$tmp)
+      cordata_by <- plyr::llply(cordata_by,function(df){
+        rownames(df) <- df$fname
+        df <- as.matrix(df[,-1])
+        return(df)
+      })
+    }
+    return(cordata_by)
   }
-  return(cordata_by)
 }
-
 
 
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============

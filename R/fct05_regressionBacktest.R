@@ -206,19 +206,10 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   glm_wgt <- match.arg(glm_wgt)
   
   TSFR_save <- TSFR
-  if(sum(is.na(TSFR))>0){
-    warning('NAs in TSFR!')
-    TSFR <- na.omit(TSFR)  # omit the NAs 
-  }
   factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore',silence=TRUE)
   
   if(!is.null(sectorAttr)){
-    if(identical(sectorAttr,"existing")){
-      secNames <- unique(TSFR$sector)
-      factorNames <- setdiff(factorNames,secNames)
-    }else{
-      TSFR <- gf_sector(TSFR,sectorAttr)
-    }
+    TSFR <- gf_sector(TSFR,sectorAttr)
   }
   
   if(regType=='glm'){ #get glm_wgt data
@@ -446,7 +437,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 #' @export
 factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
-  if(!is.null(sectorAttr) && !identical(sectorAttr,"existing")){
+  if(!is.null(sectorAttr)){
     TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
   
@@ -487,21 +478,20 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
   if(missing(x)){
     x <- setdiff(fname,y)
   }
-  if(!is.null(sectorAttr) && !identical(sectorAttr,"existing")){
+  if(!is.null(sectorAttr)){
     TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
   
   if(is.null(sectorAttr)){
-    re <- lm_NPeriod(TSF,y,x)
+    resd <- lm_NPeriod(TSF,y,x)
   }else{
-    re <- lm_NPeriod(TSF,y,x,secIN = TRUE)
+    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE)
   }
   
-  res <- re$resd
-  res$fitted <- NULL
-  colnames(res) <- c('date','stockID',y)
-  TSF <- dplyr::left_join(TSF[,colnames(TSF)!=y],res,by =c("date","stockID"))
-  return(TSF[,cols])
+  resd <- resd$resd
+  re <- TSF[,cols]
+  re[,y] <- resd$res
+  return(re)
 }
 
 
@@ -517,7 +507,7 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
   if(is.numeric(forder)){
     forder <- fname[forder]
   }
-  if(!is.null(sectorAttr) && !identical(sectorAttr,"existing")){
+  if(!is.null(sectorAttr)){
     TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
@@ -535,10 +525,14 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
 
 
 #inner function 
-lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
+lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
-  
+  TS <- data[,c('date','stockID')]
+  data <- data[rowSums(is.na(data[,c(x,y)]))==0,] # remove NA
+  if(!silence && nrow(data)<nrow(TS)){
+    warning("NAs found in x or y part!")
+  }
   rsq <- data.frame()
   coef <- data.frame()
   resd <- data.frame()
@@ -591,6 +585,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE){
   }
   rsq <- as.data.frame(rsq)
   colnames(resd) <- c('date','stockID','fitted','res')
+  resd <- merge.x(TS,resd,by=c('date','stockID'))
   return(list(rsq=rsq,coef=coef,resd=resd))
 }
 

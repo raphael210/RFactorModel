@@ -31,12 +31,14 @@ MF.chart.Fct_box(mTSF, sample = NULL, ncol = NULL)
 
 MF.table.Fct_descr(mTSF, sample = NULL)
 
-MF.chart.Fct_corr(mTSF, Nbin)
+MF.chart.Fct_corr(mTSF, Nbin, out_type = c("mat", "seri"))
 
-MF.table.Fct_corr(mTSF, Nbin)
+MF.table.Fct_corr(mTSF, Nbin, out_type = c("mat", "seri"))
 }
 \arguments{
 \item{Nbin}{the number of the groups the timespan is cut to when plotting the scatter by time series.It could also be a character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the scatters of every date are ploted.}
+
+\item{out_type}{"mat" or "seri"}
 }
 \description{
 draw factor's histogram and boxplot,and summarize factor's statistics value.
