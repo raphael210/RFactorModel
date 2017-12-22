@@ -465,7 +465,8 @@ factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
 #' @rdname factor_select
 #' 
 #' @export
-factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
+factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
+  lmtype <- match.arg(lmtype)
   cols <- colnames(TSF)
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   
@@ -483,9 +484,9 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
   }
   
   if(is.null(sectorAttr)){
-    resd <- lm_NPeriod(TSF,y,x)
+    resd <- lm_NPeriod(TSF,y,x,lmtype=regTpye)
   }else{
-    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE)
+    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE,lmtype=regTpye)
   }
   
   resd <- resd$resd
@@ -498,7 +499,8 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr()){
 #' @rdname factor_select
 #' 
 #' @export
-factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
+factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
+  lmtype <- match.arg(lmtype)
   cols <- colnames(TSF)
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   if(missing(forder)){
@@ -512,10 +514,10 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr()){
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
   if(!is.null(sectorAttr)){ # forder[1]
-    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing")
+    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing",regType=regTpye)
   }
   for(j in 2:length(forder)){ # forder[2:length]
-    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_)
+    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_,regType=regTpye)
   }
   return(TSF[,cols])
 }
