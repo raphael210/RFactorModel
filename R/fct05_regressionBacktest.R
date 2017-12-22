@@ -209,7 +209,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore',silence=TRUE)
   
   if(!is.null(sectorAttr)){
-    TSFR <- gf_sector(TSFR,sectorAttr)
+    TSFR <- getSectorID(TSFR,sectorAttr)
   }
   
   if(regType=='glm'){ #get glm_wgt data
@@ -326,7 +326,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
   result <- data.frame()
   if(!is.null(sectorAttr)){
-    TSFR <- gf_sector(TSFR,sectorAttr = sectorAttr)
+    TSFR <- getSectorID(TSFR,sectorAttr = sectorAttr)
     secNames <- unique(TSFR$sector)
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID",secNames,'sector',"periodrtn")],sectorAttr = 'existing')[[4]]
     result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = TRUE), 
@@ -438,7 +438,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   if(!is.null(sectorAttr)){
-    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
   }
   
   result <- data.frame()
@@ -480,7 +480,7 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regTyp
     x <- setdiff(fname,y)
   }
   if(!is.null(sectorAttr)){
-    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
   }
   
   if(is.null(sectorAttr)){
@@ -510,7 +510,7 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c(
     forder <- fname[forder]
   }
   if(!is.null(sectorAttr)){
-    TSF <- gf_sector(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
   if(!is.null(sectorAttr)){ # forder[1]
@@ -530,67 +530,35 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c(
 lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
-  TS <- data[,c('date','stockID')]
-  data <- data[rowSums(is.na(data[,c(x,y)]))==0,] # remove NA
-  if(!silence && nrow(data)<nrow(TS)){
+  
+  if(!silence && any(is.na(data[,c(x,y)]))){
     warning("NAs found in x or y part!")
   }
-  rsq <- data.frame()
-  coef <- data.frame()
-  resd <- data.frame()
+  
   if(secIN){
-    check.colnames_sectorfs(data)
-    secdf <- data %>% dplyr::group_by(date,sector) %>% 
-      dplyr::summarise(n=1) %>% dplyr::ungroup()
-    secdf <- reshape2::dcast(secdf,date~sector,fill = 0,value.var = 'n')
-    secdf <- tidyr::unite(secdf,rowtag,-date,sep='',remove = FALSE)
-    
-    while(nrow(secdf)>0){
-      secdf_ <- secdf %>% dplyr::filter(rowtag==dplyr::first(rowtag)) %>% dplyr::select(-rowtag)
-      secdf_ <- secdf_[,c(TRUE,colSums(secdf_[,-1])>0)]
-      secNames <- colnames(secdf_)[-1]
-      data_ <- data %>% dplyr::filter(date %in% secdf_$date)
-      
-      if(length(secNames)>1){
-        fml <- formula(paste(y," ~ ", paste(c(x,secNames), collapse= "+"),"-1",sep=''))
-      }else{
-        fml <- formula(paste(y," ~ ", paste(x, collapse= "+"),sep=''))
-      }
-      
-      if(lmtype=='lm'){
-        models <- data_ %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .))
-      }else{
-        models <- data_ %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt))
-      }
-      rsq <- rbind(rsq,dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared))
-      coef <- rbind(coef,data.frame(models %>% broom::tidy(mod)))
-      suppressWarnings(resd_ <- models %>% broom::augment(mod))
-      resd <- rbind(resd,cbind(data_[,c('date','stockID')],resd_[,c('.fitted','.resid')]))
-      
-      secdf <- secdf %>% dplyr::filter((!date %in% secdf_$date))
-    }
-    rsq <- dplyr::arrange(rsq,date)
-    coef <- dplyr::arrange(coef,date,term)
-    resd <- dplyr::left_join(data[,c("date","stockID")],resd,by=c("date","stockID"))
-    
+    data$sector <- as.factor(data$sector)
+    fml <- formula(paste(y," ~ ", paste(c(x,"sector"), collapse= "+"),"-1",sep=''))
   }else{
     fml <- formula(paste(y," ~ ", paste(x, collapse= "+"),sep=''))
-    if(lmtype=='lm'){
-      models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .))
-    }else{
-      models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt))
-    }
-    rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
-    coef <- models %>% broom::tidy(mod)
-    suppressWarnings(resd <- models %>% broom::augment(mod))
-    resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
   }
-  rsq <- as.data.frame(rsq)
+  
+  if(lmtype=='lm'){
+    models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = . ,na.action = "na.exclude"))
+  }else{
+    models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt ,na.action = "na.exclude"))
+  }
+  
+  rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
+  coef <- models %>% broom::tidy(mod)
+  resd <- models %>% broom::augment(mod,data)
+  resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')]) # 
   colnames(resd) <- c('date','stockID','fitted','res')
-  resd <- merge.x(TS,resd,by=c('date','stockID'))
+  
+  rsq <- as.data.frame(rsq)
+  coef <- as.data.frame(coef)
+  resd <- as.data.frame(resd)
   return(list(rsq=rsq,coef=coef,resd=resd))
 }
-
 
 
 
