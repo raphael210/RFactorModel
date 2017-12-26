@@ -209,7 +209,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   factorNames <- guess_factorNames(TSFR,no_factorname = c('glm_wgt','sector'),is_factorname = 'factorscore',silence=TRUE)
   
   if(!is.null(sectorAttr)){
-    TSFR <- getSectorID(TSFR,sectorAttr)
+    TSFR <- getSectorID(TS = TSFR,sectorAttr = sectorAttr,fillNA = TRUE)
   }
   
   if(regType=='glm'){ #get glm_wgt data
@@ -223,7 +223,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
         
       }
     }
-  }  
+  }
   
   if(is.null(sectorAttr)){
     re <- lm_NPeriod(TSFR,y='periodrtn',x=factorNames,lmtype = regType)
@@ -235,6 +235,8 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   fRtn <- re$coef[,c('date','term','estimate','statistic')]
   colnames(fRtn) <- c('date','fname','frtn','Tstat')
   fRtn <- fRtn[fRtn$fname!='(Intercept)',]
+  fRtn$fname <- ifelse(substr(fRtn$fname,1,8)=='sectorES',
+                       stringr::str_replace(fRtn$fname,'sectorES','ES'),fRtn$fname)
   if(secRtnOut==FALSE){
     fRtn <- dplyr::filter(fRtn,!substr(fname,1,2)=='ES')
   }
@@ -326,7 +328,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
   #sector only
   result <- data.frame()
   if(!is.null(sectorAttr)){
-    TSFR <- getSectorID(TSFR,sectorAttr = sectorAttr)
+    TSFR <- getSectorID(TSFR,sectorAttr = sectorAttr,fillNA = TRUE)
     secNames <- unique(TSFR$sector)
     secrs <- reg.TSFR(TSFR[,c("date","date_end","stockID",secNames,'sector',"periodrtn")],sectorAttr = 'existing')[[4]]
     result <- data.frame(fname='sector',rsquare=mean(secrs$RSquare,na.rm = TRUE), 
@@ -438,7 +440,7 @@ reg.factor_select <- function(TSFR,sectorAttr=defaultSectorAttr(),forder){
 factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   if(!is.null(sectorAttr)){
-    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr,fillNA = TRUE)
   }
   
   result <- data.frame()
@@ -466,7 +468,7 @@ factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
 #' 
 #' @export
 factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
-  lmtype <- match.arg(lmtype)
+  regType <- match.arg(regType)
   cols <- colnames(TSF)
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   
@@ -480,13 +482,13 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regTyp
     x <- setdiff(fname,y)
   }
   if(!is.null(sectorAttr)){
-    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr,fillNA = TRUE)
   }
   
   if(is.null(sectorAttr)){
-    resd <- lm_NPeriod(TSF,y,x,lmtype=regTpye)
+    resd <- lm_NPeriod(TSF,y,x,lmtype=regType)
   }else{
-    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE,lmtype=regTpye)
+    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE,lmtype=regType)
   }
   
   resd <- resd$resd
@@ -500,7 +502,7 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regTyp
 #' 
 #' @export
 factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
-  lmtype <- match.arg(lmtype)
+  regType <- match.arg(regType)
   cols <- colnames(TSF)
   fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
   if(missing(forder)){
@@ -510,14 +512,14 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c(
     forder <- fname[forder]
   }
   if(!is.null(sectorAttr)){
-    TSF <- getSectorID(TSF,sectorAttr = sectorAttr)
+    TSF <- getSectorID(TSF,sectorAttr = sectorAttr,fillNA = TRUE)
   }
   sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
   if(!is.null(sectorAttr)){ # forder[1]
-    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing",regType=regTpye)
+    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing",regType=regType)
   }
   for(j in 2:length(forder)){ # forder[2:length]
-    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_,regType=regTpye)
+    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_,regType=regType)
   }
   return(TSF[,cols])
 }
@@ -531,7 +533,9 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
   
-  if(!silence && any(is.na(data[,c(x,y)]))){
+  TS <- data[,c('date','stockID')]
+  data <- data[rowSums(is.na(data[,c(x,y),drop=FALSE]))==0,] # remove NA
+  if(!silence && nrow(data)<nrow(TS)){
     warning("NAs found in x or y part!")
   }
   
@@ -550,9 +554,10 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   
   rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
   coef <- models %>% broom::tidy(mod)
-  resd <- models %>% broom::augment(mod,data)
-  resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')]) # 
+  resd <- models %>% broom::augment(mod)
+  resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
   colnames(resd) <- c('date','stockID','fitted','res')
+  resd <- merge.x(TS,resd,by=c('date','stockID'))
   
   rsq <- as.data.frame(rsq)
   coef <- as.data.frame(coef)
