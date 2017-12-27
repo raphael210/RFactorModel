@@ -12,9 +12,11 @@ reg.factor_select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 
 factor_VIF(TSF, sectorAttr = defaultSectorAttr())
 
-factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr())
+factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr(),
+  regType = c("lm", "glm"))
 
-factor_orthogon(TSF, forder, sectorAttr = defaultSectorAttr())
+factor_orthogon(TSF, forder, sectorAttr = defaultSectorAttr(),
+  regType = c("lm", "glm"))
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
@@ -50,7 +52,7 @@ factorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.G_MLL_Q",
                   factorPar=list(),
                   factorDir=1),
-  buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale")))
+  factorRefine=refinePar_default("scale"))
 factorLists <- c(tmp,factorLists)
 TSF <- getMultiFactor(TS,FactorLists = factorLists)
 ----------------------VIF----------------------
