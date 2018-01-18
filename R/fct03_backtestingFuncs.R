@@ -488,7 +488,7 @@ table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
   re <- c(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu)
   re <- matrix(re,length(re),1)
   colnames(re) <- "stat"
-  rownames(re) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
+  rownames(re) <- c("IC_mean","IC_sd","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   return(re)
 }
 
@@ -564,7 +564,7 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
     IC.annu <- IC.mean*sqrtN
   }
   re_table <- t(cbind(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu))
-  rownames(re_table) <- c("IC_mean","IC_std","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
+  rownames(re_table) <- c("IC_mean","IC_sd","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   
   if(TRUE){ # -- chart.IC.decay
     dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
@@ -917,7 +917,7 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
 #' @rdname backtest.Ngroup
 #' @return seri.Ngroup.size return a xts, which giving the mean market-cap seri of each group.
 #' @export
-seri.Ngroup.size <- function(TSFR,N=5,
+seri.Ngroup.size <- function(TSFR,N=5,log=TRUE,
                              include_univ=FALSE,
                              sectorNe=NULL,
                              backtestPar){
@@ -928,7 +928,7 @@ seri.Ngroup.size <- function(TSFR,N=5,
   }
   check.TSF(TSFR)
   TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")])
-  TSFR <- gf_cap(TSFR, varname = "mkt_cap")
+  TSFR <- gf_cap(TSFR,log=log, varname = "mkt_cap")
   
   # ADD RANK OR GROUP
   TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
@@ -994,7 +994,7 @@ table.Ngroup.overall <- function(TSFR,N=5,
   univ <- 0
   turnover.annu <- cbind(turnover.annu, univ)
   rtn.feecut <- rtnsummary[1,]-turnover.annu*fee*2
-  row.names(rtn.feecut) <- "Annualized Return (fee cut)"
+  row.names(rtn.feecut) <- "fee_cut_rtn"
   re <- rbind(rtnsummary, turnover.annu, rtn.feecut)  
   
   # --- spread
@@ -1018,9 +1018,9 @@ table.Ngroup.overall <- function(TSFR,N=5,
     rtn.feecut.spread <- rtnsummary.spread[1,]-turnover.annu.spread*fee*2   # two side trade 
   }
   
-  rownames(turnover.annu.spread) <- "Annualized Turnover"
+  rownames(turnover.annu.spread) <- "ann_turnover"
   colnames(turnover.annu.spread) <- spreadNM
-  rownames(rtn.feecut.spread) <- "Annualized Return (fee cut)"  
+  rownames(rtn.feecut.spread) <- "fee_cut_rtn"  
   colnames(rtn.feecut.spread) <- spreadNM
   
   re.spread <- rbind(rtnsummary.spread,turnover.annu.spread,rtn.feecut.spread)
@@ -1037,16 +1037,16 @@ table.Ngroup.overall <- function(TSFR,N=5,
     group_beta <- c(group_beta, fit_$coefficients[[2]])
   }
   group_beta <- t(group_beta)
-  rownames(group_beta) <- "Beta"  
+  rownames(group_beta) <- "beta"  
   colnames(group_beta) <- colnames(re)
   
   # size
-  sizeseri <- seri.Ngroup.size(TSFR,N=N,include_univ = TRUE,sectorNe=sectorNe,backtestPar=backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR,N=N,log=TRUE,include_univ = TRUE,sectorNe=sectorNe,backtestPar=backtestPar)
   group_cap <- t(colMeans(sizeseri,na.rm = TRUE))
   spread_cap <- if(rtn_type=="long-short") group_cap[1]-group_cap[N] else group_cap[1]-group_cap[N+1]
   group_cap <- cbind(spread_cap, group_cap)
   colnames(group_cap)[1] <- spreadNM
-  row.names(group_cap) <- "Size"
+  row.names(group_cap) <- "size"
   
   # --- output
   re <- rbind(re, group_beta, group_cap)
@@ -1077,7 +1077,7 @@ table.Ngroup.spread <- function(TSFR,N=5,
   
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = FALSE, include_univ = TRUE, sectorNe=sectorNe, bysector = NULL, backtestPar=backtestPar)
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
-  sizeseri <- seri.Ngroup.size(TSFR, N = N, include_univ = TRUE, sectorNe = sectorNe, backtestPar = backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR, N = N,log=TRUE, include_univ = TRUE, sectorNe = sectorNe, backtestPar = backtestPar)
   
   if(rtn_type == "long-short"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
@@ -1110,7 +1110,7 @@ table.Ngroup.spread <- function(TSFR,N=5,
       size_ <- mean(spreadsize[yy],na.rm = TRUE)
       #
       tsub <- rbind(rtnsummary,turnover.annu,rtn.feecut,beta_,size_)
-      rownames(tsub)[(nrow(tsub)-3):(nrow(tsub))] <- c("Annualized Turnover","Annualized Return (fee cut)","Beta","Size")
+      rownames(tsub)[(nrow(tsub)-3):(nrow(tsub))] <- c("ann_turnover","fee_cut_rtn","beta","size")
       colnames(tsub) <- yy
     }
     if (ii==1L) {
@@ -1317,14 +1317,14 @@ chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
 #' @export
 #' @examples 
 #' chart.Ngroup.turnover(TSFR,5)
-chart.Ngroup.size <- function(TSFR,N=5,
+chart.Ngroup.size <- function(TSFR,N=5,log=TRUE,
                               include_univ=TRUE,
                               sectorNe=NULL,
                               plotPar){
   if(!missing(plotPar)){
     N <- getplotPar.Ngroup(plotPar,"N")
   }  
-  size_seri <- seri.Ngroup.size(TSFR=TSFR,N=N,include_univ=include_univ,sectorNe=sectorNe)
+  size_seri <- seri.Ngroup.size(TSFR=TSFR,N=N,log=log,include_univ=include_univ,sectorNe=sectorNe)
   re <- ggplot.ts.line(size_seri,main="Mean mkt-cap of each group",size=1)
   return(re)
 }
@@ -1545,7 +1545,7 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
       turnover_S <- NA
     }
     turnover <- matrix(c(turnover_L,turnover_S,NA),nrow = 1)
-    rownames(turnover) <- "Annualized Turnover"
+    rownames(turnover) <- "ann_turnover"
     summary <- rbind(summary,turnover)
   }
   
@@ -1601,7 +1601,7 @@ tables.PB <- function(PB, hitFreq="month"){
   if(!is.null(attr(rtn,"turnover"))){
     turnover <- Turnover.annualized(attr(rtn,"turnover"))[,"avg"]
     turnover <- matrix(c(turnover),nrow = 1)
-    rownames(turnover) <- "Annualized Turnover"
+    rownames(turnover) <- "ann_turnover"
     summary <- rbind(summary,turnover)
   }
   

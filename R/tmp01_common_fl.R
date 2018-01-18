@@ -133,17 +133,23 @@ fls_COMB <- function(factorRefine, wgts=list("eq","eq","eq","eq","eq"),lcfs=TRUE
 # ------------- 5 stable Factors ---------
 #' @export
 fls_5stable <- function(factorRefine,lcfs=TRUE){
-  
-  fls_other3 <- buildFactorLists_lcfs(factorIDs = c("F000006_1","F000008","F000018"),factorRefine=factorRefine)
-  re <- c(list(fl_FORECAST(factorRefine)),
-          list(fl_PROFIT(factorRefine)),
+  if(lcfs){
+    fls_other3 <- buildFactorLists_lcfs(factorIDs = c("F000007_1","F000017","F000018"),factorRefine=factorRefine)
+  } else {
+    fls_other3 <- buildFactorLists(buildFactorList(factorFun = "gf.ln_PE_ttm", factorDir = -1),
+                                   buildFactorList(factorFun = "gf.IVR", factorDir = -1),
+                                   buildFactorList(factorFun = "gf.NP_YOY",factorDir = 1,factorPar=list(src="fin")),
+                                   factorRefine=factorRefine)
+    
+  }
+  re <- c(list(fl_FORECAST(factorRefine,lcfs = lcfs)),
+          list(fl_PROFIT(factorRefine,lcfs = FALSE)),
           fls_other3)
   return(re)
 }
 
 
 # ------------- GroupFactorLists ---------
-#' @export
 GroupFactorLists <- function(){
   gfconst <- rbind(tibble::tibble(factorType="SIZE",
                                   groupFun="gf.SIZE",

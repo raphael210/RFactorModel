@@ -418,7 +418,7 @@ port.backtest <- function(port,
     colnames(R) <- colnames(R.df)[-1]
   } else if(rtn_get=="whole"){
     stocks <- colnames(weights) 
-    qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"),tableName = "QT_DailyQuote2")
+    qt <- getQuote(stocks,begT=min(port$date),endT=holdingEndT,variables=c("pct_chg"),tableName = "QT_DailyQuote")
     qt <- renameCol(qt,"pct_chg","rtn")
     R.df <- reshape2::dcast(qt,date~stockID,value.var="rtn",fill=0)
     R <- xts(R.df[,-1],R.df[,1])
@@ -432,7 +432,7 @@ port.backtest <- function(port,
       stocks <- port[port$date==datelist[ii],"stockID"]
       begT <- trday.nearby(datelist = datelist[ii], by = 1L)
       endT <- as.Date(ifelse(ii==length(datelist), holdingEndT, datelist[ii+1]), "1970-01-01")
-      qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"),tableName = "QT_DailyQuote2")
+      qt <- getQuote(stocks = stocks, begT = begT, endT = endT, variables = c("pct_chg"),tableName = "QT_DailyQuote")
       qt <- renameCol(qt, "pct_chg", "rtn")
       if(ii==1L){
         R.df <- qt
