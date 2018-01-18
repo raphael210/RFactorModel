@@ -30,8 +30,8 @@ seri.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
 
 seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL, backtestPar)
 
-seri.Ngroup.size(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
-  backtestPar)
+seri.Ngroup.size(TSFR, N = 5, log = TRUE, include_univ = FALSE,
+  sectorNe = NULL, backtestPar)
 
 table.Ngroup.overall(TSFR, N = 5, relative = FALSE, sectorNe = NULL,
   bysector = NULL, fee = 0, rtn_type = c("long-short", "long-univ"),
@@ -61,8 +61,8 @@ chart.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
 
 chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL, plotPar)
 
-chart.Ngroup.size(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
-  plotPar)
+chart.Ngroup.size(TSFR, N = 5, log = TRUE, include_univ = TRUE,
+  sectorNe = NULL, plotPar)
 
 MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL,
   rtn_type = c("long-short", "long-univ"), relative = FALSE,

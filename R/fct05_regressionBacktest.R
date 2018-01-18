@@ -528,7 +528,8 @@ factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c(
 
 
 
-#inner function 
+# inner function
+# if lmtpye=='glm', data must include 'gml_wgt' column.
 lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
@@ -555,6 +556,9 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
   coef <- models %>% broom::tidy(mod)
   resd <- models %>% broom::augment(mod)
+  if(lmtype == "glm"){
+    resd$.resid <- sqrt(resd$X.weights.) * resd$.resid
+  }
   resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
   colnames(resd) <- c('date','stockID','fitted','res')
   resd <- merge.x(TS,resd,by=c('date','stockID'))
@@ -619,7 +623,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
   rtnsum <- t(rtn.summary(fRtn))
   rtnsum <- data.frame(fname=rownames(rtnsum),rtnsum,stringsAsFactors = FALSE)
   rownames(rtnsum) <- NULL
-  colnames(rtnsum) <- c("fname","Annual Return","Annual StdDev","Sharpe","HitRatio","Worst Drawdown" )
+  colnames(rtnsum) <- c("fname","ann_rtn","ann_sd","ann_Sharpe","hit_ratio","max_drawdown")
   re <- dplyr::left_join(rtnsum,tstat,by='fname')
   
   if(includeVIF){
@@ -1204,7 +1208,7 @@ chart.PA.attr <- function(PA_tables,plotInd=FALSE,attributeAnn=TRUE){
   
   if(attributeAnn){
     rtnsum <- rtn.summary(perfts)
-    rtnsum <- rtnsum['Annualized Return',]
+    rtnsum <- rtnsum['ann_rtn',]
   }else{
     rtnsum <- rtn.periods(perfts)
     rtnsum <- rtnsum["Cumulative Return",]
