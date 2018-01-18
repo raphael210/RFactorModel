@@ -21,7 +21,7 @@ lcdb.update.RegTables(begT, endT, FactorLists)
 build and update local database's regression result tables
 }
 \examples{
-begT <- as.Date('2005-01-01')
+begT <- as.Date('2005-01-04')
 endT <- as.Date('2009-12-31')
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.SIZE"),
@@ -31,7 +31,7 @@ FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.VALUE"),
   buildFactorList(factorFun="gf.OTHER"))
 lcdb.build.RegTables(begT,endT,FactorLists)
-begT <- as.Date('2010-01-01')
+begT <- as.Date('2010-01-04')
 endT <- as.Date('2014-12-31')
 lcdb.update.RegTables(begT,endT,FactorLists)
 }

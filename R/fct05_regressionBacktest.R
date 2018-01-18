@@ -14,7 +14,7 @@
 #' @param endT is end date
 #' @param FactorLists see example in \code{\link{buildFactorLists}}.
 #' @examples
-#' begT <- as.Date('2005-01-01')
+#' begT <- as.Date('2005-01-04')
 #' endT <- as.Date('2009-12-31')
 #' FactorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.SIZE"),
@@ -24,7 +24,7 @@
 #'   buildFactorList(factorFun="gf.VALUE"),
 #'   buildFactorList(factorFun="gf.OTHER"))
 #' lcdb.build.RegTables(begT,endT,FactorLists)
-#' begT <- as.Date('2010-01-01')
+#' begT <- as.Date('2010-01-04')
 #' endT <- as.Date('2014-12-31')
 #' lcdb.update.RegTables(begT,endT,FactorLists)
 #' @export
@@ -122,8 +122,8 @@ lcdb.subfun.regtables <- function(dates,FactorLists){
 lcdb.update.RegTables <- function(begT,endT,FactorLists){
   con <- db.local()
   if(missing(begT)){
-    tmp.begT <- RSQLite::dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
-    tmp.begT <- trday.offset(intdate2r(tmp.begT),lubridate::days(1))
+    begT <- RSQLite::dbGetQuery(con,"select max(date) from Reg_RSquare")[[1]]
+    begT <- trday.offset(intdate2r(begT),lubridate::days(1))
   }
   if(missing(endT)){
     endT <- RSQLite::dbGetQuery(con,"select max(TradingDay) from QT_FactorScore")[[1]]
@@ -178,11 +178,9 @@ lcdb.update.RegTables <- function(begT,endT,FactorLists){
 #' FactorLists <- buildFactorLists(
 #'   buildFactorList(factorFun="gf.SIZE"),
 #'   buildFactorList(factorFun="gf.GROWTH"),
-#'   buildFactorList(factorFun="gf.FORECAST"),
 #'   buildFactorList(factorFun="gf.TRADING"),
 #'   buildFactorList(factorFun="gf.EARNINGYIELD"),
 #'   buildFactorList(factorFun="gf.VALUE"),
-#'   buildFactorList(factorFun="gf.QUALITY"),
 #'   buildFactorList(factorFun="gf.OTHER"))
 #' reg_results <- reg.TS(TS)
 #' reg_results <- reg.TS(TS,FactorLists)
@@ -633,13 +631,13 @@ chart.reg.fRtnWealthIndex <- function(reg_results,facet=FALSE){
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
   fRtn <- xts::xts(fRtn[,-1],fRtn[,1])
   if(facet==FALSE){
-    ggplot.WealthIndex(fRtn)
+    ggplot.WealthIndex(fRtn,size=1)
   }else{
     N <- floor(sqrt(ncol(fRtn)))
     fRtn <- WealthIndex(fRtn)
     fRtn <- melt.ts(fRtn)
     ggplot(fRtn, aes(x=time, y=value)) +ggtitle('wealth index')+
-      geom_line(size=1,colour = "red")+facet_wrap( ~ variable,ncol = N)
+      geom_line(size=1,colour = "red")+facet_wrap( ~ variable,scales = 'free',ncol = N)
   }
 }
 
@@ -652,7 +650,7 @@ chart.reg.fRtnBar <- function(reg_results){
   fRtn <- reg_results$fRtn
   N <- floor(sqrt(length(unique(fRtn$fname))))
   ggplot(fRtn, aes(x=date, y=frtn)) +ggtitle('factor return')+
-    geom_bar(position="dodge",stat="identity")+facet_wrap( ~ fname,ncol = N)
+    geom_bar(position="dodge",stat="identity")+facet_wrap( ~ fname,scales = 'free',ncol = N)
 }
 
 
@@ -683,7 +681,6 @@ chart.reg.rsquare <- function(reg_results){
 #' @export
 MC.chart.reg.corr <- function(reg_results){
   fRtn <- reg_results$fRtn
-  
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
   fRtn.cor <- cor(as.matrix(fRtn[,-1]))
   ggplot.corr(fRtn.cor)
