@@ -458,7 +458,7 @@ factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
 factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
   regType <- match.arg(regType)
   cols <- colnames(TSF)
-  fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
+  fname <- guess_factorNames(TSF,no_factorname="glm_wgt",is_factorname = "factorscore",silence=TRUE)
   
   if(length(fname)==1 && is.null(sectorAttr)){
     stop('NO x variable!')
@@ -620,7 +620,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
     VIF <- VIF %>% dplyr::group_by(fname) %>% dplyr::summarise(vif=mean(vif)) %>% dplyr::ungroup()
     re <- dplyr::left_join(re,VIF,by='fname')
   }
-  re <- dplyr::arrange(re,dplyr::desc(Sharpe))
+  re <- dplyr::arrange(re,dplyr::desc(ann_Sharpe))
   return(re)
 }
 
