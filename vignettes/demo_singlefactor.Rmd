@@ -1,0 +1,129 @@
+---
+title: "国投瑞银单因子研究体系"
+author: "量化投资部"
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{single factor test Demo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  knitr:::html_vignette:
+    toc: yes
+---
+
+该文档旨在介绍国投瑞银量化投资部多因子模型的单因子研究体系。
+
+```{r setup,echo=FALSE,include=FALSE}
+library(RFactorModel)
+library(knitr)
+library(ggplot2)
+options(digits = 2)
+options(scipen = 200)
+knitr::opts_chunk$set(
+  warning = FALSE
+)
+```
+
+单个因子的研究和检验是多因子体系的第一步。
+采集因子时，我们同时采用多个数据源，以满足数据的多样性和准确性。
+```{r DB_func, include=FALSE, echo=FALSE}
+connection_list <- function(){
+  c("db.local","db.wind","db.jy","db.cs","db.quant")
+}
+```
+
+```{r DB_func show, echo=TRUE}
+connection_list()
+```
+
+```{r Data preparation, include=FALSE, echo=FALSE}
+library(RFactorModel)
+begT <- as.Date('2010-12-31')
+endT <- as.Date('2017-08-31')
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+poolID <- 'EI000985'
+TS <- getTS(RebDates,poolID)
+#
+FactorList <- buildFactorList_lcfs(factorID = "F000015", factorRefine = refinePar_default("none"))
+TSF0 <- getTSF(TS, FactorList = FactorList)
+TSF0$factorscore <- TSF0$factorscore * -1
+#
+FactorList <- buildFactorList_lcfs(factorID = "F000015", factorRefine = refinePar_default("scale",sectorAttr = defaultSectorAttr()))
+TSF <- getTSF(TS, FactorList = FactorList)
+TSF$factorscore <- TSF$factorscore * -1
+#
+TSFR <- getTSR(TSF)
+```
+
+我们有完整的数据结构和程序框架用以开展单因子的研究，认真、细致的处理每一个细节。以下以波动率因子为例，简要展示我们的单因子研究过程。
+
+```{r getfactor,warning=FALSE,echo=TRUE,eval=FALSE}
+begT <- as.Date('2010-12-31')
+endT <- as.Date('2017-08-31')
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+poolID <- 'EI000985'
+TS <- getTS(RebDates,poolID)
+TSF <- gf.volatility(TS)
+TSF <- transform(TSF,stock_code=NULL)
+TSFR <- getTSR(TSF)
+```
+
+```{r TSFR show, warning=FALSE, include = TRUE, echo=TRUE, eval=TRUE}
+head(TSFR)
+```
+
+因子的修正与标准化是一个重要的数据处理过程，包括异常值处理、分布正态化、缺失值处理、行业市值中性化处理等。以下为处理前与处理后的因子分布。
+
+```{r code show, include=TRUE, echo=TRUE, eval=TRUE}
+head(refinePar_default, 16)
+```
+
+```{r 2 hist show, include=TRUE, echo=FALSE, fig.height=3, fig.width=5, fig.align="center", fig.pos=c(1,2)}
+# two hists
+ggplot(TSF0, aes(factorscore)) + geom_histogram(bins = 30)
+ggplot(TSF, aes(factorscore)) + geom_histogram(bins = 30)
+```
+
+我们通过多个方面入手来检验因子的有效性，包括IC、分组收益、多空净值表现等，保证研究结果的真实准确。
+
+```{r adjust dir, include=FALSE, echo=FALSE}
+TSF$factorscore <- TSF$factorscore * -1
+TSFR <- getTSR(TSF)
+```
+
+### 因子历史IC：
+
+```{r ficshow,echo=TRUE,fig.height=4,fig.width=5,fig.align="center"}
+chart.IC(TSFR)
+```
+
+### 因子历史分组收益率：
+
+```{r fngroupoverallshow,echo=TRUE,fig.height=4,fig.width=5,fig.align="center"}
+round(table.Ngroup.overall(TSFR, N = 5), 2)
+chart.Ngroup.overall(TSFR, N = 5)
+chart.Ngroup.seri_line(TSFR, N = 5)
+```
+
+```{r param overall, echo=TRUE, fig.height=7, fig.width=7, fig.align="center"}
+p1 <- chart.Ngroup.overall(TSFR, N = 10)
+p2 <- chart.Ngroup.overall(TSFR, N = 15)
+p3 <- chart.Ngroup.overall(TSFR, N = 20)
+p4 <- chart.Ngroup.overall(TSFR, N = 25)
+multiplot(p1,p2,p3,p4,ncol = 2)
+```
+
+### 因子历史分组收益率（分期）：
+
+```{r seribarshow, echo=TRUE,fig.height=6,fig.width=8,fig.align="center"}
+chart.Ngroup.seri_bar(TSFR, Nbin = "year")
+```
+
+### 因子历史多空组合表现：
+
+```{r fngroupspreadshow,echo=TRUE,fig.height=6,fig.width=6,fig.align="center"}
+round(table.Ngroup.spread(TSFR, N = 5),2)
+chart.Ngroup.spread(TSFR, N = 5)
+```
+
+

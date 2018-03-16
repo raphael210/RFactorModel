@@ -1,0 +1,199 @@
+---
+title: "国投瑞银多因子研究体系:多因子检验"
+author: "量化投资部"
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{multifactor test Demo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  knitr:::html_vignette:
+    toc: yes
+---
+
+该文档旨在介绍国投瑞银量化投资部的多因子体系的多因子检验部分。
+
+```{r setup,echo=FALSE,include=FALSE}
+library(RFactorModel)
+library(dplyr)
+library(knitr)
+knitr::opts_chunk$set(
+  eval = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
+```
+
+```{r loadata,echo=FALSE,eval=TRUE,include=FALSE}
+begT <- as.Date('2010-12-31')
+endT <- Sys.Date()-months(2)
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+indexID <- 'EI000906'
+TS <- getTS(RebDates,indexID)
+
+#multiple factors
+factorIDs <- c("F000006","F000008","F000014")
+FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
+FactorLists2 <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                  factorDir=1),
+  factorRefine=refinePar_default("scale")
+)
+FactorLists <- c(FactorLists1,FactorLists2)
+mTSF <- getMultiFactor(TS,FactorLists)
+mTSFR <- getTSR(mTSF)
+TSFRs <- mTSF2TSFs(mTSFR)
+
+wgts <- c(0.2,0.2,0.2,0.2,0.2)
+TSF <- MultiFactor2CombiFactor(mTSF,wgts,keep_single_factors = FALSE)
+TSFR <- getTSR(TSF)
+```
+
+
+
+## 多因子对比
+
+
+```{r mfactorstat,echo=TRUE}
+begT <- as.Date('2010-12-31')
+endT <- Sys.Date()-months(2)
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+indexID <- 'EI000906'
+TS <- getTS(RebDates,indexID)
+
+#multiple factors
+factorIDs <- c("F000006","F000008","F000014")
+FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
+FactorLists2 <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                  factorDir=1),
+  factorRefine=refinePar_default("scale"))
+FactorLists <- c(FactorLists1,FactorLists2)
+mTSF <- getMultiFactor(TS,FactorLists)
+mTSFR <- getTSR(mTSF)
+TSFRs <- mTSF2TSFs(mTSFR)
+```
+
+
+### 因子得分密度曲线
+```{r mfdensity,echo=TRUE,eval=TRUE,fig.height=6,fig.width=6}
+mTSF_ <- mTSF[mTSF$date %in% sample(RebDates,4),]
+MF.chart.Fct_density(mTSF_)
+```
+
+### 因子得分统计表
+```{r mfdesc,echo=TRUE,eval=TRUE}
+mfdesc <- MF.table.Fct_descr(mTSF)
+mfdesc <- mfdesc[mfdesc$date %in% sample(RebDates,3),]
+kable(mfdesc,digits = 2)
+```
+
+
+
+### 多因子相关性图
+```{r mfcorr,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+MF.chart.Fct_corr(mTSF)
+```
+
+
+### 因子正交化处理
+```{r mforthogon,echo=TRUE,eval=TRUE}
+#single factor orthogonal
+mTSF1 <- factor_orthogon_single(mTSF,y='IVR_',x = 'BP_mrq',sectorAttr = NULL)
+#multiple factors orthogonal
+#mTSF2 <- factor_orthogon(mTSF,forder=c("ln_mkt_cap_","PB_mrq_","pct_chg_per_60_","NP_YOY"),sectorAttr = NULL)
+
+```
+
+### 正交处理后相关性图
+```{r mforthogoncorr,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+MF.chart.Fct_corr(mTSF1)
+```
+
+
+### 多因子IC图
+```{r mfic,echo=TRUE,eval=TRUE,fig.height=7,fig.width=7}
+MF.chart.IC(mTSFR,facet_by = 'fname')
+```
+
+
+### 多因子IC相关性图
+```{r mficcorr,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+MC.chart.IC.corr(TSFRs)
+```
+
+### 多因子IC统计表
+```{r mficcorrtb,echo=TRUE,eval=TRUE}
+kable(MC.table.IC(TSFRs),digits = 2)
+```
+
+### 多因子分组收益图
+```{r mfngroup,echo=TRUE,eval=TRUE,warning=FALSE,fig.height=7,fig.width=7}
+MC.chart.Ngroup.overall(TSFRs)
+```
+
+
+### 多因子分组多空收益图
+```{r mfngroupspread,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+MF.chart.Ngroup.spread(mTSFR)
+```
+
+### 多因子分组多空收益统计表
+```{r mfngrouptb,echo=TRUE,eval=TRUE,warning=FALSE}
+kable(MC.table.Ngroup.overall(TSFRs),digits = 2)
+```
+
+
+## 综合因子构建
+
+### 多种方式合成综合因子
+```{r mfcombine,echo=TRUE}
+#maximize IC' sharpe
+MC.wgt.CAPM(TSFRs)
+#minimize IC' volatility
+MC.wgt.CAPM(TSFRs,targetType = 'risk')
+#control single factor's exposure in combined factor
+MC.wgt.CAPM(TSFRs,wgtmin = 0.05,wgtmax = 0.5)
+
+#build combined factor
+wgts <- c(0.2,0.1,0.2,0.1,0.4)
+TSF <- MultiFactor2CombiFactor(mTSF,wgts,keep_single_factors = FALSE)
+TSFR <- getTSR(TSF)
+```
+
+
+### 综合因子IC图
+```{r mfcombineIC,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+chart.IC(TSFR)
+```
+
+
+### 综合因子IC统计表
+```{r mfcombineICtb,echo=TRUE,eval=TRUE}
+kable(table.IC(TSFR),digits = 2)
+```
+
+
+### 综合因子的分组收益图
+```{r mfcombinengroup,echo=TRUE,eval=TRUE,fig.height=5,fig.width=6}
+chart.Ngroup.overall(TSFR)
+```
+
+
+### 综合因子分组多空收益图
+```{r mfcombinespread,echo=TRUE,eval=TRUE,fig.height=6,fig.width=6}
+chart.Ngroup.spread(TSFR)
+```
+
+### 综合因子分组收益统计表
+```{r mfcombinetb,echo=TRUE,eval=TRUE,warning=FALSE}
+kable(table.Ngroup.overall(TSFR),digits = 2)
+```
+
+
+
+

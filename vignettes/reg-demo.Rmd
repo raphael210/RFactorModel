@@ -2,16 +2,19 @@
 title: "国投瑞银多因子研究体系"
 author: "量化投资部"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Regression Method Demo}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
+output: 
+  knitr:::html_vignette:
+    toc: yes
 ---
 
 
 ```{r setup,echo=FALSE,include=FALSE}
 library(RFactorModel)
+library(dplyr)
 library(knitr)
 knitr::opts_chunk$set(
   eval = FALSE,

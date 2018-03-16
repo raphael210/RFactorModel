@@ -1,0 +1,279 @@
+---
+title: "国投瑞银多因子研究体系:组合优化"
+author: "量化投资部"
+date: "`r Sys.Date()`"
+vignette: >
+  %\VignetteIndexEntry{portfolio optimization Demo}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+output: 
+  knitr:::html_vignette:
+    toc: yes
+---
+
+该文档旨在介绍国投瑞银量化投资部的多因子体系的组合优化模块。
+
+```{r setup,echo=FALSE,include=FALSE}
+library(RFactorModel)
+library(dplyr)
+library(knitr)
+knitr::opts_chunk$set(
+  eval = FALSE,
+  warning = FALSE,
+  fig.align = 'center'
+)
+```
+
+
+
+```{r loadata,echo=FALSE,eval=TRUE,include=FALSE}
+begT <- as.Date('2010-12-31')
+endT <- Sys.Date()-months(2)
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+indexID <- 'EI000906'
+TS <- getTS(RebDates,indexID)
+
+#multiple factors
+factorIDs <- c("F000006","F000008","F000014")
+FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
+FactorLists2 <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                  factorDir=1),
+  factorRefine=refinePar_default("scale")
+)
+FactorLists <- c(FactorLists1,FactorLists2)
+TSF <- getMultiFactor(TS,FactorLists)
+TSFR <- getTSR(TSF)
+
+#get regression result
+reg_results <- reg.TSFR(TSFR)
+
+
+##get factor return, factor covariance and stock's residual
+rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results)
+
+#get factor return using forecast, a open source package from facebook
+# rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results,rtntype = 'forcast')
+#get factor covariance using shrink estimator
+# rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results,covtype = 'shrink')
+
+fRtn <- rtn_cov_delta$fRtn
+fCov <- rtn_cov_delta$fCov
+delta <- rtn_cov_delta$Delta
+
+##get optimized portfolio
+#control stock's weight
+constr <- constr_default(box_each = c(0,0.01))
+
+#control stock's weight which in specified industry
+constr2 <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.03))
+
+#control industry's exposure 
+constr2 <- addConstr_fctExp_sector(constr2,each = c(-0.1,0.1))
+
+#control stock's weight which in specified universe
+constr2 <- addConstr_group(constr2,EI000905=c(0.8,0.95))
+
+#control style factor's exposure 
+conslist <- FactorLists
+constr2 <- addConstr_fctExp_style(constr2,conslist,rep(-0.01,5),c(100,1,1,0.1,100))
+
+obj <- object_default()
+obj <- addObj_risk(obj)
+
+# add trackingerror constraint
+# constr <- clearConstr(constr,'turnover')
+constr2 <- addConstr_trackingerror(constr2,trackingerror_ann = 0.06)
+
+#max return
+port_opt1 <- getPort_opt(TSF,fRtn = fRtn,bmk="EI000905",constr = constr)
+
+port_opt2 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr2,delta = delta)
+
+#max return minus risk
+
+# port_opt <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
+
+# add turnover constraint
+# constr <- addConstr_turnover(constr)
+# port_opt <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
+
+
+
+
+# port backtest and return summary
+rtn1 <- port.backtest(port_opt1)
+rtn2 <- port.backtest(port_opt2)
+bmk <- getrtn.bmk(rtn1,bmk = 'EI000905')
+rtn1 <- addrtn.hedge(rtn1,bmk)
+rtntbs1 <- tables.longshort(rtn1)
+rtn2 <- addrtn.hedge(rtn2,bmk)
+rtntbs2 <- tables.longshort(rtn2)
+
+PA_tables <- getPAData(port_opt2,FactorLists,bmk='EI000905')
+```
+
+
+
+## 组合优化
+
+
+### 构建优化组合
+```{r mfdesc,echo=TRUE}
+begT <- as.Date('2010-12-31')
+endT <- Sys.Date()-months(2)
+RebDates <- getRebDates(begT,endT,rebFreq = 'month')
+indexID <- 'EI000906'
+TS <- getTS(RebDates,indexID)
+
+#multiple factors
+factorIDs <- c("F000006","F000008","F000014")
+FactorLists1 <- buildFactorLists_lcfs(factorIDs,factorRefine=refinePar_default("scale"))
+FactorLists2 <- buildFactorLists(
+    buildFactorList(factorFun="gf.ln_mkt_cap",
+                  factorDir=-1),
+    buildFactorList(factorFun="gf.NP_YOY",
+                  factorDir=1),
+  factorRefine=refinePar_default("scale")
+)
+FactorLists <- c(FactorLists1,FactorLists2)
+TSF <- getMultiFactor(TS,FactorLists)
+TSFR <- getTSR(TSF)
+
+#get regression result
+reg_results <- reg.TSFR(TSFR)
+
+
+##get factor return, factor covariance and stock's residual
+rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results)
+
+#get factor return using forecast, a open source package from facebook
+# rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results,rtntype = 'forcast')
+#get factor covariance using shrink estimator
+# rtn_cov_delta <- f_rtn_cov_delta(reg_results=reg_results,covtype = 'shrink')
+
+fRtn <- rtn_cov_delta$fRtn
+fCov <- rtn_cov_delta$fCov
+delta <- rtn_cov_delta$Delta
+
+##get optimized portfolio
+#control stock's weight
+constr <- constr_default(box_each = c(0,0.01))
+
+#control stock's weight which in specified industry
+constr2 <- addConstr_box(constr,ES33480000 = c(0,0.05),ES33490000 = c(0,0.03))
+
+#control industry's exposure 
+constr2 <- addConstr_fctExp_sector(constr2,each = c(-0.1,0.1))
+
+#control stock's weight which in specified universe
+constr2 <- addConstr_group(constr2,EI000905=c(0.8,0.95))
+
+#control style factor's exposure 
+conslist <- FactorLists
+constr2 <- addConstr_fctExp_style(constr2,conslist,rep(-0.01,5),c(100,1,1,0.1,100))
+
+obj <- object_default()
+obj <- addObj_risk(obj)
+
+# add trackingerror constraint
+# constr <- clearConstr(constr,'turnover')
+constr2 <- addConstr_trackingerror(constr2,trackingerror_ann = 0.06)
+
+#max return
+port_opt1 <- getPort_opt(TSF,fRtn = fRtn,bmk="EI000905",constr = constr)
+
+port_opt2 <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000905",constr = constr2,delta = delta)
+
+#max return minus risk
+
+# port_opt <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
+
+# add turnover constraint
+# constr <- addConstr_turnover(constr)
+# port_opt <- getPort_opt(TSF,fRtn = fRtn,fCov=fCov,bmk="EI000300",constr = constr,obj = obj)
+
+
+
+
+# port backtest and return summary
+rtn1 <- port.backtest(port_opt1)
+rtn2 <- port.backtest(port_opt2)
+bmk <- getrtn.bmk(rtn1,bmk = 'EI000905')
+rtn1 <- addrtn.hedge(rtn1,bmk)
+rtntbs1 <- tables.longshort(rtn1)
+rtn2 <- addrtn.hedge(rtn2,bmk)
+rtntbs2 <- tables.longshort(rtn2)
+
+PA_tables <- getPAData(port_opt2,FactorLists,bmk='EI000905')
+```
+
+
+
+
+
+## 组合净值表现
+    
+### 简单约束的优化组合的净值表现图
+```{r mfcombine,eval=TRUE,echo=TRUE,fig.height=5,fig.width=6}
+chart.longshort.summary(rtn1)
+
+```
+
+### 复杂约束的优化组合的净值表现图
+```{r mfcombine2,eval=TRUE,echo=TRUE,fig.height=5,fig.width=6}
+chart.longshort.summary(rtn2)
+
+```
+
+    
+### 两个优化组合的整体表现统计
+```{r mfcombineIC,echo=TRUE,eval=TRUE}
+rtntbssum <- cbind(rtntbs1$summary,rtntbs2$summary)
+colnames(rtntbssum) <- c("port1_rtn","port1_bmk","port1_hedge","port2_rtn","port2_bmk","port2_hedge" )
+kable(rtntbssum,digits = 3)
+
+```
+    
+    
+    
+### 两个优化组合的历年表现统计
+```{r mfcombineICtb,echo=TRUE,eval=TRUE}
+rtntbspstat <- cbind(rtntbs1$period.stats,rtntbs2$period.stats)
+colnames(rtntbspstat) <- c("port1_rtn","port1_bmk","port1_hedge","port2_rtn","port2_bmk","port2_hedge" )
+kable(rtntbspstat,digits = 3)
+
+```
+
+
+
+
+## 业绩归因
+
+为了避免重复，业绩归因只针对复杂约束的优化组合进行归因。
+```{r portOpt,echo=TRUE}
+PA_tables <- getPAData(port_opt2,FactorLists,bmk='EI000905')
+```
+
+
+### 优化组合的因子暴露图
+```{r portOptpa,echo=TRUE,eval=TRUE,fig.height=6,fig.width=6}
+chart.PA.exposure(PA_tables)
+
+```
+
+
+### 优化组合的因子贡献图
+```{r portOptattr,echo=TRUE,eval=TRUE,fig.height=6,fig.width=6}
+ chart.PA.attr(PA_tables)
+```
+
+
+### 优化组合的风险归因图
+```{r portOptra,echo=TRUE,eval=TRUE,fig.height=6,fig.width=6}
+chart.RA.attr(PA_tables)
+```
+
+
