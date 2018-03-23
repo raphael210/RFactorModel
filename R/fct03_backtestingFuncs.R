@@ -710,7 +710,7 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
 #' @export
 #' @examples 
 #' MC.chart.IC.decay(TSFRs)
-MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar){
+MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar,...){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
   if(!missing(plotPar)){
@@ -718,7 +718,7 @@ MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar
     ncol <- getplotPar.MC(plotPar,"ncol.IC.decay")
   }
   NMs <- names(TSFRs)
-  IC.charts.decay <- plyr::llply(TSFRs, chart.IC.decay, stat=stat)
+  IC.charts.decay <- plyr::llply(TSFRs, chart.IC.decay, stat=stat,...)
   for(i in 1:length(IC.charts.decay)){
     IC.charts.decay[[i]] <- IC.charts.decay[[i]] +
       ggtitle(NMs[i]) +

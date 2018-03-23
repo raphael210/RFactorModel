@@ -38,7 +38,8 @@ MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
   ncol = 3, plotPar)
 
-MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
+MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar,
+  ...)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
