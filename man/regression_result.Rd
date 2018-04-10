@@ -40,11 +40,9 @@ TS <- getTS(RebDates,indexID = 'EI000985')
 FactorLists <- buildFactorLists(
   buildFactorList(factorFun="gf.SIZE"),
   buildFactorList(factorFun="gf.GROWTH"),
-  buildFactorList(factorFun="gf.FORECAST"),
   buildFactorList(factorFun="gf.TRADING"),
   buildFactorList(factorFun="gf.EARNINGYIELD"),
   buildFactorList(factorFun="gf.VALUE"),
-  buildFactorList(factorFun="gf.QUALITY"),
   buildFactorList(factorFun="gf.OTHER"))
 reg_results <- reg.TS(TS)
 reg_results <- reg.TS(TS,FactorLists)

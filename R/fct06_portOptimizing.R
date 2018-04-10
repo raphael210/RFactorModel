@@ -394,8 +394,12 @@ get_constrMat_fctExp_sector <- function(TSF2, univFilter, cons){
     if(dim(cons_each)[1]>0){
       for(j in 1:dim(cons_each)[1]){
         sectorAttr_j <- cons_each[[j,"sectorAttr"]]
-        ID_each <- setdiff(CT_industryList(std=sectorAttr_j$std,level=sectorAttr_j$level)$IndustryID, specified_sec)
-        ID_each <- intersect(ID_each,names(TSF2)) # sometimes not all the sectors is in the TSF2 univ.
+        if(is.list(sectorAttr_j[[1]])){
+          ID_each <- as.character(1:(sectorAttr_j$level))
+        }else{
+          ID_each <- setdiff(CT_industryList(std=sectorAttr_j$std,level=sectorAttr_j$level)$IndustryID, specified_sec)
+          ID_each <- intersect(ID_each,names(TSF2)) # sometimes not all the sectors is in the TSF2 univ.
+        }
         cons_re_each <- data.frame(ID=ID_each,min=cons_each[[j,"min"]],max=cons_each[[j,"max"]],stringsAsFactors = FALSE)
         cons_re <- rbind(cons_re,cons_re_each)
       }
@@ -607,7 +611,9 @@ getPort_opt <- function(TSF,
                         obj=object_default(),
                         init_port,
                         delta,
-                        min_wgt=0.001){
+                        min_wgt=0.001,
+                        TW_ratio = 3,
+                        FFV = TRUE){
   
   ### constrain data preparing
   # 1.add bmk_wgt (add 'bmk_wgt' column and some records that is in bmk but not in TSF)
@@ -694,6 +700,40 @@ getPort_opt <- function(TSF,
     univFilter <- TSF2_$stockID %in% TSF_$stockID
     univ <- TSF2_[univFilter,"stockID"]
     
+    
+    
+    ## get TW for bmk
+    constr_box <- constr$box
+    if(FFV){
+      bmk_data <- getIndexCompWgt(indexID = bmk, endT = dates[i])
+      bmk_data <- gf_cap(bmk_data, var = "free_cap", varname = "free_cap")
+      TW <- sum(bmk_data$free_cap, na.rm = TRUE)
+      
+      TS_ffv <- TSF2_[,c("date","stockID")]
+      TS_ffv <- gf_cap(TS_ffv, var = "free_cap", varname = "ffv")
+      TS_ffv$max <- TS_ffv$ffv/(TW/TW_ratio)
+      TS_ffv$min <- 0
+      TS_ffv$relative <- 0
+      TS_ffv <- dplyr::rename(TS_ffv, ID = stockID)
+      
+      constr_box_FFV <- TS_ffv[,c("ID","min","max","relative")]
+      constr_box <- rbind(constr_box, constr_box_FFV)
+      
+      # amt_data <- TS.getTech_ts(TSF2_[univFilter,c("date","stockID")],'AvgOfNDay(@amount(),20)', varname = 'amt')
+      # amt_data$max <- amt_data$amt * amt_limit / 300000000
+      # amt_data <- subset(amt_data, max < 0.01)
+      # if(nrow(amt_data) != 0 ){
+      #   amt_data$min <- 0
+      #   amt_data$relative <- 0
+      #   amt_data <- amt_data[,c("stockID","min","max","relative")]
+      #   amt_data <- dplyr::rename(amt_data, ID = stockID)
+      #   constr_box <- rbind(constr_box, amt_data)
+      # }
+    }
+    
+    
+    
+    
     ## init_wgt
     if(dim(constr$turnover)[1]>0 && nrow(init_port)>0){
       #stock in initial portfolio suspend 
@@ -758,7 +798,7 @@ getPort_opt <- function(TSF,
     
     ## get 'Amat' & 'bvec'
     mat_group <- get_constrMat_group(TSF2_, univFilter, cons = constr$group)
-    mat_box <- get_constrMat_box(TSF2_, univFilter, cons = constr$box)
+    mat_box <- get_constrMat_box(TSF2_, univFilter, cons = constr_box)
     mat_position <- get_constrMat_position(TSF2_, univFilter, cons = constr$position)
     mat_fctExp_sector <- get_constrMat_fctExp_sector(TSF2_, univFilter, cons = constr$fctExp_sector)
     mat_fctExp_style <- get_constrMat_fctExp_style(TSF2_, univFilter, cons = constr$fctExp_style)

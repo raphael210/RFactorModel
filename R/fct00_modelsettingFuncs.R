@@ -285,6 +285,7 @@ setmodelPar.factor_combi <- function(modelPar,
   return(mp_m)
 }
 
+# ============= ~~ buildFactorList(s)  ======
 
 #' @rdname modelPar.factor
 #' @return buildFactorList return a object of \bold{FactorList}, a list of parametres of factor setting
@@ -333,27 +334,6 @@ buildFactorList_lcfs <- function(factorID, factorRefine  = refinePar_default("no
   return(re)
 }
 
-#' @rdname modelPar.factor
-#' @export
-buildFactorList_combi <- function(factorLists, wgts, 
-                                  factorDir  = 1 ,
-                                  factorRefine  = refinePar_default("none"),
-                                  factorName = "combi_factor",
-                                  factorID ="",
-                                  factorType ="",
-                                  factorDesc =""
-                                  ){
-  re <-list(factorFun="getMultiFactor",
-            factorPar=list(factorLists,wgts),  
-            factorDir   = factorDir  ,
-            factorRefine   = factorRefine  ,
-            factorName  = factorName ,  
-            factorID  = factorID,
-            factorType  = factorType,
-            factorDesc = factorDesc)   
-  return(re)
-}
-
 #' buildFactorLists
 #' 
 #' get a list of \bold{FactorList}, which is offen used in "multi-factor model builbing" or in "multifactor comparison".
@@ -394,10 +374,6 @@ buildFactorLists <- function(... , factorRefine){
   return(re)
 }
 
-setFactorListsRefinePar <- function(factorlists, factorRefine){
-  re <- lapply(factorlists,function(x){x$factorRefine <- factorRefine;return(x)})
-  return(re)
-}
 
 
 #' @rdname buildFactorLists
@@ -414,6 +390,36 @@ buildFactorLists_lcfs <- function(factorIDs, factorRefine = refinePar_default("n
   return(re)
 }
 
+
+
+
+#' @rdname modelPar.factor
+#' @export
+buildFactorList_combi <- function(factorLists, wgts, 
+                                  factorDir  = 1 ,
+                                  factorRefine  = refinePar_default("none"),
+                                  factorName = "combi_factor",
+                                  factorID ="",
+                                  factorType ="",
+                                  factorDesc =""
+){
+  re <-list(factorFun="getMultiFactor",
+            factorPar=list(factorLists,wgts),  
+            factorDir   = factorDir  ,
+            factorRefine   = factorRefine  ,
+            factorName  = factorName ,  
+            factorID  = factorID,
+            factorType  = factorType,
+            factorDesc = factorDesc)   
+  return(re)
+}
+
+
+
+setFactorListsRefinePar <- function(factorlists, factorRefine){
+  re <- lapply(factorlists,function(x){x$factorRefine <- factorRefine;return(x)})
+  return(re)
+}
 
 
 

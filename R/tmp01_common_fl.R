@@ -3,12 +3,12 @@
 #' @export
 fls_GROWTH <- function(factorRefine,lcfs=TRUE){
   if(lcfs){
-    buildFactorLists_lcfs(factorIDs = c("F000018","F000012","F000019"), 
+    buildFactorLists_lcfs(factorIDs = c("F000018","F000012","F000020"), 
                           factorRefine=factorRefine)
   } else {
     buildFactorLists(buildFactorList(factorFun = "gf.NP_YOY",factorDir = 1,factorPar=list(src="fin")),
                      buildFactorList(factorFun = "gf.GG_OR_Q", factorDir = 1),
-                     buildFactorList(factorFun = "gf.G_OCF", factorDir = 1),
+                     buildFactorList(factorFun = "gf.G_scissor_Q", factorDir = 1),
                      factorRefine=factorRefine)
   }
 }
@@ -27,12 +27,12 @@ fl_GROWTH <- function(factorRefine,wgts="eq",
 #' @export
 fls_VALUE <- function(factorRefine,lcfs=TRUE){
   if(lcfs){
-    buildFactorLists_lcfs(factorIDs = c("F000006_1","F000007_1","F000010_1"),
+    buildFactorLists_lcfs(factorIDs = c("F000006_2","F000005_2","F000023"),
                           factorRefine=factorRefine)
   } else {
-    buildFactorLists(buildFactorList(factorFun = "gf.ln_PB_mrq", factorDir = -1),
-                     buildFactorList(factorFun = "gf.ln_PE_ttm", factorDir = -1),
-                     buildFactorList(factorFun = "gf.ln_F_PE", factorDir = -1),
+    buildFactorLists(buildFactorList(factorFun = "gf.BP_mrq", factorDir = 1),
+                     buildFactorList(factorFun = "gf.CFP_ttm", factorDir = 1),
+                     buildFactorList(factorFun = "gf.dividendyield", factorDir = 1),
                      factorRefine=factorRefine)
   }
 }
@@ -73,12 +73,11 @@ fl_FORECAST <- function(factorRefine,wgts="eq",
 #' @export
 fls_MARKET <- function(factorRefine,lcfs=TRUE){
   if(lcfs){
-    buildFactorLists_lcfs(factorIDs = c("F000008","F000017","F000024","F000022"),
+    buildFactorLists_lcfs(factorIDs = c("F000008","F000017","F000022"),
                           factorRefine=factorRefine)
   } else {
     buildFactorLists(buildFactorList(factorFun = "gf.pct_chg_per", factorDir = -1),
                      buildFactorList(factorFun = "gf.IVR", factorDir = -1),
-                     buildFactorList(factorFun = "gf.ILLIQ", factorDir = 1),
                      buildFactorList(factorFun = "gf.volatility", factorDir = -1),
                      factorRefine=factorRefine)
   }
@@ -93,26 +92,26 @@ fl_MARKET <- function(factorRefine,wgts="eq",
   return(re)
 }
 
-#-PROFIT
+#-QUALITY
 #' @export
-fls_PROFIT <- function(factorRefine,lcfs=FALSE){
+fls_QUALITY <- function(factorRefine,lcfs=TRUE){
   if(lcfs){
-    # buildFactorLists_lcfs(factorIDs = c("F000008","F000017","F000024"),
-    #                       factorRefine=factorRefine)
+    buildFactorLists_lcfs(factorIDs = c("F000026","F000027","F000028"),
+                          factorRefine=factorRefine)
   } else {
-    buildFactorLists(buildFactorList(factorFun = "gf.ROE_Q", factorDir = 1),
-                     buildFactorList(factorFun = "gf.pio_f_score", factorDir = 1),
-                     buildFactorList(factorFun = "gf.High3Managers", factorDir = 1),
+    buildFactorLists(buildFactorList(factorFun = "gf.High3Managers", factorDir = 1),
+                     buildFactorList(factorFun = "gf.ROE_Q", factorDir = 1),
+                     buildFactorList(factorFun = "gf.PEG", factorDir = 1),
                      factorRefine=factorRefine)
   }
 }
 #' @export
-fl_PROFIT <- function(factorRefine,wgts="eq",
+fl_QUALITY <- function(factorRefine,wgts="eq",
                       comb_factorRefine=refinePar_default("none"),lcfs=TRUE){
-  re <- buildFactorList_combi(fls_PROFIT(factorRefine,lcfs=lcfs),wgts = wgts,
+  re <- buildFactorList_combi(fls_QUALITY(factorRefine,lcfs=lcfs),wgts = wgts,
                               factorRefine=comb_factorRefine,
                               factorDir = 1,
-                              factorName = "PROFIT")
+                              factorName = "QUALITY")
   return(re)
 }
 
@@ -123,7 +122,7 @@ fls_COMB <- function(factorRefine, wgts=list("eq","eq","eq","eq","eq"),lcfs=TRUE
                          fl_VALUE(factorRefine, wgts = wgts[[2]],lcfs = lcfs),
                          fl_FORECAST(factorRefine, wgts = wgts[[3]],lcfs = lcfs),
                          fl_MARKET(factorRefine, wgts = wgts[[4]],lcfs = lcfs),
-                         fl_PROFIT(factorRefine, wgts = wgts[[5]],lcfs = FALSE))
+                         fl_QUALITY(factorRefine, wgts = wgts[[5]],lcfs = lcfs))
   return(re)
 }
 
@@ -143,7 +142,7 @@ fls_5stable <- function(factorRefine,lcfs=TRUE){
     
   }
   re <- c(list(fl_FORECAST(factorRefine,lcfs = lcfs)),
-          list(fl_PROFIT(factorRefine,lcfs = FALSE)),
+          list(fl_QUALITY(factorRefine,lcfs = lcfs)),
           fls_other3)
   return(re)
 }

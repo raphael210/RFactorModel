@@ -18,8 +18,10 @@
 \alias{chart.Ngroup.turnover}
 \alias{chart.Ngroup.size}
 \alias{MF.chart.Ngroup.spread}
+\alias{MF.chart.Ngroup.size_spread}
 \alias{MC.table.Ngroup.overall}
 \alias{MC.chart.Ngroup.overall}
+\alias{MC.chart.Ngroup.size_spread}
 \title{backtest.Ngroup}
 \usage{
 seri.Ngroup.rtn(TSFR, N = 5, relative = FALSE, include_univ = FALSE,
@@ -68,11 +70,17 @@ MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL,
   rtn_type = c("long-short", "long-univ"), relative = FALSE,
   facet_by = c("none", "date", "fname"), Nbin = "year")
 
+MF.chart.Ngroup.size_spread(mTSFR, N = 5, type = c("long-short",
+  "long-univ"))
+
 MC.table.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, fee = 0,
   rtn_type = c("long-short", "long-univ"), backtestPar)
 
 MC.chart.Ngroup.overall(TSFRs, N = 5, relative = TRUE, sectorNe = NULL,
-  bysector = NULL, ncol = 3, plotPar)
+  bysector = NULL, ncol = NULL, plotPar)
+
+MC.chart.Ngroup.size_spread(TSFRs, N = 5, type = c("long-univ",
+  "long-short"))
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}

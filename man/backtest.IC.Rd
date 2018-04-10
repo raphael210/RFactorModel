@@ -8,6 +8,7 @@
 \alias{chart.IC}
 \alias{chart.IC.decay}
 \alias{MF.chart.IC}
+\alias{MF.chart.IC.decay}
 \alias{MC.chart.IC.corr}
 \alias{MC.table.IC}
 \alias{MC.chart.IC}
@@ -16,29 +17,35 @@
 \usage{
 seri.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
 
-seri.IC.decay(TSF, stat = c("pearson", "spearman"), backtestPar,
-  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
-  months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
+seri.IC.decay(TSF, stat = c("pearson", "spearman"), prd_lists = list(w1 =
+  lubridate::weeks(1), w2 = lubridate::weeks(2), m1 = months(1), m2 = months(2),
+  m3 = months(3), m6 = months(6)))
 
 table.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
 
 chart.IC(TSFR, Nbin = "day", stat = c("pearson", "spearman"), plotPar)
 
-chart.IC.decay(TSF, stat = c("pearson", "spearman"), backtestPar,
-  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
-  months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
+chart.IC.decay(TSF, stat = c("pearson", "spearman"), prd_lists = list(w1 =
+  lubridate::weeks(1), w2 = lubridate::weeks(2), m1 = months(1), m2 = months(2),
+  m3 = months(3), m6 = months(6)))
 
 MF.chart.IC(mTSFR, Nbin = "day", stat = c("pearson", "spearman"),
   facet_by = c("date", "fname"))
+
+MF.chart.IC.decay(mTSF, stat = c("pearson", "spearman"), ncol = NULL,
+  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
+  months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
 
 MC.chart.IC.corr(TSFRs, stat = c("pearson", "spearman"), plotPar)
 
 MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
 
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
-  ncol = 3, plotPar)
+  ncol = NULL, plotPar)
 
-MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
+MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"),
+  prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
+  months(1), m2 = months(2), m3 = months(3), m6 = months(6)), ncol = NULL)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
@@ -55,9 +62,9 @@ MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"), ncol = 3, plotPar)
 
 \item{mTSFR}{a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.}
 
-\item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
-
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
+
+\item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 }
 \value{
 seri.IC return a xts object, which containing the IC seri
@@ -100,7 +107,6 @@ TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 MC.chart.IC.corr(TSFRs)
 MC.table.IC(TSFRs)
 MC.chart.IC(TSFRs)
-MC.chart.IC.decay(TSFRs)
 }
 \author{
 Ruifei.Yin
