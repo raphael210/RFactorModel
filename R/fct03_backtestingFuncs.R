@@ -221,7 +221,7 @@ chart.Fct_NA <- function(TSF){
 #' @rdname table.Fct_anova
 #' @export
 MF.chart.Fct_NA <- function(mTSF){
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   datelist <- unique(mTSF$date)
   result <- data.frame()
   for( i in 1:length(datelist)){
@@ -246,7 +246,7 @@ MF.chart.Fct_hist <- function(mTSF,sample=NULL){
   if(!is.null(sample)){
     mTSF <- TS_filter(mTSF,sample_N=sample)
   }
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore)) + 
     geom_histogram(colour = "white", fill = "black")+
@@ -261,7 +261,7 @@ MF.chart.Fct_density <- function(mTSF,sample=NULL,ncol=NULL){
   if(!is.null(sample)){
     mTSF <- TS_filter(mTSF,sample_N=sample)
   }
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(factorscore,color=fname)) + 
     geom_density()+
@@ -275,7 +275,7 @@ MF.chart.Fct_box <- function(mTSF,sample=NULL,ncol=NULL){
   if(!is.null(sample)){
     mTSF <- TS_filter(mTSF,sample_N=sample)
   }
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   ggplot(mTSF, aes(fname,factorscore)) + 
     geom_boxplot()+
@@ -289,7 +289,7 @@ MF.table.Fct_descr <- function(mTSF,sample=NULL){
   if(!is.null(sample)){
     mTSF <- TS_filter(mTSF,sample_N=sample)
   }
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF <- reshape2::melt(mTSF,id.vars=c('date','stockID'),measure.vars=fnames,variable.name = "fname",value.name = "factorscore")
   re <- mTSF %>% group_by(date,fname) %>%
     dplyr::summarise(Obs=length(factorscore),
@@ -338,7 +338,7 @@ MF.chart.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
 #' @export
 MF.table.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
   out_type <- match.arg(out_type)
-  fnames <- guess_factorNames(mTSF)
+  fnames <- guess_factorNames(mTSF,silence = TRUE)
   mTSF_by <- dplyr::group_by(mTSF[,c('date',fnames)],date)
   
   cordata <- mTSF_by %>% dplyr::do(cormat = cor(.[,fnames],method='spearman',use="pairwise.complete.obs"))
@@ -431,11 +431,12 @@ seri.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
 }
 
 #' @rdname backtest.IC
+#' @prd_lists a list
 #' @return seri.IC.decay return a xts object of 12 cols, which containing the decayed ICs seri
 #' @export
 #' @examples 
 #' re <- seri.IC.decay(TSF)
-seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
+seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),
                           prd_lists = list(w1=lubridate::weeks(1),
                                            w2=lubridate::weeks(2),
                                            m1=months(1),
@@ -443,14 +444,16 @@ seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
                                            m3=months(3),
                                            m6=months(6)) ){
   stat <- match.arg(stat)
-  if(!missing(backtestPar)){
-    stat <- getbacktestPar.IC(backtestPar,"stat")
-  }
   
   # --- get the period rtns
-  TSFR <- getTSR_decay(TSF, prd_lists = prd_lists)
+  if(!identical(prd_lists,"existing")){
+    TSFR <- getTSR_decay(TSF, prd_lists = prd_lists)
+    prd_names <- names(prd_lists)
+  } else {
+    TSFR <- TSF
+    prd_names <- substring(colnames(TSF)[substr(colnames(TSF),1,6)=="prdrtn"],8)
+  }
   # --- calculate the IC seri.
-  prd_names <- names(prd_lists)
   if(stat=="pearson"){
     IC.seri <- plyr::ddply(TSFR,"date",function(dat){
       t(cor(dat[, paste("prdrtn_",prd_names,sep="")],dat[,"factorscore"],method="pearson",use="pairwise.complete.obs"))
@@ -539,7 +542,7 @@ chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
 #' @examples 
 #' re <- chart.IC.decay(TSF)
 #' attr(re,"table") # the result table
-chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
+chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),
                            prd_lists = list(w1=lubridate::weeks(1),
                                             w2=lubridate::weeks(2),
                                             m1=months(1),
@@ -547,7 +550,9 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
                                             m3=months(3),
                                             m6=months(6))){
   stat <- match.arg(stat)
-  seri <- seri.IC.decay(TSF=TSF,stat=stat,backtestPar=backtestPar,prd_lists=prd_lists)
+  seri <- seri.IC.decay(TSF=TSF,stat=stat,prd_lists=prd_lists)
+  
+  # -- table
   IC.mean <- base::colMeans(seri,na.rm=TRUE)
   IC.std <- timeSeries::colSds(seri,na.rm=TRUE)
   IC.IR <- IC.mean/IC.std
@@ -558,7 +563,7 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
     sqrtN <- vector()
     for (ii in 1:length(prd_lists)){
       prd <- prd_lists[[ii]]
-      N <- 365/(prd/lubridate::days(1))
+      N <- 365/(lubridate::period_to_seconds(prd)/86400)
       sqrtN <- c(sqrtN,sqrt(N))
     }
     IC.annu <- IC.mean*sqrtN
@@ -566,14 +571,15 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
   re_table <- t(cbind(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu))
   rownames(re_table) <- c("IC_mean","IC_sd","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu")
   
-  if(TRUE){ # -- chart.IC.decay
-    dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
-    re <- ggplot(data = dat)+
-      geom_bar(mapping = aes(x=decay, y=IC_mean, fill=leg_mean),position="dodge",stat="identity")+
-      geom_line(mapping = aes(x=decay, y=IC_annu, fill=leg_annu, group=group),colour = "red", size = 1)+
-      theme(axis.title.y= element_blank(),legend.title=element_blank())+
-      ggtitle("IC decay")
-  }
+  # -- chart
+  dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
+  re <- ggplot(data = dat)+
+    geom_bar(mapping = aes(x=decay, y=IC_mean, fill=leg_mean),position="dodge",stat="identity")+
+    geom_line(mapping = aes(x=decay, y=IC_annu, fill=leg_annu, group=group),colour = "red", size = 1)+
+    theme(axis.title.y= element_blank(),legend.title=element_blank())+
+    ggtitle("IC decay")
+  
+  # -- add attr to result
   attr(re,"table") <- re_table
   return(re)
 }
@@ -589,7 +595,7 @@ chart.IC.decay <- function(TSF,stat=c("pearson","spearman"),backtestPar,
 #' MF.chart.IC(mTSFR)
 MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
                         facet_by=c("date","fname")){
-  fnames <- guess_factorNames(mTSFR)
+  fnames <- guess_factorNames(mTSFR,silence = TRUE)
   TSFRs <- lapply(mTSFR[,fnames],function(x,mTSFR){
     as.data.frame(cbind(mTSFR[,c('date','date_end','stockID')],
                         factorscore=x,periodrtn=mTSFR[,'periodrtn']))
@@ -635,6 +641,62 @@ MF.chart.IC <- function(mTSFR,Nbin="day",stat=c("pearson","spearman"),
 }
 
 
+#' @rdname backtest.IC
+#' @export
+MF.chart.IC.decay <- function(mTSF,stat=c("pearson","spearman"),ncol=NULL,
+                              prd_lists = list(w1=lubridate::weeks(1),
+                                               w2=lubridate::weeks(2),
+                                               m1=months(1),
+                                               m2=months(2),
+                                               m3=months(3),
+                                               m6=months(6))){
+  stat <- match.arg(stat)
+  mTSF <- getTSR_decay(mTSF,prd_lists = prd_lists)
+  fnames <- guess_factorNames(mTSF,is_factorname = "factorscore", silence = TRUE)
+  
+  re_table <- data.frame()
+  re_chart <- list()
+  for(ff in 1:length(fnames)){
+    fname <- fnames[ff]
+    TSF <- mTSF[,c("date","stockID",fname,colnames(mTSF)[substr(colnames(mTSF),1,6)=="prdrtn"])]
+    TSF <- renameCol(mTSF,fname,"factorscore")
+    seri <- seri.IC.decay(TSF=TSF,stat=stat,prd_lists="existing")
+    # -- table
+    IC.mean <- base::colMeans(seri,na.rm=TRUE)
+    IC.std <- timeSeries::colSds(seri,na.rm=TRUE)
+    IC.IR <- IC.mean/IC.std
+    IC.Ttest.t <- timeSeries::colStats(seri, function(x) t.test(x)$statistic)
+    IC.Ttest.p <- timeSeries::colStats(seri, function(x) t.test(x)$p.value)
+    IC.hit <- as.vector(hitRatio(seri))
+    if(TRUE){ # annulized IC
+      sqrtN <- vector()
+      for (ii in 1:length(prd_lists)){
+        prd <- prd_lists[[ii]]
+        N <- 365/(lubridate::period_to_seconds(prd)/86400)
+        sqrtN <- c(sqrtN,sqrt(N))
+      }
+      IC.annu <- IC.mean*sqrtN
+    }
+    re_table_ <- t(cbind(IC.mean, IC.std, IC.IR, IC.Ttest.t, IC.Ttest.p, IC.hit, IC.annu))
+    re_table_ <- data.frame(fname=fname,var=c("IC_mean","IC_sd","IC_IR","IC_t","IC_p","IC_hitRatio","IC_annu"),re_table_)
+    rownames(re_table_) <- NULL
+    re_table <- rbind(re_table,re_table_)
+    # -- chart
+    dat <- data.frame(decay=factor(1:ncol(seri),labels = colnames(seri)),IC_mean=IC.mean,IC_annu=IC.annu, leg_mean="IC_mean",leg_annu="IC_annu", group=1L)
+    re_chart_ <- ggplot(data = dat)+
+      geom_bar(mapping = aes(x=decay, y=IC_mean),position="dodge",stat="identity")+
+      geom_line(mapping = aes(x=decay, y=IC_annu, group=group),colour = "red", size = 1)+
+      theme(axis.title.y= element_blank(),legend.title=element_blank())+
+      ggtitle(fname)
+    re_chart_ <- list(re_chart_)
+    re_chart <- c(re_chart,re_chart_)
+  }
+  
+  re <- multiplot_facet(plotlist=re_chart,ncol=ncol)
+  # -- add attr to result
+  attr(re,"table") <- re_table
+  return(re)
+}
 # ---------------------  ~~ Multi comparison - IC --------------
 
 
@@ -684,7 +746,7 @@ MC.table.IC <- function(TSFRs,stat=c("pearson","spearman"),backtestPar){
 #' @export
 #' @examples 
 #' MC.chart.IC(TSFRs)
-MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, plotPar){
+MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=NULL, plotPar){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
   if(!missing(plotPar)){
@@ -708,17 +770,19 @@ MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=3, pl
 
 #' @rdname backtest.IC
 #' @export
-#' @examples 
-#' MC.chart.IC.decay(TSFRs)
-MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),ncol=3, plotPar,...){
+MC.chart.IC.decay <- function(TSFRs,stat=c("pearson","spearman"),
+                              prd_lists = list(w1=lubridate::weeks(1),
+                                               w2=lubridate::weeks(2),
+                                               m1=months(1),
+                                               m2=months(2),
+                                               m3=months(3),
+                                               m6=months(6)),
+                              ncol=NULL){
+  
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
-  if(!missing(plotPar)){
-    stat <- getplotPar.IC(plotPar,"stat")
-    ncol <- getplotPar.MC(plotPar,"ncol.IC.decay")
-  }
   NMs <- names(TSFRs)
-  IC.charts.decay <- plyr::llply(TSFRs, chart.IC.decay, stat=stat,...)
+  IC.charts.decay <- plyr::llply(TSFRs, chart.IC.decay, stat=stat, prd_lists=prd_lists)
   for(i in 1:length(IC.charts.decay)){
     IC.charts.decay[[i]] <- IC.charts.decay[[i]] +
       ggtitle(NMs[i]) +
@@ -928,15 +992,15 @@ seri.Ngroup.size <- function(TSFR,N=5,log=TRUE,
   }
   check.TSF(TSFR)
   TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")])
-  TSFR <- gf_cap(TSFR,log=log, varname = "mkt_cap")
+  TSFR <- gf_cap(TSFR,log=log, var="float_cap", varname = "cap")
   
   # ADD RANK OR GROUP
   TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
   
   # ORGANIZING 
   TSFR <- data.table::data.table(TSFR,key=c("date","group"))
-  size.df <- TSFR[,list(mean.size=mean(mkt_cap, na.rm = TRUE)), by=c("date","group")]
-  univ_size <- TSFR[,.(group = N+1, mean.size = mean(mkt_cap, na.rm = TRUE)), by = "date"]
+  size.df <- TSFR[,list(mean.size=mean(cap, na.rm = TRUE)), by=c("date","group")]
+  univ_size <- TSFR[,.(group = N+1, mean.size = mean(cap, na.rm = TRUE)), by = "date"]
   
   size.df <- rbind(size.df, univ_size)
   size.df <- as.data.frame(size.df)
@@ -1372,6 +1436,34 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
   }
 }
 
+#' @rdname backtest.Ngroup
+#' @export
+MF.chart.Ngroup.size_spread <- function(mTSFR,
+                                        N = 5,
+                                        type = c("long-short", "long-univ")){
+  type <- match.arg(type)
+  TSFRs <- mTSF2TSFs(mTSFR)
+  
+  for( i in 1:length(TSFRs) ){
+    TSFR_ <- TSFRs[[i]]
+    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE)
+    if(type == "long-univ"){
+      size_seri_diff_ <- size_seri_[,1] - size_seri_[,N+1]
+    }else if(type == "long-short"){
+      size_seri_diff_ <- size_seri_[,1] - size_seri_[,N]
+    }
+    colnames(size_seri_diff_) <- names(TSFRs)[i]
+    if(i == 1L){
+      result <- size_seri_diff_
+    }else{
+      result <- xts::merge.xts(result, size_seri_diff_)
+    }
+  }
+  fig <- ggplot.ts.line(result,main="Size spread between Ngroup of each factorscore",size=1)
+  return(fig)
+}
+
+
 
 
 # --------------------- ~~ Multi comparison - Ngroup --------------
@@ -1417,7 +1509,7 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
                                     relative=TRUE,
                                     sectorNe=NULL,
                                     bysector=NULL,
-                                    ncol=3,plotPar
+                                    ncol=NULL,plotPar
                                     ){
   check.name_exist(TSFRs)
   if(!missing(plotPar)){
@@ -1434,6 +1526,36 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
   Ngroup.multicharts <- multiplot_facet(plotlist=Ngroup.charts,ncol=ncol)
   return(Ngroup.multicharts)
 }
+
+
+
+#' @rdname backtest.Ngroup
+#' @export
+MC.chart.Ngroup.size_spread <- function(TSFRs,
+                                        N = 5,
+                                        type = c("long-univ", "long-short")){
+  type <- match.arg(type)
+  for( i in 1:length(TSFRs) ){
+    TSFR_ <- TSFRs[[i]]
+    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE)
+    if(type == "long-univ"){
+      size_seri_diff_ <- size_seri_[,1] - size_seri_[,N+1]
+    }else if(type == "long-short"){
+      size_seri_diff_ <- size_seri_[,1] - size_seri_[,N]
+    }
+    colnames(size_seri_diff_) <- names(TSFRs)[i]
+    if(i == 1L){
+      result <- size_seri_diff_
+    }else{
+      result <- xts::merge.xts(result, size_seri_diff_)
+    }
+  }
+  fig <- ggplot.ts.line(result,main="Size spread between Ngroup of each factorscore",size=1)
+  return(fig)
+}
+
+
+
 
 
 # --------------------- ~~ table.ICandNgroup --------------

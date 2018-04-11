@@ -203,7 +203,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- gf_cap(TSFR[,c('date','stockID')],var="float_cap",na_fill=TRUE)
+        TSw <- gf_cap(TSFR[,c('date','stockID')],log = TRUE,var="float_cap",na_fill=TRUE)
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
         TSFR <- merge.x(TSFR,TSw,by =c("date","stockID"))
@@ -483,39 +483,120 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regTyp
 }
 
 
-#' @rdname factor_select
-#' 
-#' @export
-factor_orthogon <- function(TSF,forder,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
-  regType <- match.arg(regType)
-  cols <- colnames(TSF)
-  fname <- guess_factorNames(TSF,is_factorname = "factorscore",silence=TRUE)
-  if(missing(forder)){
-    forder <- fname
-  }
-  if(is.numeric(forder)){
-    forder <- fname[forder]
-  }
-  if(!is.null(sectorAttr)){
-    TSF <- getSectorID(TSF,sectorAttr = sectorAttr,fillNA = TRUE)
-  }
-  sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
-  if(!is.null(sectorAttr)){ # forder[1]
-    TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing",regType=regType)
-  }
-  for(j in 2:length(forder)){ # forder[2:length]
-    TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_,regType=regType)
-  }
-  return(TSF[,cols])
-}
 
+#' @rdname factor_select 
+#' @export
+#' @examples 
+#' tb_symm <- factor_orthogon(mtsf,method = "symm")
+#' tb_reg <- factor_orthogon(mtsf,method = "reg")
+#' MF.chart.Fct_corr(mtsf)
+#' MF.chart.Fct_corr(tb_symm)
+#' MF.chart.Fct_corr(tb_reg)
+factor_orthogon <- function(TSF, method = c("symm","reg"),
+                            forder, sectorAttr=NULL, regType=c('lm','glm')){
+  method <- match.arg(method)
+  
+  if(method=="reg"){
+    regType <- match.arg(regType)
+    cols <- colnames(TSF)
+    fname <- guess_factorNames(TSF,is_factorname = NULL,silence=TRUE)
+    if(missing(forder)){
+      forder <- fname
+    }
+    if(is.numeric(forder)){
+      forder <- fname[forder]
+    }
+    if(!is.null(sectorAttr)){
+      TSF <- getSectorID(TSF,sectorAttr = sectorAttr,fillNA = TRUE)
+    }
+    sectorAttr_ <- if(is.null(sectorAttr)) NULL else "existing"
+    if(!is.null(sectorAttr)){ # forder[1]
+      TSF <- factor_orthogon_single(TSF, y = forder[1], x=NULL,sectorAttr = "existing",regType=regType)
+    }
+    for(j in 2:length(forder)){ # forder[2:length]
+      TSF <- factor_orthogon_single(TSF, y = forder[j], x=forder[1:(j-1)],sectorAttr = sectorAttr_,regType=regType)
+    }
+    return(TSF[,cols])
+    
+  } else if(method == "symm"){
+    # one period func
+    subfun <- function(TSF, method = method, fnames, rest_cols){
+      F_mat <- as.matrix(TSF[,fnames])
+      D_sd_mat <- diag(sqrt(diag(cov(F_mat))))
+      
+      N <- nrow(F_mat)
+      M_mat <- t(F_mat) %*% F_mat / N
+      decomposed_result <- eigen(M_mat, symmetric = TRUE)
+      
+      U_mat <- decomposed_result$vectors
+      D_mat <- diag(decomposed_result$values)
+      D_mat_star <- diag((decomposed_result$values)^(-1/2))
+      
+      S_mat <- U_mat %*% D_mat_star %*% t(U_mat) %*% D_sd_mat
+      
+      # output : F_new
+      F_mat_new <- F_mat %*% S_mat
+      F_mat_new <- as.data.frame(F_mat_new)
+      colnames(F_mat_new) <- fnames
+      TSF_new <- cbind(TSF[,rest_cols], F_mat_new)
+      return(TSF_new)
+    }
+    # processing
+    fnames <- guess_factorNames(TSF,is_factorname = NULL,silence=TRUE)
+    fnames <- subset(fnames, substr(fnames, 1, 2) != "ES")
+    rest_cols <- setdiff(colnames(TSF), fnames)
+    TSF <- dplyr::group_by(TSF, date)
+    result <- dplyr::do(.data = TSF, subfun(., method = method, fnames = fnames, rest_cols = rest_cols))
+    # output
+    result <- result[,colnames(TSF)]
+    result <- as.data.frame(result)
+    return(result)
+  }
+}
+#' @rdname factor_select 
+#' @export
+#' @examples 
+#' factor_orthogon_transMat(mtsf)
+factor_orthogon_transMat <- function(TSF){
+  # one period func
+  subfun <- function(TSF, method = method, fnames, rest_cols){
+    F_mat <- as.matrix(TSF[,fnames])
+    D_sd_mat <- diag(sqrt(diag(cov(F_mat))))
+    
+    N <- nrow(F_mat)
+    M_mat <- t(F_mat) %*% F_mat / N
+    decomposed_result <- eigen(M_mat, symmetric = TRUE)
+    
+    U_mat <- decomposed_result$vectors
+    D_mat <- diag(decomposed_result$values)
+    D_mat_star <- diag((decomposed_result$values)^(-1/2))
+    
+    S_mat <- U_mat %*% D_mat_star %*% t(U_mat) %*% D_sd_mat
+    
+    # output : S_mat
+    S_mat <- as.data.frame(S_mat)
+    colnames(S_mat) <- fnames
+    S_mat$sum <- rowSums(S_mat)
+    S_mat$fname <- fnames
+    return(S_mat)
+  }
+  # processing
+  fnames <- guess_factorNames(TSF,is_factorname = NULL,silence=TRUE)
+  fnames <- subset(fnames, substr(fnames, 1, 2) != "ES")
+  rest_cols <- setdiff(colnames(TSF), fnames)
+  TSF <- dplyr::group_by(TSF, date)
+  result <- dplyr::do(.data = TSF, subfun(., method = method, fnames = fnames, rest_cols = rest_cols))
+  # output
+  result <- as.data.frame(result)
+  return(result)
+}
 
 
 
 
 # inner function
 # if lmtpye=='glm', data must include 'gml_wgt' column.
-lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
+lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=TRUE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
   
@@ -535,6 +616,7 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=FALSE){
   if(lmtype=='lm'){
     models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = . ,na.action = "na.exclude"))
   }else{
+    check.colnames(data,"gml_wgt")
     models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt ,na.action = "na.exclude"))
   }
   
@@ -664,14 +746,14 @@ chart.reg.rsquare <- function(reg_results){
   
   if(Nperiod>12){
     RSquare <- xts::xts(RSquare[,-1],RSquare[,1])
-    colnames(RSquare) <- c('RSquare')
+    colnames(RSquare) <- c('rsquare')
     tmp <- zoo::rollmean(RSquare,12,align='right')
     tmp <- data.frame(date=zoo::index(tmp),RSquareMA=zoo::coredata(tmp))
     RSquare <- data.frame(time=time(RSquare),zoo::coredata(RSquare))
-    ggplot(RSquare, aes(x=time, y=RSquare))+geom_line(color="#D55E00") +
-      ggtitle('RSquare(with MA series)') +geom_line(data=tmp,aes(x=date,y=RSquare),size=1,color="#56B4E9")
+    ggplot(RSquare, aes(x=time, y=rsquare))+geom_line(color="#D55E00") +
+      ggtitle('RSquare(with MA series)') +geom_line(data=tmp,aes(x=date,y=rsquare),size=1,color="#56B4E9")
   }else{
-    ggplot(RSquare, aes(x=date, y=RSquare))+geom_line(color="#D55E00") + ggtitle('RSquare')
+    ggplot(RSquare, aes(x=date, y=rsquare))+geom_line(color="#D55E00") + ggtitle('RSquare')
   }
   
 }
@@ -1011,6 +1093,8 @@ exposure.TSWF <- function(TSWF) {
 #' @export exposure.port
 exposure.port <- function(port,factorLists,bmk=NULL,univ=NULL,
                           sectorAttr = defaultSectorAttr()){
+  check.Port(port)
+  
   # get active wgt if bmk is provided.
   if(!is.null(bmk)){
     port <- getActivewgt(port = port,bmk = bmk,res = "all")
@@ -1211,7 +1295,7 @@ chart.PA.attr <- function(PA_tables,plotInd=FALSE,attributeAnn=TRUE){
   
   if(attributeAnn){
     rtnsum <- rtn.summary(perfts)
-    rtnsum <- rtnsum['Annualized Return',]
+    rtnsum <- rtnsum['ann_rtn',]
   }else{
     rtnsum <- rtn.periods(perfts)
     rtnsum <- rtnsum["Cumulative Return",]

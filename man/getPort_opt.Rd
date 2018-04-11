@@ -6,7 +6,7 @@
 \usage{
 getPort_opt(TSF, fRtn, fCov, exp_rtn = "factorscore", bmk = NULL,
   constr = constr_default(), obj = object_default(), init_port, delta,
-  min_wgt = 0.001)
+  min_wgt = 0.001, TW_ratio = 3, FFV = TRUE)
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object,may contains multiple factors.}
