@@ -395,15 +395,12 @@ MF.table.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
 #' backtesting the factor with some tables and charts using the 'IC' method. 
 #' 
 #' When caculating the correlation,two methods "pearson" and "spearman" is used.
-#' 
-#' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 #' @rdname backtest.IC
 #' @name backtest.IC
 #' @aliases seri.IC
 #' @param TSF a \bold{TSF} object
 #' @param TSFR a \bold{TSFR} object
 #' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman". 
-#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar. 
 #' @return seri.IC return a xts object, which containing the IC seri 
 #' @author Ruifei.Yin
 #' @export
@@ -411,11 +408,8 @@ MF.table.Fct_corr <- function(mTSF,Nbin, out_type=c("mat","seri")){
 #' modelPar <- modelPar.default()
 #' TSFR <- Model.TSFR(modelPar)
 #' re <- seri.IC(TSFR)
-seri.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
+seri.IC <- function(TSFR,stat=c("pearson","spearman")){
   stat <- match.arg(stat)
-  if(!missing(backtestPar)){
-    stat <- getbacktestPar.IC(backtestPar,"stat")
-  }
   check.TSFR(TSFR)
   TSFR <- na.omit(TSFR[,c("date_end","stockID","factorscore","periodrtn")])
   if(stat=="pearson"){
@@ -431,7 +425,7 @@ seri.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
 }
 
 #' @rdname backtest.IC
-#' @prd_lists a list
+#' @param prd_lists a list
 #' @return seri.IC.decay return a xts object of 12 cols, which containing the decayed ICs seri
 #' @export
 #' @examples 
@@ -477,9 +471,9 @@ seri.IC.decay <- function(TSF,stat=c("pearson","spearman"),
 #' @export
 #' @examples 
 #' IC.table <- table.IC(TSFR)
-table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
+table.IC <- function(TSFR,stat=c("pearson","spearman")){
   stat <- match.arg(stat)
-  seri <- seri.IC(TSFR,stat,backtestPar)
+  seri <- seri.IC(TSFR,stat)
   IC.annu <- as.vector(IC.annualized(seri)) # IC.annu = IC.mean*sqrt(N)
   seri <- as.vector(seri)
   IC.mean <- mean(seri,na.rm=TRUE)
@@ -497,17 +491,12 @@ table.IC <- function(TSFR,stat=c("pearson","spearman"),backtestPar){
 
 #' @rdname backtest.IC
 #' @param Nbin the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.
-#' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
 #' @return chart.IC return a ggplot object of IC time series(with its 12 months MA)
 #' @export
 #' @examples 
 #' IC.chart <- chart.IC(TSFR,"3 month")
-chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman"),plotPar){
+chart.IC <- function(TSFR,Nbin="day",stat=c("pearson","spearman")){
   stat <- match.arg(stat)
-  if(!missing(plotPar)){
-    Nbin <- getplotPar.IC(plotPar,"Nbin")
-    stat <- getplotPar.IC(plotPar,"stat")
-  }
   # ---- IC series
   seri <- seri.IC(TSFR=TSFR,stat=stat)    
   by <- cut.Date2(zoo::index(seri),Nbin)
@@ -712,12 +701,9 @@ MF.chart.IC.decay <- function(mTSF,stat=c("pearson","spearman"),ncol=NULL,
 #' TSR <- Model.TSR(mp)
 #' TSFRs <- Model.TSFs_byTS(MPs=mps,TS=TSR)
 #' MC.chart.IC.corr(TSFRs)
-MC.chart.IC.corr <- function(TSFRs,stat=c("pearson","spearman"),plotPar){
+MC.chart.IC.corr <- function(TSFRs,stat=c("pearson","spearman")){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
-  if(!missing(plotPar)){
-    stat <- getplotPar.IC(plotPar,"stat")
-  }
   IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
   rownames(IC.seris) <- names(TSFRs)
   IC.corrmat <- cor(t(IC.seris),method="pearson",use="pairwise.complete.obs")
@@ -729,12 +715,9 @@ MC.chart.IC.corr <- function(TSFRs,stat=c("pearson","spearman"),plotPar){
 #' @export
 #' @examples
 #' MC.table.IC(TSFRs)
-MC.table.IC <- function(TSFRs,stat=c("pearson","spearman"),backtestPar){
+MC.table.IC <- function(TSFRs,stat=c("pearson","spearman")){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
-  if(!missing(backtestPar)){
-    stat <- getbacktestPar.IC(backtestPar,"stat")
-  }  
   IC.table <- plyr::laply(TSFRs,table.IC, stat=stat)
   rownames(IC.table) <- names(TSFRs)
   return(IC.table)
@@ -746,14 +729,9 @@ MC.table.IC <- function(TSFRs,stat=c("pearson","spearman"),backtestPar){
 #' @export
 #' @examples 
 #' MC.chart.IC(TSFRs)
-MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=NULL, plotPar){
+MC.chart.IC <- function(TSFRs,Nbin="day",stat=c("pearson","spearman"),ncol=NULL){
   check.name_exist(TSFRs)
   stat <- match.arg(stat)
-  if(!missing(plotPar)){
-    Nbin <- getplotPar.IC(plotPar,"Nbin")
-    stat <- getplotPar.IC(plotPar,"stat")
-    ncol <- getplotPar.MC(plotPar,"ncol.IC")
-  }
   NMs <- names(TSFRs)
   IC.charts <- mapply(function(x,nm){
     chart.IC(x,Nbin=Nbin,stat=stat)+  
@@ -821,7 +799,7 @@ add_rank_and_group <- function(TSF,N=5,sectorNe=NULL,untie=1.5){
     TSF <- data.table::data.table(TSF,key=c("date","sector"))
     TSF <- TSF[,rank:=rank(-factorscore, na.last="keep"), by=c("date","sector")]
     TSF <- TSF[,group:=cut(rank,N,labels=FALSE), by=c("date","sector")]
-    # abnormal grouping due to big ties. Untie them.
+    # Untie the big ties which would lead to  abnormal grouping.
     check_stat <- (table(TSF$group)) > nrow(TSF)/N*untie
     if(any(check_stat)){
       warning("There are big ties in groups. The ties will be ranked randomly!")
@@ -836,16 +814,13 @@ add_rank_and_group <- function(TSF,N=5,sectorNe=NULL,untie=1.5){
 #' backtest.Ngroup
 #'
 #' backtesting the factor with some tables and charts using the 'Ngroup' method. 
-#'   
-#' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.  
 #' @rdname backtest.Ngroup
 #' @name backtest.Ngroup
 #' @aliases seri.Ngroup.rtn
 #' @param TSFR a \bold{TSFR} object
 #' @param N the number of the groups the universe is cut to
-#' @param sectorNe
-#' @param sectorAttr
-#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
+#' @param sectorNe NULL, "existing", or a sectorAttr
+#' @param sectorAttr NULL, "existing", or a sectorAttr
 #' @return  seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
 #' @author Ruifei.Yin
 #' @export
@@ -858,14 +833,9 @@ seri.Ngroup.rtn <- function(TSFR,N=5,
                             relative=FALSE,
                             include_univ=FALSE,
                             sectorNe=NULL,
-                            bysector=NULL,
-                            backtestPar){
+                            bysector=NULL){
   
   # ARGUMENTS CHECKING
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-  }
   check.TSFR(TSFR)
   TSFR <- na.omit(TSFR[,c("date","date_end","stockID","factorscore","periodrtn")]) 
   
@@ -947,12 +917,7 @@ seri.Ngroup.spread <- function(TSFR,N=5,
 #' @examples
 #' re <- seri.Ngroup.turnover(TSFR,5)
 seri.Ngroup.turnover <- function(TSFR,N=5,
-                                 sectorNe=NULL,
-                                 backtestPar){
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-  }
+                                 sectorNe=NULL){
   check.TSF(TSFR)
   TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")]) 
   # ---- add the rank and groups of the factorscores 
@@ -981,18 +946,22 @@ seri.Ngroup.turnover <- function(TSFR,N=5,
 #' @rdname backtest.Ngroup
 #' @return seri.Ngroup.size return a xts, which giving the mean market-cap seri of each group.
 #' @export
-seri.Ngroup.size <- function(TSFR,N=5,log=TRUE,
+#' @examples 
+#' re <- seri.Ngroup.size(tsf,fl=buildFactorList("gf.amt"))
+#' chart.Ngroup.size(tsf,fl = buildFactorList("gf.amt",factorPar = list(log=TRUE)))
+seri.Ngroup.size <- function(TSFR,N=5,
                              include_univ=FALSE,
                              sectorNe=NULL,
-                             backtestPar){
+                             fl=fl_cap(log=TRUE,var = "float_cap")){
   # ARGUMENTS CHECKING
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-  }
   check.TSF(TSFR)
   TSFR <- na.omit(TSFR[,c("date","stockID","factorscore")])
-  TSFR <- gf_cap(TSFR,log=log, var="float_cap", varname = "cap")
+  
+  # ADD FACTOR(DEFAULT AS FLOAT_CAP)
+  TS <- TSFR[,c("date","stockID")]
+  TS <- getRawFactor(TS,FactorList = fl)
+  TS <- renameCol(TS,"factorscore","cap")
+  TSFR <- merge.x(TSFR,TS,by = c("date","stockID"))
   
   # ADD RANK OR GROUP
   TSFR <- add_rank_and_group(TSFR, N = N, sectorNe = sectorNe)
@@ -1032,25 +1001,19 @@ table.Ngroup.overall <- function(TSFR,N=5,
                                  sectorNe=NULL,
                                  bysector=NULL,
                                  fee=0,
-                                 rtn_type = c("long-short", "long-univ"),
-                                 backtestPar){
+                                 rtn_type = c("long-short", "long-univ")){
   rtn_type <- match.arg(rtn_type)
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-    fee <- getbacktestPar.fee(backtestPar,"secu")
-  }
   
   if(!is.null(bysector)){ # bysector result: a simple matrix which giving the annualized rtn of each group, by sectors.
-    rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = FALSE,sectorNe=sectorNe,bysector=bysector,backtestPar=backtestPar)
+    rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = FALSE,sectorNe=sectorNe,bysector=bysector)
     annu_rtn <- plyr::laply(rtnseri,Return.annualized)
     rownames(annu_rtn) <- names(rtnseri)
     re <- annu_rtn
     return(re)
   }
   
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = TRUE,sectorNe=sectorNe,bysector = NULL, backtestPar=backtestPar)
-  turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,include_univ = TRUE,sectorNe=sectorNe,bysector = NULL)
+  turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe)
   
   # --- Ngroups
   rtnsummary <- rtn.summary(rtnseri)
@@ -1105,7 +1068,7 @@ table.Ngroup.overall <- function(TSFR,N=5,
   colnames(group_beta) <- colnames(re)
   
   # size
-  sizeseri <- seri.Ngroup.size(TSFR,N=N,log=TRUE,include_univ = TRUE,sectorNe=sectorNe,backtestPar=backtestPar)
+  sizeseri <- seri.Ngroup.size(TSFR,N=N,include_univ = TRUE,sectorNe=sectorNe)
   group_cap <- t(colMeans(sizeseri,na.rm = TRUE))
   spread_cap <- if(rtn_type=="long-short") group_cap[1]-group_cap[N] else group_cap[1]-group_cap[N+1]
   group_cap <- cbind(spread_cap, group_cap)
@@ -1129,19 +1092,12 @@ table.Ngroup.overall <- function(TSFR,N=5,
 table.Ngroup.spread <- function(TSFR,N=5,
                                 sectorNe=NULL,
                                 fee=0,
-                                rtn_type = c("long-short","long-univ"),
-                                backtestPar){
+                                rtn_type = c("long-short","long-univ")){
   rtn_type <- match.arg(rtn_type)
   
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-    fee <- getbacktestPar.fee(backtestPar,"secu")
-  }
-  
-  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = FALSE, include_univ = TRUE, sectorNe=sectorNe, bysector = NULL, backtestPar=backtestPar)
-  turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe,backtestPar=backtestPar)
-  sizeseri <- seri.Ngroup.size(TSFR, N = N,log=TRUE, include_univ = TRUE, sectorNe = sectorNe, backtestPar = backtestPar)
+  rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = FALSE, include_univ = TRUE, sectorNe=sectorNe, bysector = NULL)
+  turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe)
+  sizeseri <- seri.Ngroup.size(TSFR, N = N,include_univ = TRUE, sectorNe = sectorNe)
   
   if(rtn_type == "long-short"){
     spreadseri <- rtnseri[,1]-rtnseri[,ncol(rtnseri)-1]
@@ -1186,7 +1142,6 @@ table.Ngroup.spread <- function(TSFR,N=5,
   return(re)
 }
 #' @rdname backtest.Ngroup
-#' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
 #' @return chart.Ngroup.overall return a ggplot object of "Annualized return of each group"
 #' @export
 #' @examples 
@@ -1194,12 +1149,8 @@ table.Ngroup.spread <- function(TSFR,N=5,
 chart.Ngroup.overall <- function(TSFR,N=5,
                                  relative=TRUE,
                                  sectorNe=NULL,
-                                 bysector=NULL,
-                                 plotPar
+                                 bysector=NULL
                                  ){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-  }  
   if(is.null(bysector)){
     tmptable <- table.Ngroup.overall(TSFR=TSFR,N=N,relative = relative,sectorNe=sectorNe,bysector=NULL)
     rtn.annu <- tmptable[1,2:(N+1)]
@@ -1226,12 +1177,7 @@ chart.Ngroup.overall <- function(TSFR,N=5,
 #' chart.Ngroup.seri_point(TSFR,5,"3 month")
 chart.Ngroup.seri_point <- function(TSFR,N=5,relative=TRUE,
                                     Nbin="day",
-                                    sectorNe=NULL,
-                                    plotPar){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-    Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }
+                                    sectorNe=NULL){
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,sectorNe=sectorNe)
   rtnseri <- aggr.rtn(rtnseri,freq=Nbin)
   rtnseri.df <- data.frame(time=time(rtnseri),zoo::coredata(rtnseri))
@@ -1284,13 +1230,8 @@ chart.Ngroup.box <- function(TSFR,N=5, sectorNe=NULL){
 chart.Ngroup.seri_bar <- function(TSFR,N=5,relative=TRUE,
                                   Nbin="day",
                                   sectorNe=NULL,
-                                  bysector=NULL,
-                                  plotPar
+                                  bysector=NULL
                                   ){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-    Nbin <- getplotPar.Ngroup(plotPar,"Nbin")
-  }  
   rtnseri <- seri.Ngroup.rtn(TSFR,N=N,relative = relative,sectorNe=sectorNe,bysector = bysector)
   if(is.null(bysector)){
     rtn_aggr <- aggr.rtn(rtnseri,freq=Nbin)
@@ -1323,11 +1264,7 @@ chart.Ngroup.seri_bar <- function(TSFR,N=5,relative=TRUE,
 #' chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.seri_line <- function(TSFR,N=5,relative=TRUE,
                                    include_univ=TRUE,
-                                   sectorNe=NULL,
-                                   plotPar){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-  }  
+                                   sectorNe=NULL){
   rtnseri <- seri.Ngroup.rtn(TSFR=TSFR,N=N,relative = relative,include_univ=include_univ,sectorNe=sectorNe)
   indexseri <- WealthIndex(rtnseri)
   re <- ggplot.ts.line(indexseri,main="Wealth index of each group",size=1)
@@ -1343,8 +1280,7 @@ chart.Ngroup.seri_line <- function(TSFR,N=5,relative=TRUE,
 #' chart.Ngroup.spread(TSFR, rtn_type = "long-univ")
 chart.Ngroup.spread <- function(TSFR,N=5,
                                 sectorNe=NULL,
-                                rtn_type = c("long-short", "long-univ"),
-                                plotPar
+                                rtn_type = c("long-short", "long-univ")
                                 ){
   rtn_type <- match.arg(rtn_type)
   spreadseri <- seri.Ngroup.spread(TSFR = TSFR, N=N, sectorNe=sectorNe, rtn_type = rtn_type)
@@ -1363,11 +1299,7 @@ chart.Ngroup.spread <- function(TSFR,N=5,
 #' @examples 
 #' chart.Ngroup.turnover(TSFR,5)
 chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
-                                  sectorNe=NULL,
-                                  plotPar){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")  
-  }  
+                                  sectorNe=NULL){
   turnoverseri <- seri.Ngroup.turnover(TSFR,N=N,sectorNe=sectorNe)
   turnoverseri <- turnoverseri[,group,drop=FALSE]
   re <- ggplot.ts.bar(turnoverseri,main=paste("Turnover rate of group",group)) +
@@ -1379,17 +1311,12 @@ chart.Ngroup.turnover <- function(TSFR,N=5,group=1,
 #' @rdname backtest.Ngroup
 #' @return chart.Ngroup.turnover return a line chart of "Mean mkt-cap of each group at each rebalancing point"
 #' @export
-#' @examples 
-#' chart.Ngroup.turnover(TSFR,5)
-chart.Ngroup.size <- function(TSFR,N=5,log=TRUE,
+chart.Ngroup.size <- function(TSFR,N=5,
                               include_univ=TRUE,
                               sectorNe=NULL,
-                              plotPar){
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-  }  
-  size_seri <- seri.Ngroup.size(TSFR=TSFR,N=N,log=log,include_univ=include_univ,sectorNe=sectorNe)
-  re <- ggplot.ts.line(size_seri,main="Mean mkt-cap of each group",size=1)
+                              fl=fl_cap(log=TRUE,var = "float_cap")){
+  size_seri <- seri.Ngroup.size(TSFR=TSFR,N=N,include_univ=include_univ,sectorNe=sectorNe,fl=fl)
+  re <- ggplot.ts.line(size_seri,size=1)
   return(re)
 }
 
@@ -1440,13 +1367,14 @@ MF.chart.Ngroup.spread <- function(mTSFR,N=5,
 #' @export
 MF.chart.Ngroup.size_spread <- function(mTSFR,
                                         N = 5,
-                                        type = c("long-short", "long-univ")){
+                                        type = c("long-short", "long-univ"),
+                                        fl=fl_cap(log=TRUE,var = "float_cap")){
   type <- match.arg(type)
   TSFRs <- mTSF2TSFs(mTSFR)
   
   for( i in 1:length(TSFRs) ){
     TSFR_ <- TSFRs[[i]]
-    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE)
+    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE,fl=fl)
     if(type == "long-univ"){
       size_seri_diff_ <- size_seri_[,1] - size_seri_[,N+1]
     }else if(type == "long-short"){
@@ -1459,7 +1387,7 @@ MF.chart.Ngroup.size_spread <- function(mTSFR,
       result <- xts::merge.xts(result, size_seri_diff_)
     }
   }
-  fig <- ggplot.ts.line(result,main="Size spread between Ngroup of each factorscore",size=1)
+  fig <- ggplot.ts.line(result,size=1)
   return(fig)
 }
 
@@ -1484,15 +1412,9 @@ MF.chart.Ngroup.size_spread <- function(mTSFR,
 MC.table.Ngroup.overall <- function(TSFRs,N=5,
                                     sectorNe=NULL,
                                     fee=0,
-                                    rtn_type=c("long-short", "long-univ"),
-                                    backtestPar){
+                                    rtn_type=c("long-short", "long-univ")){
   check.name_exist(TSFRs)
   rtn_type <- match.arg(rtn_type)
-  if(!missing(backtestPar)){
-    N <- getbacktestPar.Ngroup(backtestPar,"N")
-    fee <- getbacktestPar.fee(backtestPar,"secu")
-    sectorNe <- getbacktestPar.Ngroup(backtestPar,"sectorNe")
-  } 
   overall.table <- plyr::laply(TSFRs,function(x) {table.Ngroup.overall(TSFR=x,N=N,relative = FALSE,fee=fee,sectorNe=sectorNe,rtn_type=rtn_type)[ , 1, drop=FALSE]})
   NMs <- names(TSFRs)
   rownames(overall.table) <- NMs
@@ -1509,14 +1431,9 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
                                     relative=TRUE,
                                     sectorNe=NULL,
                                     bysector=NULL,
-                                    ncol=NULL,plotPar
+                                    ncol=NULL
                                     ){
   check.name_exist(TSFRs)
-  if(!missing(plotPar)){
-    N <- getplotPar.Ngroup(plotPar,"N")
-    sectorNe <- getplotPar.Ngroup(plotPar,"sectorNe")
-    ncol <- getplotPar.MC(plotPar,"ncol.Ngroup")
-  } 
   NMs <- names(TSFRs)
   Ngroup.charts <- mapply(function(x,nm){
     chart.Ngroup.overall(x,N=N,relative = relative,sectorNe=sectorNe,bysector=bysector)+  
@@ -1527,17 +1444,49 @@ MC.chart.Ngroup.overall <- function(TSFRs,N=5,
   return(Ngroup.multicharts)
 }
 
-
+#' @rdname backtest.Ngroup
+#' @export
+MC.chart.Ngroup.spread <- function(TSFRs,N=5,
+                                   sectorNe=NULL,
+                                   rtn_type = c("long-short", "long-univ"),
+                                   relative = FALSE,
+                                   fillNA=TRUE,
+                                   facet=FALSE){
+  rtn_type <- match.arg(rtn_type)
+  
+  rtnseri <- plyr::llply(TSFRs, seri.Ngroup.spread, N=N, sectorNe=sectorNe, rtn_type = rtn_type)
+  if(facet){
+    rtntable <- plyr::llply(rtnseri,xts2df)
+    rtntable <- dplyr::bind_rows(rtntable,.id = 'group')
+    rtntable <- rtntable %>% group_by(group) %>% mutate(Wealth=cumprod(1+spread)) %>% ungroup()
+    ggplot(rtntable,aes(date,Wealth))+
+      geom_line(size=1)+
+      facet_wrap(~group,scales = 'free')
+  }else{
+    rtnseri <- do.call(merge,rtnseri)
+    colnames(rtnseri) <- names(TSFRs)
+    if(fillNA){
+      rtnseri[is.na(rtnseri)] <- 0
+    }
+    
+    if(relative){
+      avgseri <- rowMeans(rtnseri)
+      rtnseri <- rtnseri-avgseri
+    }
+    ggplot.WealthIndex(rtnseri,size=1)
+  }
+}
 
 #' @rdname backtest.Ngroup
 #' @export
 MC.chart.Ngroup.size_spread <- function(TSFRs,
                                         N = 5,
-                                        type = c("long-univ", "long-short")){
+                                        type = c("long-short","long-univ"),
+                                        fl=fl_cap(log=TRUE,var = "float_cap")){
   type <- match.arg(type)
   for( i in 1:length(TSFRs) ){
     TSFR_ <- TSFRs[[i]]
-    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE)
+    size_seri_ <- seri.Ngroup.size(TSFR=TSFR_,N=N,include_univ=TRUE,fl=fl)
     if(type == "long-univ"){
       size_seri_diff_ <- size_seri_[,1] - size_seri_[,N+1]
     }else if(type == "long-short"){
@@ -1550,7 +1499,7 @@ MC.chart.Ngroup.size_spread <- function(TSFRs,
       result <- xts::merge.xts(result, size_seri_diff_)
     }
   }
-  fig <- ggplot.ts.line(result,main="Size spread between Ngroup of each factorscore",size=1)
+  fig <- ggplot.ts.line(result,size=1)
   return(fig)
 }
 
@@ -1612,14 +1561,11 @@ plot.reg <- function(TSFR){
 #' backtest.longshort
 #' 
 #' backtesting the factor with some tables and charts using the 'long-short(hedging)' method.
-#' 
-#' If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 #' @rdname backtest.longshort
 #' @name backtest.longshort
 #' @aliases tables.longshort
 #' @param rtn.LSH a \bold{rtn.LSH} or a \bold{rtn.LBH} object getting by function \code{\link{getrtn.LSH}} or \code{\link{getrtn.LBH}}.
 #' @param hitFreq indicating the interval when computing the hitRatio of rtn. An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s".See \code{\link{cut.Date}} for detail.
-#' @param backtestPar Optional. a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
 #' @return  tables.longshort return a list containing some tables which giving the result of the long-short strategy backtesting.The items are:
 #'  \itemize{
 #'    \item summary: summary of \bold{of long,short and hedge}.
@@ -1637,10 +1583,7 @@ plot.reg <- function(TSFR){
 #' rebFreq <- "month"
 #' rtn.LSH <- addrtn.hedge(rtn.long,rtn.short,rebFreq)
 #' re <- tables.longshort(rtn.LSH)
-tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
-  if(!missing(backtestPar)){
-    hitFreq <- getbacktestPar.longshort(backtestPar,"hitFreq")
-  }
+tables.longshort <- function(rtn.LSH,hitFreq="month"){
   rtn <- rtn.LSH
   # ---- rtn.aggr: aggreated return series(of long,short and hedge) by different freq, each being an item of a list.(note that 'rtn.aggr$day' is equal to 'rtn') 
   freq <- c("day","week","month","quarter","year")  
@@ -1697,7 +1640,7 @@ tables.longshort <- function(rtn.LSH,hitFreq="month",backtestPar){
 #' tables.PB
 #' 
 #' @param PB a PB object or a one colume rtn series.
-#' @param hitFreq
+#' @param hitFreq An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s"
 #' @return a list containing some tables which giving the summary result of the PB.
 #' @seealso \code{\link{tables.longshort}}
 #' @export
@@ -1746,15 +1689,11 @@ tables.PB <- function(PB, hitFreq="month"){
 
 #' @rdname backtest.longshort
 #' @param bar.freq the freq of the per-period performance bar chart
-#' @param plotPar Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar
 #' @return chart.longshort.summary  return and print a recordedplot object, which demonstrate the performance of the return series,including wealth index chart(\bold{of long,short and hedging}),underwater chart for drawdown(\bold{of hedging}),and bars for per-period performance(\bold{of hedging})..
 #' @export
 #' @examples
 #' chart.longshort.summary(rtn.LSH)
-chart.longshort.summary <- function(rtn.LSH,bar.freq="month",plotPar){  
-  if(!missing(plotPar)){
-    bar.freq <- getplotPar.longshort(plotPar,"bar.freq")
-  }
+chart.longshort.summary <- function(rtn.LSH,bar.freq="month"){  
   re <- ggplots.PerformanceSummary(rtn.LSH,var.cum=list(c(1,2),3),var.dd=list(3),var.bar=list(3),bar.freq=bar.freq)
 }
 #' @rdname backtest.longshort
@@ -1764,11 +1703,7 @@ chart.longshort.summary <- function(rtn.LSH,bar.freq="month",plotPar){
 #' @export
 #' @examples
 #' chart.longshort.rolling(rtn.LSH)
-chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
-  if(!missing(plotPar)){
-    roll.width <- getplotPar.longshort(plotPar,"roll.width")
-    roll.by <- getplotPar.longshort(plotPar,"roll.by")
-  }
+chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30){
   re <- ggplots.RollingPerformance(rtn.LSH[,"hedge"],width=roll.width,by=roll.by)
 }
 
@@ -1796,7 +1731,6 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' compute the wgt vector of multi-factors by CAPM model. 
 #' @param TSFRs a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.
 #' @param stat a character string,indicating the methods to compute IC,could be "pearson" or "spearman".
-#' @param backtestPar Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.
 #' @param wgtmin set minimal factor weight.
 #' @param wgtmax set maximal factor weight.
 #' @param targetType optimization's target type, could be "return" or "risk" or "sharpe" or 'balance',default value is "sharpe".
@@ -1804,7 +1738,6 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' @param reg_results See \code{\link{reg.TSFR}}.
 #' @return a factor weight vector
 #' @export
-#' @importFrom PortfolioAnalytics set.portfolio.moments
 #' @examples
 #' mp <- modelPar.default()
 #' factorIDs <- c("F000001","F000004","F000005","F000008")
@@ -1818,7 +1751,7 @@ chart.longshort.rolling <- function(rtn.LSH,roll.width=250,roll.by=30,plotPar){
 #' -----------------------------------------------------------------------------
 #' MC.wgt.CAPM(reg_results=reg_results) 
 #' MC.wgt.CAPM(wgtmin=0.05,wgtmax=0.4,targetType='balance',reg_results=reg_results) 
-MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
+MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),
                          wgtmin=0, wgtmax=0.5,
                          targetType=c('sharpe','return','risk','balance'),
                          riskaversion=1,
@@ -1828,9 +1761,6 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     check.name_exist(TSFRs)
     stat <- match.arg(stat)
     targetType <- match.arg(targetType)
-    if(!missing(backtestPar)){
-      stat <- getbacktestPar.IC(backtestPar,"stat")
-    } 
     IC.seris <- plyr::laply(TSFRs, seri.IC, stat=stat)
     rownames(IC.seris) <- names(TSFRs)
     IC.seris <- t(IC.seris)
@@ -1840,7 +1770,7 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     rtn.seris <- reshape2::dcast(rtn.seris,date~fname,value.var = 'frtn')
     seris <- xts::xts(rtn.seris[,-1],order.by = rtn.seris[,1])
   }
-  
+
   require(ROI)
   factor.names <- colnames(seris)
   pspec <- PortfolioAnalytics::portfolio.spec(assets=factor.names)
@@ -1861,49 +1791,8 @@ MC.wgt.CAPM <- function (TSFRs,stat=c("pearson","spearman"),backtestPar,
     pspec <- PortfolioAnalytics::add.objective(portfolio=pspec, type="risk", name="StdDev")
     opt_ps <- PortfolioAnalytics::optimize.portfolio(R=seris, portfolio=pspec,optimize_method="ROI",maxSR=TRUE,trace=TRUE)
   }
-  
+
   return(opt_ps$weights)
 }
 
 
-
-#' summary of factor-refine-methods comparing
-#' 
-#' @param rawTSF The TSF which contains the raw factorscore.
-#' @param refinePar_lists A list of (refinePar)s, each refinePar is a list built by refinePar_default.
-#' @param refinePar_names The character vector of names, could be missing.
-#' @param result_type Currently supports 3 possible results : chart, table, data
-#' @param group_N The argument passed into Ngroup.overall, etc.
-#' @author Han.Qian
-#' @export summary.factor_refine
-#' @examples 
-#' RebDates <- getRebDates(as.Date('2011-03-17'),as.Date('2012-04-17'),'month')
-#' TS <- getTS(RebDates,'EI000300')
-#' refinePar_lists <- list(refinePar_default(type = "none"),
-#'                         refinePar_default(type = "reg"),
-#'                         refinePar_default(type = "scale"))
-#' rawTSF <- gf.NP_YOY(TS, src = "fin")
-#' summary.factor_refine(rawTSF, refinePar_lists)
-summary.factor_refine <- function(rawTSF, refinePar_lists, refinePar_names, result_type = c("chart","table","data"), group_N = 5){
-  
-  # ARGUMENTS CHECKING
-  result_type <- match.arg(result_type)
-  # ORGANIZE TSFs
-  core_mTSF <- factor_refine_MF(TSF = rawTSF,refinePar_lists = refinePar_lists,refinePar_names = refinePar_names)
-  # GET RETURN
-  core_mTSFR <- getTSR(core_mTSF)
-  
-  ### OUTPUT
-  # CHART/TABLE
-  if(result_type == "chart"){
-    return(MF.chart.Ngroup.spread(mTSFR = core_mTSFR, N = group_N))
-    # MF.chart.IC(core_mTSFR)
-    # MC.chart.Ngroup.overall(mTSF2TSFs(core_mTSFR), N = group_N)
-    # MC.chart.IC(mTSF2TSFs(core_mTSFR))
-  }else if(result_type == "table"){
-    return(MC.table.ICandNgroup(mTSF2TSFs(core_mTSFR), N = group_N))
-  }else if(result_type == "data"){
-    return(core_mTSFR)
-  }
-  # END
-}

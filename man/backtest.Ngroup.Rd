@@ -21,77 +21,79 @@
 \alias{MF.chart.Ngroup.size_spread}
 \alias{MC.table.Ngroup.overall}
 \alias{MC.chart.Ngroup.overall}
+\alias{MC.chart.Ngroup.spread}
 \alias{MC.chart.Ngroup.size_spread}
 \title{backtest.Ngroup}
 \usage{
 seri.Ngroup.rtn(TSFR, N = 5, relative = FALSE, include_univ = FALSE,
-  sectorNe = NULL, bysector = NULL, backtestPar)
+  sectorNe = NULL, bysector = NULL)
 
 seri.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
   rtn_type = c("long-short", "long-univ"))
 
-seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL, backtestPar)
+seri.Ngroup.turnover(TSFR, N = 5, sectorNe = NULL)
 
-seri.Ngroup.size(TSFR, N = 5, log = TRUE, include_univ = FALSE,
-  sectorNe = NULL, backtestPar)
+seri.Ngroup.size(TSFR, N = 5, include_univ = FALSE, sectorNe = NULL,
+  fl = fl_cap(log = TRUE, var = "float_cap"))
 
 table.Ngroup.overall(TSFR, N = 5, relative = FALSE, sectorNe = NULL,
-  bysector = NULL, fee = 0, rtn_type = c("long-short", "long-univ"),
-  backtestPar)
+  bysector = NULL, fee = 0, rtn_type = c("long-short", "long-univ"))
 
 table.Ngroup.spread(TSFR, N = 5, sectorNe = NULL, fee = 0,
-  rtn_type = c("long-short", "long-univ"), backtestPar)
+  rtn_type = c("long-short", "long-univ"))
 
 chart.Ngroup.overall(TSFR, N = 5, relative = TRUE, sectorNe = NULL,
-  bysector = NULL, plotPar)
+  bysector = NULL)
 
 chart.Ngroup.seri_point(TSFR, N = 5, relative = TRUE, Nbin = "day",
-  sectorNe = NULL, plotPar)
+  sectorNe = NULL)
 
 chart.Ngroup.violin(TSFR, N = 5, sectorNe = NULL, jitter = TRUE)
 
 chart.Ngroup.box(TSFR, N = 5, sectorNe = NULL)
 
 chart.Ngroup.seri_bar(TSFR, N = 5, relative = TRUE, Nbin = "day",
-  sectorNe = NULL, bysector = NULL, plotPar)
+  sectorNe = NULL, bysector = NULL)
 
 chart.Ngroup.seri_line(TSFR, N = 5, relative = TRUE, include_univ = TRUE,
-  sectorNe = NULL, plotPar)
+  sectorNe = NULL)
 
 chart.Ngroup.spread(TSFR, N = 5, sectorNe = NULL,
-  rtn_type = c("long-short", "long-univ"), plotPar)
+  rtn_type = c("long-short", "long-univ"))
 
-chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL, plotPar)
+chart.Ngroup.turnover(TSFR, N = 5, group = 1, sectorNe = NULL)
 
-chart.Ngroup.size(TSFR, N = 5, log = TRUE, include_univ = TRUE,
-  sectorNe = NULL, plotPar)
+chart.Ngroup.size(TSFR, N = 5, include_univ = TRUE, sectorNe = NULL,
+  fl = fl_cap(log = TRUE, var = "float_cap"))
 
 MF.chart.Ngroup.spread(mTSFR, N = 5, sectorNe = NULL,
   rtn_type = c("long-short", "long-univ"), relative = FALSE,
   facet_by = c("none", "date", "fname"), Nbin = "year")
 
 MF.chart.Ngroup.size_spread(mTSFR, N = 5, type = c("long-short",
-  "long-univ"))
+  "long-univ"), fl = fl_cap(log = TRUE, var = "float_cap"))
 
 MC.table.Ngroup.overall(TSFRs, N = 5, sectorNe = NULL, fee = 0,
-  rtn_type = c("long-short", "long-univ"), backtestPar)
+  rtn_type = c("long-short", "long-univ"))
 
 MC.chart.Ngroup.overall(TSFRs, N = 5, relative = TRUE, sectorNe = NULL,
-  bysector = NULL, ncol = NULL, plotPar)
+  bysector = NULL, ncol = NULL)
 
-MC.chart.Ngroup.size_spread(TSFRs, N = 5, type = c("long-univ",
-  "long-short"))
+MC.chart.Ngroup.spread(TSFRs, N = 5, sectorNe = NULL,
+  rtn_type = c("long-short", "long-univ"), relative = FALSE,
+  fillNA = TRUE, facet = FALSE)
+
+MC.chart.Ngroup.size_spread(TSFRs, N = 5, type = c("long-short",
+  "long-univ"), fl = fl_cap(log = TRUE, var = "float_cap"))
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object}
 
 \item{N}{the number of the groups the universe is cut to}
 
-\item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
+\item{sectorNe}{NULL, "existing", or a sectorAttr}
 
 \item{fee}{a numeric, giving the (one side) fee}
-
-\item{plotPar}{Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar}
 
 \item{Nbin}{the number of the groups the timespan is cut to, when plotting the "date.grp".It could also be character of interval specification,See \code{\link{cut.Date}} for detail. the default value is "day",which means no cutting, The value of every date are ploted.}
 
@@ -102,6 +104,8 @@ MC.chart.Ngroup.size_spread(TSFRs, N = 5, type = c("long-univ",
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{ncol}{a integer, specificate the number of cols of the multi-charts.}
+
+\item{sectorAttr}{NULL, "existing", or a sectorAttr}
 }
 \value{
 seri.Ngroup.rtn return a xts object, which giving the rtn seri of each group
@@ -133,9 +137,7 @@ chart.Ngroup.turnover return a line chart of "Mean mkt-cap of each group at each
 MC.table.Ngroup.overall return a matrix, which giving the statistics of the top-bottom spread of each \code{TSFR}.
 }
 \description{
-backtesting the factor with some tables and charts using the 'Ngroup' method. 
-  
-If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
+backtesting the factor with some tables and charts using the 'Ngroup' method.
 }
 \examples{
 modelPar <- modelPar.default()
@@ -144,6 +146,8 @@ re <- seri.Ngroup.rtn(TSFR,5)
 re2 <- seri.Ngroup.rtn(TSFR,5,include_univ=TRUE)
 re <- seri.Ngroup.spread(TSFR,5)
 re <- seri.Ngroup.turnover(TSFR,5)
+re <- seri.Ngroup.size(tsf,fl=buildFactorList("gf.amt"))
+chart.Ngroup.size(tsf,fl = buildFactorList("gf.amt",factorPar = list(log=TRUE)))
 re <- table.Ngroup.overall(TSFR,5,fee=0.002)
 re2 <- table.Ngroup.overall(TSFR, rtn_type = "long-univ")
 re <- table.Ngroup.spread(TSFR,5,fee=0.002)
@@ -154,7 +158,6 @@ chart.Ngroup.seri_bar(TSFR,5,"3 month")
 chart.Ngroup.seri_line(TSFR,5)
 chart.Ngroup.spread(TSFR,5)
 chart.Ngroup.spread(TSFR, rtn_type = "long-univ")
-chart.Ngroup.turnover(TSFR,5)
 chart.Ngroup.turnover(TSFR,5)
 mTSFR <- getMultiFactor(TSR)
 MF.chart.Ngroup.spread(mTSFR)

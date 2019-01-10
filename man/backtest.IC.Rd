@@ -15,15 +15,15 @@
 \alias{MC.chart.IC.decay}
 \title{backtest.IC}
 \usage{
-seri.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
+seri.IC(TSFR, stat = c("pearson", "spearman"))
 
 seri.IC.decay(TSF, stat = c("pearson", "spearman"), prd_lists = list(w1 =
   lubridate::weeks(1), w2 = lubridate::weeks(2), m1 = months(1), m2 = months(2),
   m3 = months(3), m6 = months(6)))
 
-table.IC(TSFR, stat = c("pearson", "spearman"), backtestPar)
+table.IC(TSFR, stat = c("pearson", "spearman"))
 
-chart.IC(TSFR, Nbin = "day", stat = c("pearson", "spearman"), plotPar)
+chart.IC(TSFR, Nbin = "day", stat = c("pearson", "spearman"))
 
 chart.IC.decay(TSF, stat = c("pearson", "spearman"), prd_lists = list(w1 =
   lubridate::weeks(1), w2 = lubridate::weeks(2), m1 = months(1), m2 = months(2),
@@ -36,12 +36,12 @@ MF.chart.IC.decay(mTSF, stat = c("pearson", "spearman"), ncol = NULL,
   prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
   months(1), m2 = months(2), m3 = months(3), m6 = months(6)))
 
-MC.chart.IC.corr(TSFRs, stat = c("pearson", "spearman"), plotPar)
+MC.chart.IC.corr(TSFRs, stat = c("pearson", "spearman"))
 
-MC.table.IC(TSFRs, stat = c("pearson", "spearman"), backtestPar)
+MC.table.IC(TSFRs, stat = c("pearson", "spearman"))
 
 MC.chart.IC(TSFRs, Nbin = "day", stat = c("pearson", "spearman"),
-  ncol = NULL, plotPar)
+  ncol = NULL)
 
 MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"),
   prd_lists = list(w1 = lubridate::weeks(1), w2 = lubridate::weeks(2), m1 =
@@ -52,13 +52,11 @@ MC.chart.IC.decay(TSFRs, stat = c("pearson", "spearman"),
 
 \item{stat}{a character string,indicating the methods to compute IC,could be "pearson" or "spearman".}
 
-\item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
-
 \item{TSF}{a \bold{TSF} object}
 
-\item{Nbin}{the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.}
+\item{prd_lists}{a list}
 
-\item{plotPar}{Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar}
+\item{Nbin}{the number of the groups the timespan is cut to, when plotting the IC series.It could also be character of interval specification,See \code{\link{cut.Date}} for detail. The default value is "day",which means no cutting, the value of every date are ploted.}
 
 \item{mTSFR}{a \bold{mTSFR} object. See \code{\link{getMultiFactor}}.}
 
@@ -84,8 +82,6 @@ backtesting the factor with some tables and charts using the 'IC' method.
 }
 \details{
 When caculating the correlation,two methods "pearson" and "spearman" is used.
-
-If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 }
 \examples{
 modelPar <- modelPar.default()

@@ -9,15 +9,21 @@
 \alias{addConstr_group}
 \alias{addConstr_box}
 \alias{addConstr_position}
+\alias{addConstr_leverage}
 \alias{addConstr_turnover}
 \alias{addConstr_trackingerror}
+\alias{addConstr_sus_lim}
+\alias{addConstr_FFV}
 \alias{setConstr_group}
 \alias{setConstr_box}
 \alias{setConstr_fctExp_sector}
 \alias{setConstr_position}
+\alias{setConstr_leverage}
 \alias{setConstr_fctExp_style}
 \alias{setConstr_turnover}
 \alias{setConstr_trackingerror}
+\alias{setConstr_sus_lim}
+\alias{setConstr_FFV}
 \title{opt_constrain}
 \usage{
 constr_default(position = c(1, 1), box_each = c(0, 0.1))
@@ -31,33 +37,44 @@ addConstr_fctExp_style(constr, FactorLists, min, max, relative = 1)
 
 addConstr_group(constr, ..., relative = 0)
 
-addConstr_box(constr, each, ..., relative = 0)
+addConstr_box(constr, each, ..., relative = 0, priority = 0)
 
 addConstr_position(constr, position, relative = 0)
 
-addConstr_turnover(constr, turnover_target = 0.25, method = c("rmosek",
-  "matlab"))
+addConstr_leverage(constr, leverage)
 
-addConstr_trackingerror(constr, trackingerror_ann = 0.05,
-  method = c("rmosek", "matlab"))
+addConstr_turnover(constr, turnover_target = 0.25)
+
+addConstr_trackingerror(constr, trackingerror_ann = 0.05)
+
+addConstr_sus_lim(constr, ID = c("sus", "lim_up", "lim_low"))
+
+addConstr_FFV(constr, TW_ratio = 3)
 
 setConstr_group(constr, ..., relative)
 
-setConstr_box(constr, each, ..., relative)
+setConstr_box(constr, each, ..., relative, priority)
 
 setConstr_fctExp_sector(constr, each, ..., relative,
   sectorAttr = defaultSectorAttr())
 
-setConstr_position(constr, position, relative,
-  sectorAttr = defaultSectorAttr())
+setConstr_position(constr, position, relative)
+
+setConstr_leverage(constr, leverage)
 
 setConstr_fctExp_style(constr, FactorLists, min, max, relative)
 
 setConstr_turnover(constr, turnover_target, ...)
 
 setConstr_trackingerror(constr, trackingerror_ann, ...)
+
+setConstr_sus_lim(constr, ID)
+
+setConstr_FFV(constr, TW_ratio)
 }
 \arguments{
+\item{constr}{a list contained the constraining setting.}
+
 \item{relative}{integer of 0,1,2}
 
 \item{FactorLists}{a factorlists}
@@ -65,6 +82,8 @@ setConstr_trackingerror(constr, trackingerror_ann, ...)
 \item{min}{a vector with the same length of FactorLists, or a scalar}
 
 \item{max}{a vector with the same length of FactorLists, or a scalar}
+
+\item{priority}{NA, 0, 1, 2, ...}
 }
 \value{
 a list contain the constrains
@@ -84,6 +103,9 @@ addConstr_group(constr,ES33220000=c(-0.1, 0.1),relative = 1)
 addConstr_box(constr,each=c(0,0.02),EQ601318=c(0.05,0.15))
 addConstr_box(constr,EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
 addConstr_position(constr,position=c(0.8,1))
+addConstr_leverage(constr,leverage=1.6) #for 130/30
 addConstr_turnover(constr,turnover_target=0.5)
 addConstr_trackingerror(constr,trackingerror_ann=0.08)
+addConstr_sus_lim(constr,ID=c("sus","lim_up"))
+addConstr_FFV(constr,TW_ratio = 3)
 }

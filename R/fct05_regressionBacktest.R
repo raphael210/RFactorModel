@@ -82,7 +82,7 @@ lcdb.build.RegTables <- function(begT,endT,FactorLists){
 #inner function
 lcdb.subfun.regtables <- function(dates,FactorLists){
   
-  cat(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...\n')
+  message(paste(min(rdate2int(dates)),' to ',max(rdate2int(dates))),'...')
   TS <- getTS(dates,indexID = 'EI000985')
   TSF <- getMultiFactor(TS,FactorLists)
   
@@ -203,7 +203,7 @@ reg.TSFR <- function(TSFR,regType=c('glm','lm'),glm_wgt=c("sqrtFV","res"),
   if(regType=='glm'){ #get glm_wgt data
     if(!('glm_wgt' %in% colnames(TSFR))){
       if(glm_wgt=="sqrtFV"){
-        TSw <- gf_cap(TSFR[,c('date','stockID')],log = TRUE,var="float_cap",na_fill=TRUE)
+        TSw <- gf_cap(TSFR[,c('date','stockID')],log = FALSE,var="float_cap",na_fill=TRUE)
         TSw <- transform(TSw,factorscore=sqrt(factorscore))
         TSw <- dplyr::rename(TSw,glm_wgt=factorscore)
         TSFR <- merge.x(TSFR,TSw,by =c("date","stockID"))
@@ -452,7 +452,7 @@ factor_VIF <- function(TSF,sectorAttr=defaultSectorAttr()){
 #' @rdname factor_select
 #' 
 #' @export
-factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regType=c('lm','glm')){
+factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regType=c('lm','glm'),res_adjust=FALSE){
   regType <- match.arg(regType)
   cols <- colnames(TSF)
   fname <- guess_factorNames(TSF,no_factorname="glm_wgt",is_factorname = "factorscore",silence=TRUE)
@@ -471,9 +471,9 @@ factor_orthogon_single <- function(TSF,y,x,sectorAttr=defaultSectorAttr(),regTyp
   }
   
   if(is.null(sectorAttr)){
-    resd <- lm_NPeriod(TSF,y,x,lmtype=regType)
+    resd <- lm_NPeriod(TSF,y,x,lmtype=regType,res_adjust = res_adjust)
   }else{
-    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE,lmtype=regType)
+    resd <- lm_NPeriod(TSF,y,x,secIN = TRUE,lmtype=regType,res_adjust = res_adjust)
   }
   
   resd <- resd$resd
@@ -595,8 +595,8 @@ factor_orthogon_transMat <- function(TSF){
 
 
 # inner function
-# if lmtpye=='glm', data must include 'gml_wgt' column.
-lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=TRUE){
+# if lmtpye=='glm', data must include 'glm_wgt' column.
+lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,res_adjust=FALSE,silence=TRUE){
   check.colnames(data,c('date','stockID'))
   lmtype <- match.arg(lmtype)
   
@@ -616,14 +616,14 @@ lm_NPeriod <- function(data,y,x,lmtype=c('lm','glm'),secIN=FALSE,silence=TRUE){
   if(lmtype=='lm'){
     models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = . ,na.action = "na.exclude"))
   }else{
-    check.colnames(data,"gml_wgt")
+    check.colnames(data,"glm_wgt")
     models <- data %>% dplyr::group_by(date) %>% dplyr::do(mod = lm(fml, data = .,weights=glm_wgt ,na.action = "na.exclude"))
   }
   
   rsq <- dplyr::summarise(models,date=date,rsq = summary(mod)$r.squared)
   coef <- models %>% broom::tidy(mod)
   resd <- models %>% broom::augment(mod)
-  if(lmtype == "glm"){
+  if(lmtype == "glm" & res_adjust){
     resd$.resid <- sqrt(resd$X.weights.) * resd$.resid
   }
   resd <- cbind(data[,c('date','stockID')],resd[,c('.fitted','.resid')])
@@ -686,7 +686,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
   tstat$fname <- as.character(tstat$fname)
   
   fRtn <- reshape2::dcast(fRtn,date~fname,value.var = 'frtn')
-  fRtn <- xts::xts(fRtn[,-1],fRtn[,1])
+  fRtn <- xts::xts(fRtn[,-1,drop=FALSE],fRtn[,1])
   rtnsum <- t(rtn.summary(fRtn))
   rtnsum <- data.frame(fname=rownames(rtnsum),rtnsum,stringsAsFactors = FALSE)
   rownames(rtnsum) <- NULL
@@ -699,7 +699,7 @@ table.reg.fRtn <- function(reg_results,includeVIF=FALSE){
     VIF <- VIF %>% dplyr::group_by(fname) %>% dplyr::summarise(vif=mean(vif)) %>% dplyr::ungroup()
     re <- dplyr::left_join(re,VIF,by='fname')
   }
-  re <- dplyr::arrange(re,dplyr::desc(ann_Sharpe))
+  # re <- dplyr::arrange(re,dplyr::desc(ann_Sharpe))
   return(re)
 }
 
@@ -1341,32 +1341,6 @@ chart.RA.attr <- function(PA_tables){
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 }
 
-
-
-
-
-# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-# ---------------------  utility functions ------------------------
-# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-
-
-
-#' get active wgt
-#' 
-#' @export
-getActivewgt <- function(port,bmk,res=c("all","active")) {
-  res <- match.arg(res)
-  benchdata <- getIndexCompWgt(indexID = bmk,endT = unique(port$date))
-  benchdata <- dplyr::rename(benchdata,benchwgt=wgt)
-  port <- dplyr::rename(port,portwgt=wgt)
-  port <- port %>% dplyr::full_join(benchdata,by=c('date','stockID')) %>% 
-    dplyr::mutate(portwgt=ifelse(is.na(portwgt),0,portwgt),benchwgt=ifelse(is.na(benchwgt),0,benchwgt)) %>% 
-    dplyr::mutate(actwgt=portwgt-benchwgt) %>% dplyr::arrange(date,stockID)
-  if(res=="active"){
-    port <-  port[,c("date","stockID","actwgt")]
-  }
-  return(port)
-}
 
 
 

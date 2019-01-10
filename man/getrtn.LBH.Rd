@@ -5,8 +5,7 @@
 \title{getrtn.LBH}
 \usage{
 getrtn.LBH(PB.L, bmk = "EI000300", hedge.rebFreq = "month",
-  hedge.posi = 1, fee.long = 0, fee.short = 0, backtestPar,
-  date_start_pad)
+  hedge.posi = 1, fee.long = 0, fee.short = 0, date_start_pad)
 }
 \arguments{
 \item{PB.L}{a \bold{PB} object of the long portfolio}
@@ -20,17 +19,12 @@ getrtn.LBH(PB.L, bmk = "EI000300", hedge.rebFreq = "month",
 \item{fee.long}{a numeric, giving the fee of long asset}
 
 \item{fee.short}{a numeric, giving the fee of short asset}
-
-\item{backtestPar}{a \bold{backtestPar} object}
 }
 \value{
 a \bold{rtn.LBH} object of class xts,giving the return series of long,bmk and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 }
 \description{
 get the \bold{rtn.LBH} object from the \bold{TSF} object.
-}
-\details{
-If param backtestPar is not missing,then the related params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.
 }
 \examples{
 re <- getrtn.LBH(PB.L,"EI000300")

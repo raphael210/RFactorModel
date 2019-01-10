@@ -8,6 +8,8 @@ tables.PB(PB, hitFreq = "month")
 }
 \arguments{
 \item{PB}{a PB object or a one colume rtn series.}
+
+\item{hitFreq}{An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s"}
 }
 \value{
 a list containing some tables which giving the summary result of the PB.

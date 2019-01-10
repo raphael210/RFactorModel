@@ -7,33 +7,26 @@
 \alias{port_limitwgt}
 \alias{getPort_throughout}
 \alias{port.backtest}
-\alias{getPB}
 \title{portfolio building and backtesting}
 \usage{
 getPort(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
-  buffer_keep = 0, buffer_rate = 0, init_port = NULL, backtestPar,
-  dir = c("long", "short"))
+  buffer_keep = 0, buffer_rate = 0, init_port = NULL, dir = c("long",
+  "short"))
 
 addwgt2port(port, wgtType = c("eq", "fv", "fvsqrt", "custom", "ffv",
   "ffvsqrt"), sectorNe_wgt = NULL, wgtbmk = "EI000300", max_wgt = NULL,
-  backtestPar, tolerance = 0.2)
+  tolerance = 0.2)
 
 port_limitwgt(port, max_wgt = NULL)
 
 getPort_throughout(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL,
   force_in = 0, buffer_keep = 0, buffer_rate = 0, init_port = NULL,
   wgtType = "eq", sectorNe_wgt = NULL, wgtbmk = "EI000300",
-  max_wgt = NULL, backtestPar, dir = c("long", "short"))
+  max_wgt = NULL, dir = c("long", "short"))
 
 port.backtest(port, holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = 0,
-  backtestPar, dir = c("long", "short"), rtn_get = c("loop", "whole",
-  "simple"))
-
-getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
-  buffer_keep = 0, buffer_rate = 0, init_port = NULL, wgtType = "eq",
-  sectorNe_wgt = NULL, wgtbmk = "EI000300", max_wgt = NULL,
-  holdingEndT = Sys.Date(), fee.buy = 0, fee.sell = fee.buy, backtestPar,
-  dir = c("long", "short"))
+  dir = c("long", "short"), rtn_get = c("loop", "whole", "simple"),
+  silence = FALSE)
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object or a \bold{TSFR} object}
@@ -42,17 +35,23 @@ getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
 
 \item{topQ}{a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.}
 
+\item{sectorNe_pick}{NULL, "existing", or a sectorAttr.}
+
 \item{force_in}{a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.}
 
 \item{buffer_keep}{a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer_keep)}) or pct less than topQ*110\% will be kept coercively.}
 
-\item{init_port}{a charactor vector of stockIDs.}
+\item{buffer_rate}{a numeric between 0 and 1}
 
-\item{backtestPar}{a \bold{backtestPar} object. If param backtestPar is not missing,then the other params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.}
+\item{init_port}{a charactor vector of stockIDs.}
 
 \item{dir}{a character string "long" or "short". In \code{getPort}, if "short",select from top to bottom, and vice versa.}
 
 \item{wgtType}{a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".}
+
+\item{sectorNe_wgt}{NULL, "existing", or sectorAttr.}
+
+\item{wgtbmk}{a index ID.}
 
 \item{max_wgt}{a numeric or NA, giving the maximum of weight which could be set on a single stock. If NA(the default value), with no limit, return \code{port} itself without doing anything.}
 
@@ -76,8 +75,6 @@ getPB(TSF, topN = NA, topQ = NA, sectorNe_pick = NULL, force_in = 0,
 \code{getPort_throughout} return a \bold{Port} object, which contain the col of 'wgt'.
 
 \code{port.backtest} return a \bold{PB}("PortfolioBacktest") object, a xts series of portfolio return, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
-
-\code{getPB} return a \bold{PB}("PortfolioBacktest") object.
 }
 \description{
 portfolio building and backtesting
@@ -90,8 +87,6 @@ portfolio building and backtesting
 \code{getPort_throughout}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, get \bold{Port} object from \bold{TSF}, with further treatment.
 
 \code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
-
-\code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
 }
 \note{
 Note that \code{topN} and \code{topQ} should at least have one and only have one.
@@ -138,8 +133,6 @@ Port_throut <- getPort_throughout(TSF, topN=20, max_wgt=0.8, dir="long")
 PB <- port.backtest(port)
 turnover <- attr(PB,"turnover")
 fee <- attr(PB,"fee")
-# -- get PB object from TSF directly
-PB <- getPB(TSF, topN=20, dir="long")
 }
 \seealso{
 \code{\link[QUtility]{Return.backtesting}}

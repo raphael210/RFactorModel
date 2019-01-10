@@ -4,9 +4,6 @@
 \alias{modelPar.factor}
 \alias{setmodelPar.factor}
 \alias{setmodelPar.factor_combi}
-\alias{buildFactorList}
-\alias{buildFactorList_lcfs}
-\alias{buildFactorList_combi}
 \title{modelPar.factor}
 \usage{
 modelPar.factor(modelPar = modelPar.default(), factorFun = "gf_demo",
@@ -20,17 +17,6 @@ setmodelPar.factor(modelPar, factorFun, factorPar, factorDir, factorRefine,
 
 setmodelPar.factor_combi(modelPar, factorLists, wgts, factorDir, factorRefine,
   factorName = "combi_factor", factorID, factorType, factorDesc)
-
-buildFactorList(factorFun = "gf_demo", factorPar = list(), factorDir = 1,
-  factorRefine = refinePar_default("none"),
-  factorName = default.factorName(factorFun, factorPar, factorDir),
-  factorID = "", factorType = "", factorDesc = "")
-
-buildFactorList_lcfs(factorID, factorRefine = refinePar_default("none"))
-
-buildFactorList_combi(factorLists, wgts, factorDir = 1,
-  factorRefine = refinePar_default("none"), factorName = "combi_factor",
-  factorID = "", factorType = "", factorDesc = "")
 }
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
@@ -45,18 +31,12 @@ buildFactorList_combi(factorLists, wgts, factorDir = 1,
 
 \item{factorName}{a character string. IF missing, then take a default name by function \code{default.factorName}.}
 
-\item{factorID}{a character string of factorID, available in table \code{CT_FactorLists()} .}
-
 \item{FactorList}{a list containing all the factor related parametres in it. See more detail in \code{\link{buildFactorList}}.}
 
 \item{factorLists}{See \code{\link{buildFactorLists}}.}
 }
 \value{
 a \bold{modelPar} object.
-
-buildFactorList return a object of \bold{FactorList}, a list of parametres of factor setting
-
-buildFactorList_lcfs get a object of \bold{FactorList} through "lcfs". See more detail in \code{\link{buildFactorLists_lcfs}}.
 }
 \description{
 set the factor related parametres of the model
@@ -87,11 +67,6 @@ mp_m <- setmodelPar.factor_combi(mp, factorLists, wgts)
 # -- setmodelPar.factor_combi by \\code{buildFactorlist_combi}
 factorlist_combi <- buildFactorList_combi(factorLists,wgts)
 mp_m2 <- setmodelPar.factor(mp,FactorList = factorlist_combi)
-# -- set modelPar.factor by a factorlist
-FactorList <- buildFactorList(factorFun="gf.pct_chg_per",factorPar=list(N=20))
-modelPar <- modelPar.factor(modelPar,FactorList=FactorList)
-# -- build a factorlist through "lcfs"
-FactorList2 <- buildFactorList_lcfs(factorID="F000001")
 }
 \seealso{
 \code{\link{getTSF}}

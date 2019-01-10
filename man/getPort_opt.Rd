@@ -4,26 +4,22 @@
 \alias{getPort_opt}
 \title{getPort_opt}
 \usage{
-getPort_opt(TSF, fRtn, fCov, exp_rtn = "factorscore", bmk = NULL,
-  constr = constr_default(), obj = object_default(), init_port, delta,
-  min_wgt = 0.001, TW_ratio = 3, FFV = TRUE)
+getPort_opt(TSF, bmk = NULL, exp_rtn = "factorscore", risk_list = NULL,
+  lamda = NULL, constr = constr_default(), init_port, min_wgt = 1e-04,
+  optsolver = c("CVXR", "RMOSEK"))
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object,may contains multiple factors.}
 
-\item{fRtn}{a data frame of factor return,see \code{\link{getfRtn}} for detail.}
-
-\item{fCov}{a data frame of factor covariance,see \code{\link{getfCov}} for detail.}
-
 \item{bmk}{benchmark indexID code.}
+
+\item{exp_rtn}{a string, indicating the expected rtn column name. Or a numeric 0, which means return part doesn't involved in the optimization.}
+
+\item{lamda}{numeric scalar, risk_aversion}
 
 \item{constr}{constrain lists,see \code{\link{opt_constrain}}.}
 
-\item{obj}{object lists,see \code{\link{opt_object}}.}
-
-\item{init_port}{if constrain includes turnover,then init_port is required.}
-
-\item{delta}{if constrain includes tracking error,then delta is required.}
+\item{init_port}{if turnover constrain involved ,param \code{init_port} is required.}
 
 \item{min_wgt}{stock's minimum weight in optimized portfolio.}
 }

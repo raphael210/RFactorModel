@@ -4,7 +4,7 @@
 \alias{MC.wgt.CAPM}
 \title{MC.wgt.CAPM}
 \usage{
-MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar, wgtmin = 0,
+MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), wgtmin = 0,
   wgtmax = 0.5, targetType = c("sharpe", "return", "risk", "balance"),
   riskaversion = 1, reg_results)
 }
@@ -12,8 +12,6 @@ MC.wgt.CAPM(TSFRs, stat = c("pearson", "spearman"), backtestPar, wgtmin = 0,
 \item{TSFRs}{a list of object \bold{TSFR}. See \code{\link{Model.TSFR}}.}
 
 \item{stat}{a character string,indicating the methods to compute IC,could be "pearson" or "spearman".}
-
-\item{backtestPar}{Optional.a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
 
 \item{wgtmin}{set minimal factor weight.}
 

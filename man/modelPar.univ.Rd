@@ -14,6 +14,10 @@ setmodelPar.univ(modelPar, indexID, stocks, rm)
 \item{modelPar}{a \bold{modelPar} object}
 
 \item{indexID}{the ID of the index("EIxxxx"), sector("ESxxxx"), or plate("EPxxxx"). The function will recognize the universe type through the first two character of \code{indexID}.}
+
+\item{stocks}{}
+
+\item{rm}{}
 }
 \value{
 a \bold{modelPar} object

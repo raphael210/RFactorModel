@@ -1,7 +1,7 @@
 
 
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
-# --------------------- get portfolio object and rtn object ------------
+# --------------------- get portfolio & portfolio process ------------
 # ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 
@@ -15,12 +15,11 @@
 #' @param TSF a \bold{TSF} object or a \bold{TSFR} object
 #' @param topN an integer vector with 2 or 1 elements, giving the rank range of the assets to be selected into the portfolio. If containing only 1 element, the the top rank of 1 will be added automatically.
 #' @param topQ a numeric vector with 2 or 1 elements, giving the percentage range of the assets to be selected into the portfolio.  If containing only 1 element, the top percentage of 0 will be added automatically.
-#' @param sectorNe_pick
+#' @param sectorNe_pick NULL, "existing", or a sectorAttr.
 #' @param force_in a numeric between 0 and 1. eg. 0.1 means that stock with rank less than topN*10\%  or pct less than topQ*10\% will be incorporated coercively.
 #' @param buffer_keep a numeric greater than 0. eg. 0.1 means that stock with rank less than topN*110\% (\code{topN*(1+buffer_keep)}) or pct less than topQ*110\% will be kept coercively.
-#' @param buffer_rate
+#' @param buffer_rate a numeric between 0 and 1
 #' @param init_port a charactor vector of stockIDs.
-#' @param backtestPar a \bold{backtestPar} object. If param backtestPar is not missing,then the other params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.  
 #' @param dir a character string "long" or "short". In \code{getPort}, if "short",select from top to bottom, and vice versa.
 #' @return \code{getPort} return a \bold{Port}('portfolio') objects,which are of dataframe class containing at least 2 cols("date","stockID")
 #' @note Note that \code{topN} and \code{topQ} should at least have one and only have one.
@@ -58,18 +57,8 @@
 getPort <- function(TSF, topN=NA, topQ=NA, 
                     sectorNe_pick=NULL,
                     force_in=0, buffer_keep=0, buffer_rate=0,init_port=NULL,
-                    backtestPar,
                     dir=c("long","short")){
   dir <- match.arg(dir)
-  if(!missing(backtestPar)){
-    topN <- getbacktestPar.longshort(backtestPar,"topN")
-    topQ <- getbacktestPar.longshort(backtestPar,"topQ")
-    sectorNe_pick <- getbacktestPar.longshort(backtestPar,"sectorNe_pick")
-    force_in <- getbacktestPar.longshort(backtestPar,"force_in")
-    buffer_keep <- getbacktestPar.longshort(backtestPar,"buffer_keep")
-    buffer_rate <- getbacktestPar.longshort(backtestPar,"buffer_rate")
-    init_port <- getbacktestPar.longshort(backtestPar,"init_port")
-  }
   check.TSF(TSF)
   TSF <- factor_na(TSF,method="median")
   
@@ -212,8 +201,8 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 #' @details \code{addwgt2port} add the weights to the \bold{Port} object.
 #' @rdname PortfolioBacktest
 #' @param wgtType a character string, giving the weighting type of portfolio,which could be "eq"(equal),"fv"(floatValue),"fvsqrt"(sqrt of floatValue) or "custom".
-#' @param sectorNe_wgt
-#' @param wgtbmk
+#' @param sectorNe_wgt NULL, "existing", or sectorAttr.
+#' @param wgtbmk a index ID.
 #' @param tolerance a numeric, only used when \code{sectorNe_wgt} is not null, Giving the tolerance of absent sectors weights in the portfolio.
 #' @return \code{addwgt2port} return a \bold{Port} object which are of dataframe class containing at least 3 cols("date","stockID","wgt").
 #' @export
@@ -225,16 +214,9 @@ getPort <- function(TSF, topN=NA, topQ=NA,
 addwgt2port <- function (port,
                          wgtType= c("eq","fv","fvsqrt","custom","ffv","ffvsqrt"),
                          sectorNe_wgt=NULL, wgtbmk="EI000300",
-                         max_wgt=NULL,
-                         backtestPar,                       
+                         max_wgt=NULL,                     
                          tolerance=0.2) {  
   wgtType <- match.arg(wgtType)
-  if(!missing(backtestPar)){
-    wgtType <- getbacktestPar.longshort(backtestPar,"wgtType")
-    sectorNe_wgt <- getbacktestPar.longshort(backtestPar,"sectorNe_wgt") 
-    wgtbmk <- getbacktestPar.longshort(backtestPar,"bmk")
-    max_wgt <- getbacktestPar.longshort(backtestPar,"max_wgt")
-  }     
   if (wgtType=="custom") {
     coltest <- c("date","stockID","wgt")    
   } else {
@@ -342,26 +324,79 @@ getPort_throughout <- function (TSF,
                                 sectorNe_wgt=NULL, wgtbmk="EI000300",
                                 max_wgt=NULL, 
                                 
-                                backtestPar,
                                 dir=c("long","short")) {
   dir <- match.arg(dir)
   Port <- getPort(TSF, 
                   topN=topN, topQ=topQ,
                   sectorNe_pick=sectorNe_pick,
                   force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
-                  dir=dir, backtestPar=backtestPar)
+                  dir=dir)
   
   Port <- addwgt2port(Port, 
                       wgtType=wgtType, 
                       sectorNe_wgt=sectorNe_wgt,                       
                       wgtbmk=wgtbmk, 
-                      max_wgt=max_wgt,
-                      backtestPar=backtestPar)
+                      max_wgt=max_wgt)
   
   return(Port)
 }
   
 
+#' get active wgt
+#' 
+#' @export
+getActivewgt <- function(port,bmk,res=c("all","active")) {
+  res <- match.arg(res)
+  benchdata <- getIndexCompWgt(indexID = bmk,endT = unique(port$date))
+  benchdata <- dplyr::rename(benchdata,benchwgt=wgt)
+  port <- dplyr::rename(port,portwgt=wgt)
+  port <- port %>% dplyr::full_join(benchdata,by=c('date','stockID')) %>% 
+    dplyr::mutate(portwgt=ifelse(is.na(portwgt),0,portwgt),benchwgt=ifelse(is.na(benchwgt),0,benchwgt)) %>% 
+    dplyr::mutate(actwgt=portwgt-benchwgt) %>% dplyr::arrange(date,stockID)
+  if(res=="active"){
+    port <-  port[,c("date","stockID","actwgt")]
+  }
+  return(port)
+}
+
+
+
+#' port.wgt_align
+#'
+#' @param target_long long position's target total wgt
+#' @param target_short short position's target total wgt
+#'
+#' @return a port
+#' @export
+#' @examples 
+#' library(data.table)
+#' port <- getIndexCompWgt("EI000300", endT = as.Date(c("2018-01-31", "2018-03-31")))
+#' data.table(port)[,.(sumwgt=sum(wgt)),by=date]
+#' #- wgt aligning
+#' port1 <- port[20:580,]
+#' data.table(port1)[,.(sumwgt=sum(wgt)),by=date]
+#' port1 <- port.wgt_align(port1)
+#' data.table(port1)[,.(sumwgt=sum(wgt)),by=date]
+#' #- deal with the longshort port
+#' port2 <- port
+#' port2[200:400,"wgt"] <- -0.01
+#' port2$tag <- port2$wgt>0
+#' data.table(port2)[,.(sumwgt=sum(wgt)),by=.(date,tag)]
+#' port2 <- port.wgt_align(port2,target_long = 1, target_short = -2)
+#' data.table(port2)[,.(sumwgt=sum(wgt)),by=.(date,tag)]
+port.wgt_align <- function(port, target_long=1, target_short=-1){
+  newport <- port %>% dplyr::mutate(.wgt_tag=ifelse(wgt>=0,'long','short'), .wgt_target=ifelse(wgt>=0,target_long,target_short)) %>% 
+    dplyr::group_by(date, .wgt_tag) %>% 
+    dplyr::mutate(wgt=wgt/sum(wgt, na.rm = TRUE)* .wgt_target) %>% 
+    dplyr::ungroup() %>% 
+    dplyr::select(-.wgt_tag,-.wgt_target) %>%
+    as.data.frame()
+  return(newport)
+}
+
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
+# --------------------- portfolio backtesting and anlalizing ------------
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 
 #' @details \code{port.backtest} backtest the \bold{Port} object. Get a \bold{PB}("PortfolioBacktest") object.
 #' @rdname PortfolioBacktest
@@ -380,16 +415,10 @@ getPort_throughout <- function (TSF,
 #' fee <- attr(PB,"fee")
 port.backtest <- function(port,
                           holdingEndT=Sys.Date(), fee.buy=0, fee.sell=0,
-                          backtestPar,
                           dir=c("long","short"),
-                          rtn_get=c("loop","whole","simple")){  
+                          rtn_get=c("loop","whole","simple"),silence=FALSE){  
   dir <- match.arg(dir)
   rtn_get <- match.arg(rtn_get)
-  if(!missing(backtestPar)){
-    holdingEndT <- getbacktestPar.longshort(backtestPar,"holdingEndT")
-    fee.buy <- getbacktestPar.fee(backtestPar,"secu")
-    fee.sell <- getbacktestPar.fee(backtestPar,"secu")
-  }   
   if(dir == "short"){
     fee.buy <- -fee.buy
     fee.sell <- -fee.sell
@@ -426,7 +455,7 @@ port.backtest <- function(port,
   } else if(rtn_get=="loop"){
     datelist <- unique(port$date)
     R.df <- data.frame()
-    cat("Looping to get the quote data in function 'port.backtest' ....\n")
+    message("Looping to get the quote data in function 'port.backtest' ....")
     pb <- txtProgressBar(style = 3)
     for (ii in 1:length(datelist)){
       stocks <- port[port$date==datelist[ii],"stockID"]
@@ -439,7 +468,9 @@ port.backtest <- function(port,
       } else {
         R.df <- rbind(R.df, qt)
       }
-      setTxtProgressBar(pb, ii/length(datelist))
+      if(!silence){
+        setTxtProgressBar(pb, ii/length(datelist))
+      }
     }
     close(pb)
     R.df <- reshape2::dcast(R.df, date~stockID,value.var="rtn",fill=0)
@@ -456,63 +487,241 @@ port.backtest <- function(port,
 }
 
 
-#' @details \code{getPB}, which is a wrapped function of \code{getPort}, \code{addwgt2Port}, \code{port_limitwgt}, \code{port.backtest}, get \bold{PB} object from \bold{TSF} directly.
-#' @rdname PortfolioBacktest
-#' @export
-#' @return \code{getPB} return a \bold{PB}("PortfolioBacktest") object.
-#' @examples
-#' # -- get PB object from TSF directly
-#' PB <- getPB(TSF, topN=20, dir="long")
-getPB <- function (TSF,
-                   # getPort
-                   topN=NA, topQ=NA, 
-                   sectorNe_pick=NULL, 
-                   force_in=0, buffer_keep=0, buffer_rate=0, init_port=NULL,
-                   # addwgt2port
-                   wgtType= "eq",
-                   sectorNe_wgt=NULL, wgtbmk="EI000300",
-                   max_wgt=NULL, 
-                   # port.backtest
-                   holdingEndT=Sys.Date(), fee.buy=0, fee.sell=fee.buy,
-                   
-                   backtestPar,
-                   dir=c("long","short")) {
-  dir <- match.arg(dir)
-  Port <- getPort(TSF, 
-                  topN=topN, topQ=topQ,
-                  sectorNe_pick=sectorNe_pick,
-                  force_in=force_in, buffer_keep=buffer_keep, buffer_rate=buffer_rate, init_port=init_port,
-                  dir=dir, backtestPar=backtestPar)
-  
-  Port <- addwgt2port(Port, 
-                      wgtType=wgtType, 
-                      sectorNe_wgt=sectorNe_wgt,                       
-                      wgtbmk=wgtbmk,
-                      max_wgt=max_wgt,
-                      backtestPar=backtestPar)
-  
-  PB <- port.backtest(Port, 
-                      holdingEndT= holdingEndT, 
-                      fee.buy=fee.buy, fee.sell=fee.sell,
-                      dir=dir, backtestPar=backtestPar)
-  return(PB)
-}
-
-
 # consider: port.summary(port) vs. PB.summary(PB) ?
 # try to add port to the attr of PB.
-port.summary <- function(port){
-  # sector distribution
-  # number of stocks, maxwgt,minwgt
-  # turnover
-}
+# port.summary <- function(port){
+#   # sector distribution
+#   # number of stocks, maxwgt,minwgt
+#   # turnover
+# }
 # consider: port.risk vs. PB.risk ?
-port.risk <- function(port){
-  # risk annalysis
+# port.risk <- function(port){
+#   # risk annalysis
+# }
+
+#' @export
+port.turnover <- function(port){
+  
+  check.colnames(port, c("date","stockID","wgt"))
+  datelist <- sort(unique(port$date))
+  dateframe <- data.frame(date = datelist, 
+                          adj_date = dplyr::lead(datelist, n = 1L))
+  
+  port_1 <- subset(port, date != datelist[1])
+  
+  port_2 <- merge(port, dateframe, by = "date")
+  port_2$date <- NULL
+  port_2 <- dplyr::rename(port_2, date = adj_date, old_wgt = wgt)
+  port_2 <- na.omit(port_2)
+  
+  port_union <- merge(port_1, port_2, by = c("date","stockID"), all = TRUE)
+  port_union$wgt <- ifelse(is.na(port_union$wgt),0,port_union$wgt)
+  port_union$old_wgt <- ifelse(is.na(port_union$old_wgt),0,port_union$old_wgt)
+  port_union$diff <- abs(port_union$wgt - port_union$old_wgt)
+  
+  port_turnover <- dplyr::group_by(port_union, date)
+  port_turnover <- dplyr::summarise(port_turnover, turnover = sum(diff, na.rm = TRUE)/2)
+  port_turnover <- as.data.frame(port_turnover)
+  
+  return(port_turnover)
+}
+
+#' @export
+port.sector <- function(port,
+                        bmk = NULL, 
+                        sectorAttr = defaultSectorAttr("ind"),
+                        include_rtn = FALSE){
+  
+  # check port 
+  check.colnames(port, c("date","stockID","wgt"))
+  
+  # check R
+  if(include_rtn){
+    port <- getTSR(port)
+  }
+  
+  # sector distribution
+  port_sector <- getSectorID(port, sectorAttr = sectorAttr)
+  port_sector <- dplyr::group_by(port_sector, date, sector)
+  if(include_rtn){
+    port_sector <- dplyr::summarise(port_sector, 
+                                    wgt = sum(wgt, na.rm = TRUE),
+                                    periodrtn = sum(wgt * periodrtn, na.rm = TRUE))
+    port_sector <- as.data.frame(port_sector)
+    
+    port_sector_summary <- dplyr::group_by(port_sector, sector)
+    port_sector_summary <- dplyr::summarise(port_sector_summary, 
+                                            mean_wgt = mean(wgt, na.rm = TRUE),
+                                            mean_rtn = mean(periodrtn, na.rm = TRUE))
+  }else{
+    port_sector <- dplyr::summarise(port_sector, 
+                                    wgt = sum(wgt, na.rm = TRUE))
+    port_sector <- as.data.frame(port_sector)
+    
+    port_sector_summary <- dplyr::group_by(port_sector, sector)
+    port_sector_summary <- dplyr::summarise(port_sector_summary, 
+                                            mean_wgt = mean(wgt, na.rm = TRUE))
+  }
+  
+  # relative
+  if(!is.null(bmk)){
+    datelist <- sort(unique(port$date))
+    bmk_sector <- getIndexCompWgt(indexID = bmk, endT = datelist)
+    bmk_sector <- getSectorID(bmk_sector, sectorAttr = sectorAttr)
+    if(include_rtn){
+      bmk_sector <- getTSR(bmk_sector)
+      bmk_sector <- dplyr::group_by(bmk_sector, date, sector)
+      bmk_sector <- dplyr::summarise(bmk_sector, 
+                                     bmk_wgt = sum(wgt, na.rm = TRUE),
+                                     bmk_periodrtn = sum(wgt*periodrtn, na.rm = TRUE))
+    }else{
+      bmk_sector <- dplyr::group_by(bmk_sector, date, sector)
+      bmk_sector <- dplyr::summarise(bmk_sector, bmk_wgt = sum(wgt, na.rm = TRUE))
+    }
+    bmk_sector <- as.data.frame(bmk_sector)
+    
+    # rela part
+    port_sector <- merge(port_sector, bmk_sector, by = c("date","sector"), all = TRUE)
+    port_sector$wgt <- ifelse(is.na(port_sector$wgt), 0, port_sector$wgt)
+    port_sector$bmk_wgt <- ifelse(is.na(port_sector$bmk_wgt), 0, port_sector$bmk_wgt)
+    port_sector$rela_wgt <- port_sector$wgt - port_sector$bmk_wgt
+    
+    if(include_rtn){
+      port_sector$rela_rtn <- port_sector$periodrtn - port_sector$bmk_periodrtn
+      # overwrite summary table
+      port_sector_summary <- dplyr::group_by(port_sector, sector)
+      port_sector_summary <- dplyr::summarise(port_sector_summary, 
+                                              mean_wgt = mean(wgt, na.rm = TRUE),
+                                              mean_rtn = mean(periodrtn, na.rm = TRUE),
+                                              mean_bmk_wgt = mean(bmk_wgt, na.rm = TRUE),
+                                              mean_bmk_rtn = mean(bmk_periodrtn, na.rm = TRUE),
+                                              mean_rela_wgt = mean(rela_wgt, na.rm = TRUE),
+                                              mean_rela_rtn = mean(rela_rtn, na.rm = TRUE))
+    }else{
+      # overwrite summary table
+      port_sector_summary <- dplyr::group_by(port_sector, sector)
+      port_sector_summary <- dplyr::summarise(port_sector_summary, 
+                                              mean_wgt = mean(wgt, na.rm = TRUE),
+                                              mean_bmk_wgt = mean(bmk_wgt, na.rm = TRUE),
+                                              mean_rela_wgt = mean(rela_wgt, na.rm = TRUE))
+    }
+  }
+  port_sector_summary <- as.data.frame(port_sector_summary)
+  result <- list(port_sector_summary,
+                 port_sector)
+  return(result)
+}
+
+#' @export
+port.summary <- function(port,
+                         sectorAttr = defaultSectorAttr("ind"),
+                         bmk = NULL,
+                         include_rtn = TRUE){
+  # check port 
+  check.colnames(port, c("date","stockID","wgt"))
+  
+  # sector distribution
+  port_sector_result <- port.sector(port, 
+                                    bmk = bmk, 
+                                    sectorAttr = sectorAttr, 
+                                    include_rtn = include_rtn)
+  
+  # number of stocks, maxwgt,minwgt
+  port_stat <- dplyr::group_by(port, date)
+  port_stat <- dplyr::summarise(port_stat, num_stocks = n(), max_wgt = max(wgt, na.rm = TRUE), min_wgt = min(wgt, na.rm = TRUE), total_wgt = sum(wgt, na.rm = TRUE))
+  port_stat <- as.data.frame(port_stat)
+  
+  # turnover
+  port_turnover <- port.turnover(port)
+  
+  # sector summary
+  
+  # stat summary
+  port_stat_summary <- port_stat
+  port_stat_summary$date <- NULL
+  port_stat_summary <- colMeans(port_stat_summary, na.rm = TRUE)
+  port_stat_summary <- t(as.data.frame(port_stat_summary))
+  
+  # turnover summary
+  port_turnover_summary <- mean(port_turnover$turnover, na.rm = TRUE)
+  port_turnover_summary <- t(port_turnover_summary)
+  rownames(port_turnover_summary) <- c("port_turnover_summary")
+  colnames(port_turnover_summary) <- c("mean_turnover")
+  
+  result <- list(sector_summary = port_sector_result[[1]],
+                 wgt_stat_summary = port_stat_summary,
+                 turnover_summary = port_turnover_summary,
+                 sector_dist = port_sector_result[[2]],
+                 wgt_stat = port_stat,
+                 turnover = port_turnover)
+  
+  return(result)
+}
+
+
+#' GET VOLATILITY OF PORT
+#' 
+#' @param port requires colnames: date, stockID and wgt.
+#' @return data frame, including two columns: date, port_vol
+#' @export
+#' @examples 
+#' port <- getIndexCompWgt("EI000300", endT = as.Date(c("2018-01-31", "2018-03-31")))
+#' port.getVolatility(port)
+#' 
+port.getVolatility <- function(port){
+  
+  check.colnames(port, c("date","stockID","wgt"))
+  port <- port[,c("date","stockID","wgt")]
+  
+  # load data
+  mdata_list <- TS.get_barra(port)
+  # mtsf <- gf_sector(mdata_list$mtsf, sectorAttr = defaultSectorAttr("ind"))
+  mtsf <- data.table::as.data.table(mdata_list$mtsf)
+  fcov_dt <- data.table::as.data.table(mdata_list$fCov)
+  sigma_dt <- data.table::as.data.table(mdata_list$sigma)
+  
+  # rock'n'roll
+  datelist <- sort(unique(mtsf$date))
+  for(i in 1:length(datelist)){
+    
+    date_ <- datelist[i]
+    mtsf_ <- mtsf[date == date_]
+    fcov_ <- fcov_dt[date == date_, -'date']
+    sigma_ <- sigma_dt[date == date_, -'date']
+    
+    risk_fnames <- colnames(fcov_)
+    B_mat <- as.matrix(mtsf_[,risk_fnames, with = FALSE])
+    if(length(sigma_$sigma) > 1){
+      S_mat <- diag(sigma_$sigma)
+    }else{
+      S_mat <- sigma_$sigma
+    }
+    
+    risk_mat <- B_mat %*% as.matrix(fcov_) %*% t(B_mat) + S_mat
+    wgt_ <- as.vector(mtsf_$wgt)
+    risk_ <- as.numeric(t(wgt_) %*% risk_mat %*% wgt_)
+    risk_ <- sqrt(risk_)
+    result_ <- data.frame('date' = date_, 'port_vol' = risk_, 
+                          stringsAsFactors = FALSE)
+    #   
+    if(i == 1L){
+      result <- result_
+    }else{
+      result <- rbind(result, result_)
+    }
+  }
+  # output 
+  return(result)
+  
 }
 
 
 
+
+
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
+# --------------------- get rtn series ------------
+# ===================== xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ==============
 #' getrtn.bmk
 #' 
 #' get the benchmark return series corresponding to the specific rtn series.
@@ -539,7 +748,7 @@ port.risk <- function(port){
 #' rtn <- xts::xts(TSR$periodrtn,TSR$date_end)
 #' re <- getrtn.bmk(rtn,"EI000300")
 #' re2 <- getrtn.bmk(rtn,"EI000300",date_start_pad=as.Date("2010-03-01"))
-getrtn.bmk <- function(rtn, bmk, date_start_pad){
+getrtn.bmk <- function(rtn, bmk, date_start_pad, drop=FALSE){
   
   if(substr(bmk,1,2)=="EI"){
     date_end <- zoo::index(rtn)
@@ -547,7 +756,7 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
       p_Nday <- periodicity_Ndays(rtn)
       if(p_Nday>2){
         warning("The rtn series is not daily. The start point of the first rtn period is padded by an approximate value!")
-        date_start_pad <- trday.offset(min(date_end),by = lubridate::days(-round(periodicity_Ndays(date))), dir = -1L)
+        date_start_pad <- trday.offset(min(date_end),by = lubridate::days(-round(periodicity_Ndays(date_end))), dir = -1L)
       } else { # daily rtn
         date_start_pad <- trday.nearby(min(date_end),by = -1)
       }
@@ -580,6 +789,9 @@ getrtn.bmk <- function(rtn, bmk, date_start_pad){
     re <- xts::xts(re$Settlement/re$Prev_Settlement-1 ,as.Date(re$date))
     colnames(re) <- bmk
   } 
+  if(!drop){
+    re <- merge(rtn,re)
+  }
   return(re)
 }
 
@@ -647,14 +859,12 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
 #' 
 #' get the \bold{rtn.LSH} object from the \bold{PB} object.
 #' 
-#' If param backtestPar is not missing,then the related params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized. 
 #' @param PB.L a \bold{PB} object of the long portfolio
 #' @param PB.S a \bold{PB} object of the short portfolio
 #' @param hedge.rebFreq giving the rebalance freq when computing the hedged rtn.An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s".See \code{\link{cut.Date}} for detail.
 #' @param hedge.posi a numeric, giving the position of the hedging assets
 #' @param fee.long a numeric, giving the fee of long asset
 #' @param fee.short a numeric, giving the fee of short asset
-#' @param backtestPar a \bold{backtestPar} object
 #' @return a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 #' @author Ruifei.Yin
 #' @export
@@ -666,14 +876,7 @@ addrtn.hedge <- function (rtn.long, rtn.short, rebFreq="month",weight=c(1,-1),fe
 #' PB.S <- port.backtest(port.S)
 #' re <- getrtn.LSH(PB.L,PB.S)
 getrtn.LSH <- function (PB.L, PB.S,
-                        hedge.rebFreq="month", hedge.posi=1, fee.long=0, fee.short=0,
-                        backtestPar) {  
-  if(!missing(backtestPar)){
-    hedge.rebFreq <- getbacktestPar.longshort(backtestPar,"hedge.rebFreq")
-    hedge.posi <- getbacktestPar.longshort(backtestPar,"hedge.posi")
-    fee.long <- getbacktestPar.fee(backtestPar,"secu")
-    fee.short <- getbacktestPar.fee(backtestPar,"secu")
-  }
+                        hedge.rebFreq="month", hedge.posi=1, fee.long=0, fee.short=0) {  
   rtn.long <- PB.L
   rtn.short <- PB.S 
   rtn.LSH <- addrtn.hedge(rtn.long, rtn.short, hedge.rebFreq,
@@ -689,15 +892,12 @@ getrtn.LSH <- function (PB.L, PB.S,
 #' getrtn.LBH
 #' 
 #' get the \bold{rtn.LBH} object from the \bold{TSF} object.
-#' 
-#' If param backtestPar is not missing,then the related params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.
 #' @param PB.L a \bold{PB} object of the long portfolio
 #' @param bmk a character string,giving the stockID of the benchmark index,eg. "EI000300".
 #' @param hedge.rebFreq giving the rebalance freq when computing the hedged rtn.An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s".See \code{\link{cut.Date}} for detail.
 #' @param hedge.posi a numeric, giving the position of the hedging assets
 #' @param fee.long a numeric, giving the fee of long asset
 #' @param fee.short a numeric, giving the fee of short asset
-#' @param backtestPar a \bold{backtestPar} object
 #' @return a \bold{rtn.LBH} object of class xts,giving the return series of long,bmk and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 #' @author Ruifei.Yin
 #' @export
@@ -706,17 +906,9 @@ getrtn.LSH <- function (PB.L, PB.S,
 #' re <- getrtn.LBH(PB.L,"EI000300")
 getrtn.LBH <- function(PB.L,bmk="EI000300",
                        hedge.rebFreq="month",hedge.posi=1,fee.long=0,fee.short=0,
-                       backtestPar,
                        date_start_pad){
-  if(!missing(backtestPar)){
-    bmk <- getbacktestPar.longshort(backtestPar,"bmk")
-    hedge.rebFreq <- getbacktestPar.longshort(backtestPar,"hedge.rebFreq")
-    hedge.posi <- getbacktestPar.longshort(backtestPar,"hedge.posi")
-    fee.long <- getbacktestPar.fee(backtestPar,"secu")
-    fee.short <- getbacktestPar.fee(backtestPar,"future")
-  }
   rtn.long <- PB.L
-  rtn.bmk <- getrtn.bmk(rtn = rtn.long, bmk = bmk, date_start_pad = date_start_pad)
+  rtn.bmk <- getrtn.bmk(rtn = rtn.long, bmk = bmk, date_start_pad = date_start_pad, drop = TRUE)
   rtn.LBH <- addrtn.hedge(rtn.long, rtn.bmk,hedge.rebFreq,
                           weight=c(hedge.posi,-hedge.posi),
                           fee.long,fee.short)  

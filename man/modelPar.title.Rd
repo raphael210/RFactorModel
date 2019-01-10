@@ -13,7 +13,11 @@ setmodelPar.title(modelPar, modelID, modelName, modelDesc)
 \arguments{
 \item{modelPar}{a \bold{modelPar} object}
 
-\item{modelID}{}
+\item{modelID}{string}
+
+\item{modelName}{string}
+
+\item{modelDesc}{string}
 }
 \value{
 a \bold{modelPar} object

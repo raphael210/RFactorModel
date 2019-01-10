@@ -14,7 +14,7 @@ reg.factor_select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 factor_VIF(TSF, sectorAttr = defaultSectorAttr())
 
 factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr(),
-  regType = c("lm", "glm"))
+  regType = c("lm", "glm"), res_adjust = FALSE)
 
 factor_orthogon(TSF, method = c("symm", "reg"), forder, sectorAttr = NULL,
   regType = c("lm", "glm"))

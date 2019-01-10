@@ -4,7 +4,7 @@
 \alias{getrtn.bmk}
 \title{getrtn.bmk}
 \usage{
-getrtn.bmk(rtn, bmk, date_start_pad)
+getrtn.bmk(rtn, bmk, date_start_pad, drop = FALSE)
 }
 \arguments{
 \item{rtn}{an xts,timeSeries or zoo object of portfolio returns.}

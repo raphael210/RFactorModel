@@ -5,7 +5,7 @@
 \title{getrtn.LSH}
 \usage{
 getrtn.LSH(PB.L, PB.S, hedge.rebFreq = "month", hedge.posi = 1,
-  fee.long = 0, fee.short = 0, backtestPar)
+  fee.long = 0, fee.short = 0)
 }
 \arguments{
 \item{PB.L}{a \bold{PB} object of the long portfolio}
@@ -19,17 +19,12 @@ getrtn.LSH(PB.L, PB.S, hedge.rebFreq = "month", hedge.posi = 1,
 \item{fee.long}{a numeric, giving the fee of long asset}
 
 \item{fee.short}{a numeric, giving the fee of short asset}
-
-\item{backtestPar}{a \bold{backtestPar} object}
 }
 \value{
 a \bold{rtn.LSH} object of class xts,giving the return series of long,short and hedge, with the attr of 'turnover'(a xts series) and 'fee'(a vector).
 }
 \description{
 get the \bold{rtn.LSH} object from the \bold{PB} object.
-}
-\details{
-If param backtestPar is not missing,then the related params will be extracted from backtestPar.It is usefull when the backtestPar has been initialized.
 }
 \examples{
 port.L <- getPort(TSF,20, dir="long")

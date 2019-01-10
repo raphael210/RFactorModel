@@ -7,22 +7,18 @@
 \alias{chart.longshort.rolling}
 \title{backtest.longshort}
 \usage{
-tables.longshort(rtn.LSH, hitFreq = "month", backtestPar)
+tables.longshort(rtn.LSH, hitFreq = "month")
 
-chart.longshort.summary(rtn.LSH, bar.freq = "month", plotPar)
+chart.longshort.summary(rtn.LSH, bar.freq = "month")
 
-chart.longshort.rolling(rtn.LSH, roll.width = 250, roll.by = 30, plotPar)
+chart.longshort.rolling(rtn.LSH, roll.width = 250, roll.by = 30)
 }
 \arguments{
 \item{rtn.LSH}{a \bold{rtn.LSH} or a \bold{rtn.LBH} object getting by function \code{\link{getrtn.LSH}} or \code{\link{getrtn.LBH}}.}
 
 \item{hitFreq}{indicating the interval when computing the hitRatio of rtn. An interval specification, one of "day", "week", "month", "quarter" and "year", optionally preceded by an integer and a space, or followed by "s".See \code{\link{cut.Date}} for detail.}
 
-\item{backtestPar}{Optional. a \bold{backtestPar} object,if not missing,then extract pars from backtestPar.}
-
 \item{bar.freq}{the freq of the per-period performance bar chart}
-
-\item{plotPar}{Optional.a \bold{plotPar} object,if not missing,then extract pars from plotPar}
 
 \item{roll.width}{the width argument for rolling performance chart}
 
@@ -44,9 +40,6 @@ chart.longshort.rolling  return and print a recordedplot object, which include a
 }
 \description{
 backtesting the factor with some tables and charts using the 'long-short(hedging)' method.
-}
-\details{
-If param backtestPar and plotPar is not missing,then the related params will be extracted from them.It is usefull when the parametres has been initialized.
 }
 \examples{
 rtn.long <- xts(rnorm(1000,0.001,0.02),as.Date("2010-01-01") + 1:1000)
