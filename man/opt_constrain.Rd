@@ -83,7 +83,7 @@ setConstr_FFV(constr, TW_ratio)
 
 \item{max}{a vector with the same length of FactorLists, or a scalar}
 
-\item{priority}{NA, 0, 1, 2, ...}
+\item{priority}{integer(only the max priority will make effect on the same stock), NA(not involved in the integeral priority, enforce to get the intersetion in the final result.)}
 }
 \value{
 a list contain the constrains
@@ -100,8 +100,12 @@ addConstr_fctExp_style(constr,factorlists,-0.1,0.1)
 addConstr_group(constr,EI000905=c(0, 0.8))
 addConstr_group(constr,EI000001=c(0.5, 0.5))
 addConstr_group(constr,ES33220000=c(-0.1, 0.1),relative = 1)
-addConstr_box(constr,each=c(0,0.02),EQ601318=c(0.05,0.15))
-addConstr_box(constr,EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
+constr <- constr_default()
+constr <- addConstr_box(constr,each=c(0,0.035),relative = 0,priority = NA)
+constr <- addConstr_box(constr,EQ002011=c(0,0.05),EQ000028=c(0,0.05),priority = 2)
+constr <- addConstr_box(constr,EI399005=c(-0.2,0.2),relative = 1,priority = 1)
+constr <- addConstr_box(constr,ES33370000=c(0,0.03),relative = 0,priority = 1)
+constr <- addConstr_box(constr,ES33330000=c(-0.1,0.1),relative = 2,priority = 1)
 addConstr_position(constr,position=c(0.8,1))
 addConstr_leverage(constr,leverage=1.6) #for 130/30
 addConstr_turnover(constr,turnover_target=0.5)

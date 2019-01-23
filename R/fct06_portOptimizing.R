@@ -125,10 +125,14 @@ addConstr_group <- function(constr, ..., relative=0){
 }
 #' @export
 #' @rdname opt_constrain
-#' @param  priority NA, 0, 1, 2, ...
+#' @param  priority integer(only the max priority will make effect on the same stock), NA(not involved in the integeral priority, enforce to get the intersetion in the final result.) 
 #' @examples
-#' addConstr_box(constr,each=c(0,0.02),EQ601318=c(0.05,0.15))
-#' addConstr_box(constr,EQ601318=c(0.05,0.15),ES33370000=c(0,0.5))
+#' constr <- constr_default()
+#' constr <- addConstr_box(constr,each=c(0,0.035),relative = 0,priority = NA)
+#' constr <- addConstr_box(constr,EQ002011=c(0,0.05),EQ000028=c(0,0.05),priority = 2)
+#' constr <- addConstr_box(constr,EI399005=c(-0.2,0.2),relative = 1,priority = 1)
+#' constr <- addConstr_box(constr,ES33370000=c(0,0.03),relative = 0,priority = 1)
+#' constr <- addConstr_box(constr,ES33330000=c(-0.1,0.1),relative = 2,priority = 1)
 addConstr_box <- function(constr,each, ..., relative=0, priority=0){
   if(!missing(each)){
     box_each <- data.frame(ID="each",min=each[1],max=each[2],stringsAsFactors = FALSE)
@@ -432,7 +436,7 @@ get_constrMat_fctExp_sector <- function(TSF2, univFilter, cons){
 
 
 
-get_constrMat_box <- function(TSF2, univFilter, cons){
+get_constrMat_box <- function(TSF2, univFilter, cons, return_Amat=FALSE){
   if(nrow(cons)==0){
     return(list(Amat=NULL,bvec=NULL))
   }
@@ -521,7 +525,12 @@ get_constrMat_box <- function(TSF2, univFilter, cons){
     bvec <- as.matrix(cons_re[,c("min","max")])
   }
   rownames(bvec) <- cons_re$ID
-  Amat <- diag(1,nrow = length(univ))
+  
+  if(return_Amat){
+    Amat <- diag(1,nrow = length(univ))
+  } else {
+    Amat <- NULL
+  }
   return(list(Amat=Amat,bvec=bvec))
 }
 
@@ -639,12 +648,12 @@ get_exp_rtn <- function(TSF,frtn){  # to be modified......
 #' getPort_opt
 #' 
 #' @param TSF a \bold{TSF} object,may contains multiple factors.
-#' @param exp_rtn a string, indicating the expected rtn column name. Or a numeric 0, which means return part doesn't involved in the optimization.
+#' @param exp_rtn a string, indicating the expected rtn column name. Or NULL, which means return part doesn't involved in the optimization.
 #' @param bmk benchmark indexID code.
 #' @param constr constrain lists,see \code{\link{opt_constrain}}.
 #' @param lamda numeric scalar, risk_aversion
 #' @param init_port if turnover constrain involved ,param \code{init_port} is required.
-#' @param min_wgt stock's minimum weight in optimized portfolio.
+#' @param min_wgt Numeric, or NULL. stock's minimum weight in optimized portfolio.
 #' @return a optimized port
 #' @export
 #' @examples 
@@ -671,7 +680,7 @@ getPort_opt <- function(TSF,
                         risk_list=NULL,
                         lamda = NULL,
                         constr=constr_default(),
-                        init_port,
+                        init_port=NULL,
                         min_wgt=0.0001,
                         optsolver=c('CVXR','RMOSEK')){
   
@@ -684,7 +693,7 @@ getPort_opt <- function(TSF,
   TSF2 <- add_constr_data(TSF = TSF2, constr = constr)
   
   ### init_port
-  if(missing(init_port)){
+  if(is.null(init_port)){
     init_port <- data.frame(stringsAsFactors = FALSE)
   }else{
     init_port <- init_port[,c('stockID','wgt')]
@@ -724,58 +733,62 @@ getPort_opt <- function(TSF,
     
     
     ## get 'dvec'
-    if(is.numeric(exp_rtn)){
+    if(is.null(exp_rtn)){
       dvec <- rep(0,length(univ)) #objects don't have return part
     } else if(! exp_rtn %in% names(TSF2_)){
       stop("'exp_rtn' not exist!")
     } else {
       dvec <- TSF2_[univFilter,exp_rtn]
-      dvec <- dvec/sd(dvec) # scale
+      if(sd(dvec)>0){
+        dvec <- dvec/sd(dvec) # scale
+      }
     }
     
     
     
     ## get 'Dmat'
     if(!is.null(risk_list)){
-      if(length(risk_list) == 2L){
-        # containing fCov and delta
-        fCov_ <- risk_list$fCov
-        if('date' %in% colnames(fCov_)){
-          fCov_ <- fCov_ %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
+      if(is.list(risk_list) & identical(names(risk_list),c('mTSF','fCov','sigma'))){
+        # univ
+        univ_df <-  data.frame(stockID=univ, stringsAsFactors = FALSE)
+        # risk exposure
+        risk_mat <- risk_list$mTSF
+        risk_mat <- risk_mat %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
+        risk_mat <- dplyr::left_join(univ_df,risk_mat,by='stockID') %>% dplyr::select(-stockID)
+        risk_mat <- as.matrix(risk_mat)
+        # covariance matrix
+        fCov_mat <- risk_list$fCov
+        if('date' %in% colnames(fCov_mat)){
+          fCov_mat <- fCov_mat %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
         }
-        risk_fnames <- colnames(fCov_)
-        rownames(fCov_) <- colnames(fCov_)
-        fCov_ <- as.matrix(fCov_)
-        
-        risk_fnames <- intersect(risk_fnames, colnames(TSF2_))
-        fCov_ <- fCov_[risk_fnames,risk_fnames,drop = FALSE]
-        riskmat <- as.matrix(TSF2_[univFilter,risk_fnames,drop=FALSE])
-        
-        # get stocks' residual variance
-        sigma_ <- risk_list$sigma
-        if('date' %in% colnames(sigma_)){
-          sigma_ <- sigma_ %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
+        fCov_mat <- as.matrix(fCov_mat)
+        # sigma matrix
+        sigma_mat <- risk_list$sigma
+        if('date' %in% colnames(sigma_mat)){
+          sigma_mat <- sigma_mat %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
         }
-        
-        sigma_mat <- data.frame(stockID=univ,stringsAsFactors = FALSE)
-        sigma_mat <- dplyr::left_join(sigma_mat,sigma_,by='stockID')
+        sigma_mat <- dplyr::left_join(univ_df,sigma_mat,by='stockID')
         sigma_mat <- sigma_mat %>% dplyr::mutate(sigma= ifelse(is.na(sigma), median(sigma, na.rm=TRUE), sigma))
-        sigma_mat <- diag(sigma_mat$sigma)
-        
-        Dmat <- list("fexpo" = riskmat, "fCov" = fCov_,"sigma"=sqrt(sigma_mat))
-        
+        sigma_mat <- as.vector(sigma_mat$sigma)
+        # double check
+        if(!identical(colnames(risk_mat),colnames(fCov_mat))) stop('Factor Exposure and Covariance Matrix do not match.')
+        # output
+        Dmat <- list("fexpo" = risk_mat, "fCov" = fCov_mat, "sigma" = sqrt(sigma_mat))
+        # 
         if(optsolver == "RMOSEK"){
-          Dmat <- riskmat %*% fCov_ %*% t(riskmat) + sigma_mat
+          sigma_mat <- diag(sigma_mat)
+          Dmat <- risk_mat %*% fCov_mat %*% t(risk_mat) + sigma_mat
         }
       }else{
-        # containing only big MAT
+        # this part is processed when each element in the risk_list is the NxN large complete covariance matrix for each specific date
         sigma <- risk_list[[as.character(dates[i])]]
         sigma <- as.data.frame(sigma)
         sigma$stockID <- colnames(sigma)
         
         sigma_mat <- data.frame(stockID=univ,stringsAsFactors = FALSE)
         sigma_mat <- dplyr::left_join(sigma_mat, sigma, by = "stockID")
-        # sigma_mat[is.na(sigma_mat)] <- 0
+        # to do ...
+        # sigma_mat[is.na(sigma_mat)] <- ...
         sigma_mat$stockID <- NULL
         
         Dmat <- as.matrix(sigma_mat)
@@ -783,6 +796,7 @@ getPort_opt <- function(TSF,
     }else{
       Dmat <- NULL
     }
+    
     
     
     ## get 'Amat' & 'bvec'
@@ -835,9 +849,9 @@ getPort_opt <- function(TSF,
     }
     
     if(optsolver=='CVXR'){
-      wgt_ <- try(solver_CVXR(dvec,Dmat,mat_vec_list,trackingerror_target,turnover_target,init_wgt,lamda,leverage),silent = TRUE)
+      wgt_ <- try(solver_CVXR(dvec,Dmat,mat_vec_list,trackingerror_target,turnover_target,init_wgt,lamda,leverage),silent = FALSE)
     }else if(optsolver=='RMOSEK'){
-      wgt_ <- try(solver_Rmosek(dvec,Dmat,mat_vec_list,trackingerror_target,turnover_target,init_wgt,lamda,leverage),silent = TRUE)
+      wgt_ <- try(solver_Rmosek(dvec,Dmat,mat_vec_list,trackingerror_target,turnover_target,init_wgt,lamda,leverage),silent = FALSE)
     }
     
     
@@ -846,16 +860,17 @@ getPort_opt <- function(TSF,
       port_ <- data.frame(date=dates[i],stockID=univ,wgt=wgt_, stringsAsFactors = FALSE)
       port_$wgt <- port_$wgt + TSF2_[univFilter,"wgt_bmk"]
       
-      if(is.numeric(min_wgt)){ # remove the mini-weighted stocks
+      if(!is.null(min_wgt)){ # remove the mini-weighted stocks
         target_long <- sum(port_$wgt[port_$wgt>0])
         target_short <- sum(port_$wgt[port_$wgt<0])
         port_ <- port_[abs(port_$wgt)>=min_wgt,]
-        port_ <- port.wgt_align(port_,target_long = target_long,target_short = target_short)
+        port_ <- port.wgt_align(port_, target_long = target_long, target_short = target_short)
       }
       
       port <- rbind(port,port_)
       init_port <- port_[,c('stockID','wgt')]
     }else{
+      warning("No optimizing result in ",rdate2int(dates[i]),"!\n")
       init_port <- data.frame(stringsAsFactors = FALSE)
       next
     } 
@@ -1037,15 +1052,17 @@ solver_CVXR <- function(dvec,Dmat,mat_vec_list,
   rtn <- dvec %*% wgt
   if(is.null(lamda)){
     obj_cvxr <- Maximize(rtn)
-  }else{
-    if(is.list(Dmat)){
+  } else {
+    if(is.null(Dmat)){
+      stop("lamda is not NULL, while Dmat is NULL!")
+    } else if(is.list(Dmat)){
       # If Dmat is a list, then it contains two element, covariance matrix of factors and stock residual sigma
       # the decomposition lowers the dimensions and speed up the calculation
       fexpwgt <- t(Dmat$fexpo) %*% wgt
       risk <- quad_form(fexpwgt, Dmat$fCov)
-      risk2 <- sum_squares(Dmat$sigma %*% wgt)
+      risk2 <- sum_squares(Dmat$sigma * wgt)
       obj_cvxr <- Maximize(rtn - 0.5*lamda*risk-0.5*lamda*risk2)
-    }else{
+    } else {
       # else, Dmat is a large covariance of stocks
       risk <- quad_form(wgt, Dmat)
       obj_cvxr <- Maximize(rtn - 0.5*lamda*risk)
@@ -1068,8 +1085,8 @@ solver_CVXR <- function(dvec,Dmat,mat_vec_list,
   if(!is.null(trackingerror_target)){
     fexpwgt <- t(Dmat$fexpo) %*% wgt
     risk <- quad_form(fexpwgt, Dmat$fCov)
-    risk2 <- sum_squares(Dmat$sigma %*% wgt)
-    cons_te <- risk+risk2<=trackingerror_target*trackingerror_target
+    risk2 <- sum_squares(Dmat$sigma * wgt)
+    cons_te <- risk+risk2 <= trackingerror_target*trackingerror_target
     constraints_cvxr <- c(constraints_cvxr,list(cons_te))
   }
   
@@ -1293,7 +1310,7 @@ add_constr_data <- function(TSF,constr){
       }
       if(length(diff.fnames)>0) FactorLists <- FactorLists[sapply(FactorLists,function(x) x$factorName %in% diff.fnames)]
       
-      TSFconstr <- getMultiFactor(TSF[,c('date','stockID')],FactorLists)
+      TSFconstr <- getMultiFactor(TSF[,c('date','stockID')],FactorLists,silence = TRUE)
       TSF <- dplyr::left_join(TSF,TSFconstr,by=c('date','stockID'))
     }
   }

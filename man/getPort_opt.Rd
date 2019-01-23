@@ -5,15 +5,15 @@
 \title{getPort_opt}
 \usage{
 getPort_opt(TSF, bmk = NULL, exp_rtn = "factorscore", risk_list = NULL,
-  lamda = NULL, constr = constr_default(), init_port, min_wgt = 1e-04,
-  optsolver = c("CVXR", "RMOSEK"))
+  lamda = NULL, constr = constr_default(), init_port = NULL,
+  min_wgt = 1e-04, optsolver = c("CVXR", "RMOSEK"))
 }
 \arguments{
 \item{TSF}{a \bold{TSF} object,may contains multiple factors.}
 
 \item{bmk}{benchmark indexID code.}
 
-\item{exp_rtn}{a string, indicating the expected rtn column name. Or a numeric 0, which means return part doesn't involved in the optimization.}
+\item{exp_rtn}{a string, indicating the expected rtn column name. Or NULL, which means return part doesn't involved in the optimization.}
 
 \item{lamda}{numeric scalar, risk_aversion}
 
@@ -21,7 +21,7 @@ getPort_opt(TSF, bmk = NULL, exp_rtn = "factorscore", risk_list = NULL,
 
 \item{init_port}{if turnover constrain involved ,param \code{init_port} is required.}
 
-\item{min_wgt}{stock's minimum weight in optimized portfolio.}
+\item{min_wgt}{Numeric, or NULL. stock's minimum weight in optimized portfolio.}
 }
 \value{
 a optimized port

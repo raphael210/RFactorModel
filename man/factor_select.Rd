@@ -4,22 +4,11 @@
 \alias{factor_select}
 \alias{reg.factor_select}
 \alias{factor_VIF}
-\alias{factor_orthogon_single}
-\alias{factor_orthogon}
-\alias{factor_orthogon_transMat}
 \title{factor_select}
 \usage{
 reg.factor_select(TSFR, sectorAttr = defaultSectorAttr(), forder)
 
 factor_VIF(TSF, sectorAttr = defaultSectorAttr())
-
-factor_orthogon_single(TSF, y, x, sectorAttr = defaultSectorAttr(),
-  regType = c("lm", "glm"), res_adjust = FALSE)
-
-factor_orthogon(TSF, method = c("symm", "reg"), forder, sectorAttr = NULL,
-  regType = c("lm", "glm"))
-
-factor_orthogon_transMat(TSF)
 }
 \arguments{
 \item{TSFR}{a \bold{TSFR} object.}
@@ -66,10 +55,4 @@ re <- reg.factor_select(TSFR)
 re <- reg.factor_select(TSFR,sectorAttr=NULL)
 nstock <- length(factorLists)
 re <- reg.factor_select(TSFR,forder=sample(1:nstock,nstock))
-tb_symm <- factor_orthogon(mtsf,method = "symm")
-tb_reg <- factor_orthogon(mtsf,method = "reg")
-MF.chart.Fct_corr(mtsf)
-MF.chart.Fct_corr(tb_symm)
-MF.chart.Fct_corr(tb_reg)
-factor_orthogon_transMat(mtsf)
 }
