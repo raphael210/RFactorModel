@@ -672,11 +672,12 @@ port.getVolatility <- function(port){
   
   check.colnames(port, c("date","stockID","wgt"))
   port <- port[,c("date","stockID","wgt")]
+  port <- data.table::as.data.table(port)
   
   # load data
   mdata_list <- TS.get_barra(port)
   # mtsf <- gf_sector(mdata_list$mtsf, sectorAttr = defaultSectorAttr("ind"))
-  mtsf <- data.table::as.data.table(mdata_list$mtsf)
+  mtsf <- data.table::as.data.table(mdata_list$mTSF)
   fcov_dt <- data.table::as.data.table(mdata_list$fCov)
   sigma_dt <- data.table::as.data.table(mdata_list$sigma)
   
@@ -685,6 +686,7 @@ port.getVolatility <- function(port){
   for(i in 1:length(datelist)){
     
     date_ <- datelist[i]
+    port_ <- port[date == date_]
     mtsf_ <- mtsf[date == date_]
     fcov_ <- fcov_dt[date == date_, -'date']
     sigma_ <- sigma_dt[date == date_, -'date']
@@ -698,7 +700,7 @@ port.getVolatility <- function(port){
     }
     
     risk_mat <- B_mat %*% as.matrix(fcov_) %*% t(B_mat) + S_mat
-    wgt_ <- as.vector(mtsf_$wgt)
+    wgt_ <- as.vector(port_$wgt)
     risk_ <- as.numeric(t(wgt_) %*% risk_mat %*% wgt_)
     risk_ <- sqrt(risk_)
     result_ <- data.frame('date' = date_, 'port_vol' = risk_, 

@@ -278,7 +278,7 @@ setConstr_leverage <- function(constr, leverage){
 #' @rdname opt_constrain
 setConstr_fctExp_style <- function(constr,FactorLists,min,max,relative){
   constr <- clearConstr(constr,"fctExp_style")
-  constr <- addConstr_position(constr = constr, FactorLists = FactorLists, min=min, max=max, relative = relative)
+  constr <- addConstr_fctExp_style(constr = constr, FactorLists = FactorLists, min=min, max=max, relative = relative)
   return(constr)
 }
 #' @export
@@ -768,7 +768,7 @@ getPort_opt <- function(TSF,
           sigma_mat <- sigma_mat %>% dplyr::filter(date==dates[i]) %>% dplyr::select(-date)
         }
         sigma_mat <- dplyr::left_join(univ_df,sigma_mat,by='stockID')
-        sigma_mat <- sigma_mat %>% dplyr::mutate(sigma= ifelse(is.na(sigma), median(sigma, na.rm=TRUE), sigma))
+        # sigma_mat <- sigma_mat %>% dplyr::mutate(sigma= ifelse(is.na(sigma), median(sigma, na.rm=TRUE), sigma))
         sigma_mat <- as.vector(sigma_mat$sigma)
         # double check
         if(!identical(colnames(risk_mat),colnames(fCov_mat))) stop('Factor Exposure and Covariance Matrix do not match.')
